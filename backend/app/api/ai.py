@@ -31,6 +31,7 @@ from app.schemas.ai import (
     SearchHit,
 )
 from app.services import projects as svc
+from app.services import search
 from app.services.ai import month_cost, month_start
 from app.services.documents import ingest, pending_ocr
 from app.services.jobs import enqueue
@@ -123,26 +124,42 @@ async def search_documents(
     q: str = Query(min_length=2, max_length=200),
 ) -> list[SearchHit]:
     project = await svc.get_project(session, org_id, project_id)
-    query = func.websearch_to_tsquery(literal_column("'french'"), q)
-    rank = func.ts_rank(DocumentPage.search, query)
+    hits = await search.search_pages(session, project, q, limit=20)
+    # Embeddings calculés pendant la recherche : conservés pour les suivantes.
+    await session.commit()
+    if not hits:
+        return []
     snippet = func.ts_headline(
         literal_column("'french'"),
         DocumentPage.text,
-        query,
+        search.text_query(q),
         "StartSel=«, StopSel=», MaxWords=30, MinWords=10",
     )
-    rows = await session.execute(
-        select(
-            DocumentPage.document_id, SourceDocument.filename, DocumentPage.number, snippet, rank
+    rows = {
+        page_id: (document_id, filename, number, text)
+        for page_id, document_id, filename, number, text in await session.execute(
+            select(
+                DocumentPage.id,
+                DocumentPage.document_id,
+                SourceDocument.filename,
+                DocumentPage.number,
+                snippet,
+            )
+            .join(SourceDocument)
+            .where(DocumentPage.id.in_([h.page_id for h in hits]))
         )
-        .join(SourceDocument)
-        .where(SourceDocument.project_id == project.id, DocumentPage.search.op("@@")(query))
-        .order_by(rank.desc())
-        .limit(20)
-    )
+    }
     return [
-        SearchHit(document_id=d, filename=f, page=p, snippet=s, rank=float(r))
-        for d, f, p, s, r in rows
+        SearchHit(
+            document_id=rows[h.page_id][0],
+            filename=rows[h.page_id][1],
+            page=rows[h.page_id][2],
+            snippet=rows[h.page_id][3],
+            rank=h.score,
+            semantic=not h.by_text,
+        )
+        for h in hits
+        if h.page_id in rows
     ]
 
 

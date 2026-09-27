@@ -65,7 +65,7 @@ async def call_structured(
         )
     except LLMError as exc:
         call.status, call.error = "error", str(exc)
-        await _log(call)
+        await log_call(call)
         raise
     call.status = "ok"
     call.model = result.model or model
@@ -82,11 +82,11 @@ async def call_structured(
         result.cache_read_tokens,
         result.cache_write_tokens,
     )
-    await _log(call)
+    await log_call(call)
     return result
 
 
-async def _log(call: AiCall) -> None:
+async def log_call(call: AiCall) -> None:
     """Enregistre l'appel dans sa propre transaction : il reste tracé même si la suite échoue."""
     async with SessionLocal() as log_session:
         await bind_org(log_session, call.organization_id)

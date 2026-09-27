@@ -128,6 +128,14 @@ function Search({ orgId, projectId }: { orgId: string; projectId: string }) {
               <li key={`${hit.document_id}-${hit.page}`} className="text-sm">
                 <p className="text-xs text-slate-500">
                   {hit.filename} · {t("documents.page", { page: hit.page })}
+                  {hit.semantic && (
+                    <span
+                      className="ml-2 rounded-full bg-brand-50 px-1.5 py-0.5 text-brand-800"
+                      title={t("documents.semanticHint")}
+                    >
+                      ≈ {t("documents.semantic")}
+                    </span>
+                  )}
                 </p>
                 <p className="text-slate-700">
                   … <Snippet text={hit.snippet} /> …

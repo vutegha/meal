@@ -391,6 +391,8 @@ export interface SearchHit {
   page: number;
   snippet: string;
   rank: number;
+  // Trouvée par le sens, sans les mots de la recherche.
+  semantic: boolean;
 }
 
 export interface Job {

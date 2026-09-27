@@ -5,8 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import Text, cast, func, literal_column, select
-from sqlalchemy.dialects.postgresql import TSQUERY
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -26,7 +25,7 @@ from app.models import (
     TorVersion,
 )
 from app.schemas.tor import TorDraft
-from app.services import audit, templates
+from app.services import audit, search, templates
 from app.services import projects as svc
 from app.services.ai import call_structured
 
@@ -140,19 +139,23 @@ def budget_markdown(lines: list[BudgetLine], currency: str) -> str:
 async def relevant_passages(
     session: AsyncSession, project: Project, text: str
 ) -> list[tuple[str, int, str]]:
-    """Pages des documents du projet qui partagent le plus de termes avec l'activité."""
-    # plainto_tsquery exige tous les termes (&) ; on accepte n'importe lequel (|).
-    words = cast(func.plainto_tsquery(literal_column("'french'"), text), Text)
-    query = cast(func.replace(words, "&", "|"), TSQUERY)
-    rank = func.ts_rank(DocumentPage.search, query)
-    rows = await session.execute(
-        select(SourceDocument.filename, DocumentPage.number, DocumentPage.text)
-        .join(SourceDocument)
-        .where(SourceDocument.project_id == project.id, DocumentPage.search.op("@@")(query))
-        .order_by(rank.desc())
-        .limit(MAX_PASSAGES)
-    )
-    return [(f, n, t[:MAX_PASSAGE_CHARS]) for f, n, t in rows]
+    """Pages des documents du projet les plus proches de l'activité (mots et sens)."""
+    hits = await search.search_pages(session, project, text, MAX_PASSAGES, any_term=True)
+    if not hits:
+        return []
+    rows = {
+        page_id: (filename, number, page_text)
+        for page_id, filename, number, page_text in await session.execute(
+            select(DocumentPage.id, SourceDocument.filename, DocumentPage.number, DocumentPage.text)
+            .join(SourceDocument)
+            .where(DocumentPage.id.in_([h.page_id for h in hits]))
+        )
+    }
+    return [
+        (rows[h.page_id][0], rows[h.page_id][1], rows[h.page_id][2][:MAX_PASSAGE_CHARS])
+        for h in hits
+        if h.page_id in rows
+    ]
 
 
 async def build_context(

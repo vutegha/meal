@@ -132,6 +132,8 @@ class SearchHit(BaseModel):
     page: int
     snippet: str
     rank: float
+    # Trouvée par le sens (embeddings) sans partager les mots de la recherche.
+    semantic: bool = False
 
 
 class JobOut(ORMModel):

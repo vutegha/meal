@@ -187,6 +187,8 @@ export const fr = {
     confirmDelete: "Supprimer ce document ?",
     search: "Rechercher",
     searchPlaceholder: "Rechercher dans les documents (ex. : formation AVEC)",
+    semantic: "proche par le sens",
+    semanticHint: "Passage trouvé par le sens, sans les mots exacts de la recherche.",
     noResult: "Aucun passage trouvé.",
   },
   proposal: {
@@ -521,6 +523,8 @@ export const fr = {
       report_generation: "Rapports d'activité",
       periodic_generation: "Rapports périodiques",
       feedback_classification: "Classement des retours",
+      document_embeddings: "Indexation par le sens",
+      search_embeddings: "Recherche par le sens",
       document_ocr: "Lecture de pages scannées",
     },
   },

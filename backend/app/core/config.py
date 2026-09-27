@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     ocr_max_pages: int = 40
     # Plafond mensuel des dépenses IA par organisation, en USD (0 = illimité)
     ai_monthly_budget_usd: float = 50.0
+    # Recherche sémantique : embeddings Voyage AI (multilingues). Sans clé, plein texte seul.
+    voyage_api_key: str | None = None
+    embeddings_model: str = "voyage-3.5"
+    # Pages vectorisées au plus par recherche (les suivantes le seront aux recherches d'après).
+    embeddings_batch_pages: int = 256
     # Taille maximale du texte envoyé en une fois (au-delà : erreur explicite, pas de troncature)
     llm_max_document_chars: int = 2_000_000
 

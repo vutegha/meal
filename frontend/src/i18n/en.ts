@@ -187,6 +187,8 @@ export const en: Messages = {
     confirmDelete: "Delete this document?",
     search: "Search",
     searchPlaceholder: "Search the documents (e.g. VSLA training)",
+    semantic: "close in meaning",
+    semanticHint: "Passage found by meaning, without the exact search words.",
     noResult: "No passage found.",
   },
   proposal: {
@@ -512,6 +514,8 @@ export const en: Messages = {
       report_generation: "Activity reports",
       periodic_generation: "Periodic reports",
       feedback_classification: "Feedback classification",
+      document_embeddings: "Meaning-based indexing",
+      search_embeddings: "Meaning-based search",
       document_ocr: "Reading scanned pages",
     },
   },
