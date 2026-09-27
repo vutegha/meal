@@ -46,9 +46,12 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [ ] 4.6 Éditeur riche (TipTap) à la place du Markdown simple
 
 ## Étape 5 : exécution et collecte
-- 5.1 Exécution d'activité, participants désagrégés, dépenses réelles
-- 5.2 Dépôt de pièces, EXIF, vignettes WebP, consentement, floutage
-- 5.3 PWA hors ligne (Workbox, Dexie), synchronisation idempotente
+- [x] 5.1 Exécution d'activité : dates, lieu et position GPS, participants désagrégés (sexe, âge, handicap), déroulement et écarts, dépenses réelles rattachées
+- [x] 5.2 Dépôt de preuves : photos (date et GPS lus dans l'EXIF, vignette WebP sans métadonnées), consentement, comptes rendus et listes de présence dont le texte est extrait
+- [x] 5.3 PWA hors ligne (vite-plugin-pwa/Workbox, file d'envoi Dexie/IndexedDB), synchronisation idempotente par `client_uuid`
+- [ ] 5.4 Floutage automatique des visages
+- [ ] 5.5 Audio et vidéo ; compression des photos côté téléphone avant envoi
+- [ ] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution)
 
 ## Étape 6 : rapport narratif
 - 6.1 Génération traçable prévu/réalisé, informations manquantes signalées

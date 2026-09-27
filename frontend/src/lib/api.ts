@@ -234,14 +234,19 @@ export interface Indicator {
   achievement_rate: number | null;
 }
 
-export async function download(path: string, filename: string): Promise<void> {
+/** GET authentifié renvoyant le contenu brut (fichiers, images). */
+export async function fetchBlob(path: string): Promise<Blob> {
   let response = await send(path, {}, tokenStore.get()?.access_token);
   if (response.status === 401 && tokenStore.get()) {
     const fresh = await refreshTokens();
     if (fresh) response = await send(path, {}, fresh.access_token);
   }
   if (!response.ok) throw new ApiError(response.status, await errorMessage(response));
-  const url = URL.createObjectURL(await response.blob());
+  return response.blob();
+}
+
+export async function download(path: string, filename: string): Promise<void> {
+  const url = URL.createObjectURL(await fetchBlob(path));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -532,4 +537,149 @@ export const torApi = {
     request<TorVersion[]>(`${project(orgId, projectId)}/tors/${torId}/versions`),
   exportPath: (orgId: string, projectId: string, torId: string, format: "docx" | "pdf") =>
     `${project(orgId, projectId)}/tors/${torId}/export.${format}`,
+};
+
+// --- Exécution et collecte (étape 5) -------------------------------------------
+
+export interface Participants {
+  women: number;
+  men: number;
+  girls: number;
+  boys: number;
+  with_disability: number;
+}
+
+export type ExecutionStatus = "in_progress" | "completed";
+export type EvidenceKind = "report" | "minutes" | "attendance" | "photo" | "other";
+export const EVIDENCE_KINDS: EvidenceKind[] = ["photo", "report", "minutes", "attendance", "other"];
+
+export interface ExecutionInput {
+  activity_id: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  location: string;
+  latitude: number | null;
+  longitude: number | null;
+  participants: Participants;
+  notes: string;
+  status: ExecutionStatus;
+  client_uuid: string;
+}
+
+export interface Execution extends Omit<ExecutionInput, "latitude" | "longitude" | "client_uuid"> {
+  id: string;
+  latitude: string | null;
+  longitude: string | null;
+  client_uuid: string | null;
+  participants_total: number;
+  evidence_count: number;
+  spent: string;
+  created_at: string;
+}
+
+export interface Evidence {
+  id: string;
+  execution_id: string;
+  kind: EvidenceKind;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  caption: string;
+  taken_at: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  consent_given: boolean;
+  has_thumbnail: boolean;
+  page_count: number;
+  created_at: string;
+}
+
+export interface ExecutionExpense {
+  id: string;
+  budget_line_id: string;
+  amount: string;
+  spent_on: string;
+  reference: string;
+  description: string;
+}
+
+export interface ExecutionDetail extends Execution {
+  evidence: Evidence[];
+  expenses: ExecutionExpense[];
+  planned: string;
+}
+
+export interface EvidenceInput {
+  kind: EvidenceKind;
+  caption: string;
+  consent_given: boolean;
+  client_uuid: string;
+}
+
+export const executionsApi = {
+  list: (orgId: string, projectId: string) =>
+    request<Execution[]>(`${project(orgId, projectId)}/executions`),
+  get: (orgId: string, projectId: string, executionId: string) =>
+    request<ExecutionDetail>(`${project(orgId, projectId)}/executions/${executionId}`),
+  create: (orgId: string, projectId: string, body: ExecutionInput) =>
+    request<ExecutionDetail>(`${project(orgId, projectId)}/executions`, json("POST", body)),
+  update: (
+    orgId: string,
+    projectId: string,
+    executionId: string,
+    body: Partial<Omit<ExecutionInput, "activity_id" | "client_uuid">>,
+  ) =>
+    request<ExecutionDetail>(
+      `${project(orgId, projectId)}/executions/${executionId}`,
+      json("PATCH", body),
+    ),
+  remove: (orgId: string, projectId: string, executionId: string) =>
+    request<void>(`${project(orgId, projectId)}/executions/${executionId}`, {
+      method: "DELETE",
+    }),
+  upload: (
+    orgId: string,
+    projectId: string,
+    executionId: string,
+    file: Blob,
+    filename: string,
+    meta: EvidenceInput,
+  ) => {
+    const body = new FormData();
+    body.append("file", file, filename);
+    body.append("kind", meta.kind);
+    body.append("caption", meta.caption);
+    body.append("consent_given", String(meta.consent_given));
+    body.append("client_uuid", meta.client_uuid);
+    return request<Evidence>(`${project(orgId, projectId)}/executions/${executionId}/evidence`, {
+      method: "POST",
+      body,
+    });
+  },
+  updateEvidence: (
+    orgId: string,
+    projectId: string,
+    evidenceId: string,
+    body: Partial<Omit<EvidenceInput, "client_uuid">>,
+  ) =>
+    request<Evidence>(`${project(orgId, projectId)}/evidence/${evidenceId}`, json("PATCH", body)),
+  removeEvidence: (orgId: string, projectId: string, evidenceId: string) =>
+    request<void>(`${project(orgId, projectId)}/evidence/${evidenceId}`, { method: "DELETE" }),
+  evidencePath: (
+    orgId: string,
+    projectId: string,
+    evidenceId: string,
+    variant: "file" | "thumbnail",
+  ) => `${project(orgId, projectId)}/evidence/${evidenceId}/${variant}`,
+  addExpense: (
+    orgId: string,
+    projectId: string,
+    executionId: string,
+    body: { budget_line_id: string; amount: string; spent_on: string; reference: string },
+  ) =>
+    request<ExecutionExpense>(
+      `${project(orgId, projectId)}/executions/${executionId}/expenses`,
+      json("POST", body),
+    ),
 };

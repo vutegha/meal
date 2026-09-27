@@ -86,9 +86,16 @@ const membersRoute = createRoute({
 const projectRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/projects/$projectId",
-  validateSearch: (search: Record<string, unknown>): { tab: ProjectTab; tor?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    tab: ProjectTab;
+    tor?: string;
+    execution?: string;
+  } => ({
     tab: PROJECT_TABS.includes(search.tab as ProjectTab) ? (search.tab as ProjectTab) : "logframe",
     tor: typeof search.tor === "string" ? search.tor : undefined,
+    execution: typeof search.execution === "string" ? search.execution : undefined,
   }),
   component: ProjectPage,
 });

@@ -41,8 +41,9 @@ Toutes les clés primaires sont des UUID. Les horodatages sont en UTC (`timestam
 | `terms_of_reference` | id, project_id, activity_id (unique), title, status (`draft`, `submitted`, `approved`), sections (jsonb : clé, titre, contenu Markdown), missing_information, version, review_comment, submitted_by/at, approved_by/at |
 | `tor_versions` | id, tor_id, version, title, sections, note, created_by |
 | `document_templates` (à venir) | id, organization_id, kind (`tor`, `activity_report`, `periodic_report`), structure (jsonb) |
-| `activity_executions` | id, activity_id, start_date, end_date, location, geo (jsonb), participants (jsonb désagrégé), notes, status |
-| `evidence_files` | id, execution_id, kind (`report`, `minutes`, `attendance`, `photo`, `audio`, `video`, `data`, `other`), storage_key, mime_type, exif (jsonb), consent_given, faces_blurred, caption, uploaded_by, client_uuid (idempotence hors ligne) |
+| `activity_executions` | id, project_id, activity_id, title, start_date, end_date, location, latitude, longitude, participants (jsonb : women, men, girls, boys, with_disability), notes, status (`in_progress`, `completed`), client_uuid (unique, idempotence hors ligne) |
+| `evidence` | id, execution_id, kind (`photo`, `report`, `minutes`, `attendance`, `other`), filename, content_type, sha256, storage_key, thumbnail_key, caption, taken_at et latitude/longitude (EXIF), consent_given, text (extrait des documents), page_count, uploaded_by, client_uuid |
+| `expenses.execution_id` | rattache une dépense réelle à l'exécution qui l'a occasionnée |
 | `narrative_reports` | id, execution_id, version, status, content (jsonb), citations (jsonb), missing_info (jsonb), approved_by |
 | `periodic_reports` | id, project_id, period_start, period_end, kind, content (jsonb), status |
 

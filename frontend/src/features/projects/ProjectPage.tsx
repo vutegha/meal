@@ -8,6 +8,7 @@ import { projectQuery } from "@/lib/queries";
 
 import { BudgetTab } from "./BudgetTab";
 import { DocumentsTab } from "./DocumentsTab";
+import { ExecutionTab } from "./ExecutionTab";
 import { IndicatorsTab } from "./IndicatorsTab";
 import { LogframeTab } from "./LogframeTab";
 import { StatusBadge } from "./StatusBadge";
@@ -40,7 +41,7 @@ export function ProjectPage() {
       </Link>
       <Card>
         <div className="flex flex-wrap items-start gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
             <p className="font-mono text-xs text-slate-500">{p.code}</p>
             <h1 className="text-xl font-semibold">{p.title}</h1>
             <p className="mt-1 text-sm text-slate-600">
@@ -68,7 +69,10 @@ export function ProjectPage() {
         <ErrorText error={exportFile.error} />
       </Card>
 
-      <nav className="flex gap-1 border-b border-slate-200" aria-label={p.title}>
+      <nav
+        className="flex gap-1 overflow-x-auto whitespace-nowrap border-b border-slate-200"
+        aria-label={p.title}
+      >
         {PROJECT_TABS.map((key) => (
           <button
             key={key}
@@ -89,6 +93,7 @@ export function ProjectPage() {
       {tab === "budget" && <BudgetTab orgId={orgId} project={p} />}
       {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
       {tab === "tor" && <TorTab orgId={orgId} project={p} />}
+      {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
       {tab === "documents" && <DocumentsTab orgId={orgId} project={p} />}
     </>
   );

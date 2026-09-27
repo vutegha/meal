@@ -7,12 +7,16 @@ import { Button } from "@/components/ui";
 import { api } from "@/lib/api";
 import { meQuery } from "@/lib/queries";
 import { tokenStore } from "@/lib/tokens";
+import { useOnline } from "@/lib/useOnline";
+import { useOutboxSync } from "@/lib/useOutboxSync";
 
 export function OrgLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { orgId } = useParams({ from: "/orgs/$orgId" });
+  const online = useOnline();
+  useOutboxSync();
   const { data: me } = useSuspenseQuery(meQuery);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -30,6 +34,8 @@ export function OrgLayout() {
   const logout = async () => {
     tokenStore.set(null);
     queryClient.clear();
+    // Les réponses d'API gardées pour le mode hors ligne appartiennent à l'utilisateur sortant.
+    if ("caches" in window) await caches.delete("api");
     await navigate({ to: "/login" });
   };
 
@@ -43,6 +49,14 @@ export function OrgLayout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
           <span className="text-lg font-bold text-brand-700">{t("app.name")}</span>
+          {!online && (
+            <span
+              role="status"
+              className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+            >
+              {t("offline.badge")}
+            </span>
+          )}
           <label className="sr-only" htmlFor="org-switch">
             {t("orgs.switch")}
           </label>
