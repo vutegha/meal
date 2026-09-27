@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { api, projectsApi } from "./api";
+import { aiApi, api, projectsApi } from "./api";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
 
@@ -49,4 +49,16 @@ export const indicatorsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "indicators"],
     queryFn: () => projectsApi.indicators(orgId, projectId),
+  });
+
+export const documentsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "documents"],
+    queryFn: () => aiApi.documents(orgId, projectId),
+  });
+
+export const proposalsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "proposals"],
+    queryFn: () => aiApi.proposals(orgId, projectId),
   });

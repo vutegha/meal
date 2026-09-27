@@ -5,7 +5,7 @@ import { Card } from "@/components/ui";
 import { auditQuery } from "@/lib/queries";
 
 function detail(data: Record<string, unknown>): string | undefined {
-  const value = ["email", "code", "title", "label", "name", "indicator"]
+  const value = ["email", "code", "title", "label", "name", "indicator", "filename"]
     .map((key) => data[key])
     .find((v) => typeof v === "string" && v);
   return value as string | undefined;

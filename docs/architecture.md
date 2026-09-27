@@ -63,6 +63,16 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 | Modifier le budget et saisir les dépenses | admin, project_manager, finance |
 | Saisir des valeurs d'indicateurs | admin, project_manager, meal_officer, field_agent |
 
+## IA
+
+- L'IA propose, un humain valide : l'extraction produit une **proposition** stockée (`ai_proposals`) qu'un planificateur relit, corrige et applique en partie ou rejette. Rien n'est écrit dans le cadre logique sans validation.
+- Chaque élément proposé cite un extrait du document. Le serveur vérifie que l'extrait figure bien dans le texte (normalisation des espaces, guillemets et casse) et marque les citations introuvables « à vérifier ».
+- Sorties structurées (schémas Pydantic dans `schemas/ai.py`), prompts versionnés dans `llm/prompts/`, cache de prompt sur les documents.
+- Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation (`AI_MONTHLY_BUDGET_USD`) bloque les appels au-delà.
+- Les modèles sont configurables : `LLM_MODEL_EXTRACTION` (claude-opus-5-5 par défaut), `LLM_MODEL_DRAFTING`, `LLM_MODEL_LIGHT`.
+- Un document trop volumineux est refusé avec un message explicite plutôt que tronqué en silence.
+- Les tâches longues passent par le worker ARQ ; `JOBS_INLINE=true` les exécute dans la requête (tests, développement).
+
 ## Journal d'audit
 
 Chaque écriture passe par `services/audit.py::record` dans la même transaction que la modification : organisation, auteur, action, type et identifiant de l'entité, données utiles. Consultable par les administrateurs.
@@ -73,7 +83,7 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 |---|---|---|
 | 1 | Fondations : monorepo, Compose, auth, organisations, rôles, audit, CI | fait |
 | 2 | Cadre logique manuel, budget, indicateurs | fait (sauf RLS, voir roadmap) |
-| 3 | Import de documents et extraction IA | à faire |
+| 3 | Import de documents et extraction IA | fait (sauf OCR, voir roadmap) |
 | 4 | TdR | à faire |
 | 5 | Exécution, collecte PWA hors ligne | à faire |
 | 6 | Rapport narratif, tableaux de bord | à faire |

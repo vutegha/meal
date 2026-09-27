@@ -62,7 +62,7 @@ const BASE = "/api/v1";
 
 async function send(path: string, init: RequestInit, token?: string): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
   return fetch(`${BASE}${path}`, { ...init, headers });
 }
@@ -327,4 +327,134 @@ export const projectsApi = {
       json("POST", body),
     ),
   exportPath: (orgId: string, projectId: string) => `${project(orgId, projectId)}/export.xlsx`,
+};
+
+// --- Documents et IA (étape 3) -------------------------------------------------
+
+export interface SourceDocument {
+  id: string;
+  filename: string;
+  kind: string;
+  size_bytes: number;
+  status: "uploaded" | "extracted" | "failed";
+  page_count: number;
+  text_chars: number;
+  error: string;
+  created_at: string;
+}
+
+export interface SearchHit {
+  document_id: string;
+  filename: string;
+  page: number;
+  snippet: string;
+  rank: number;
+}
+
+export interface Job {
+  id: string;
+  kind: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  result: Record<string, unknown>;
+  error: string;
+  created_at: string;
+  finished_at: string | null;
+}
+
+interface Sourced {
+  source_document: number | null;
+  source_page: number | null;
+  source_quote: string;
+  verified: boolean;
+}
+
+export interface ProposedNode extends Sourced {
+  ref: string;
+  parent_ref: string | null;
+  level: NodeLevel;
+  code: string;
+  title: string;
+  assumptions: string;
+}
+
+export interface ProposedIndicator extends Sourced {
+  node_ref: string;
+  code: string;
+  name: string;
+  unit: string;
+  baseline: number | null;
+  target: number | null;
+  aggregation: "sum" | "latest";
+  disaggregations: string[];
+  source_of_verification: string;
+}
+
+export interface ProposedBudgetLine extends Sourced {
+  activity_ref: string | null;
+  donor_line_code: string;
+  label: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  frequency: number;
+  is_estimate: boolean;
+}
+
+export interface LogframeProposal {
+  summary: string;
+  currency: string | null;
+  documents: string[];
+  nodes: ProposedNode[];
+  indicators: ProposedIndicator[];
+  budget_lines: ProposedBudgetLine[];
+  missing_information: string[];
+}
+
+export interface Proposal {
+  id: string;
+  kind: string;
+  status: "pending" | "applied" | "rejected";
+  payload: LogframeProposal;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface ApplyLogframe {
+  nodes: ProposedNode[];
+  indicators: ProposedIndicator[];
+  budget_lines: ProposedBudgetLine[];
+}
+
+export const aiApi = {
+  documents: (orgId: string, projectId: string) =>
+    request<SourceDocument[]>(`${project(orgId, projectId)}/documents`),
+  upload: (orgId: string, projectId: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<SourceDocument>(`${project(orgId, projectId)}/documents`, {
+      method: "POST",
+      body,
+    });
+  },
+  deleteDocument: (orgId: string, projectId: string, documentId: string) =>
+    request<void>(`${project(orgId, projectId)}/documents/${documentId}`, { method: "DELETE" }),
+  search: (orgId: string, projectId: string, q: string) =>
+    request<SearchHit[]>(
+      `${project(orgId, projectId)}/documents/search?q=${encodeURIComponent(q)}`,
+    ),
+  extract: (orgId: string, projectId: string) =>
+    request<Job>(`${project(orgId, projectId)}/ai/logframe-extraction`, { method: "POST" }),
+  job: (orgId: string, jobId: string) => request<Job>(`/orgs/${orgId}/jobs/${jobId}`),
+  proposals: (orgId: string, projectId: string) =>
+    request<Proposal[]>(`${project(orgId, projectId)}/proposals`),
+  apply: (orgId: string, projectId: string, proposalId: string, body: ApplyLogframe) =>
+    request<Proposal>(
+      `${project(orgId, projectId)}/proposals/${proposalId}/apply`,
+      json("POST", body),
+    ),
+  reject: (orgId: string, projectId: string, proposalId: string) =>
+    request<Proposal>(`${project(orgId, projectId)}/proposals/${proposalId}/reject`, {
+      method: "POST",
+    }),
 };

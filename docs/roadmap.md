@@ -27,12 +27,15 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [ ] 2.9 Cibles par période, multi-devises et taux de change, export PDF
 
 ## Étape 3 : import et extraction IA
-- 3.1 Upload vers S3, extraction du texte (PyMuPDF, python-docx, openpyxl, OCR)
-- 3.2 Découpage et indexation pgvector
-- 3.3 Couche `llm/` : client Claude, sorties structurées, cache de prompt, journal des coûts
-- 3.4 Extraction du cadre logique, du budget et des indicateurs avec citations
-- 3.5 Écran de validation des propositions
-- 3.6 Jeu d'évaluation des prompts
+- [x] 3.1 Upload (stockage local ou S3/MinIO), extraction du texte page par page (PyMuPDF, python-docx, openpyxl, texte)
+- [x] 3.2 Indexation et recherche plein texte en français (PostgreSQL `tsvector`)
+- [x] 3.3 Couche `llm/` : client Claude, sorties structurées, cache de prompt, journal des coûts, plafond mensuel par organisation
+- [x] 3.4 Extraction du cadre logique, du budget et des indicateurs avec citations vérifiées dans le texte
+- [x] 3.5 Écran de validation des propositions (sélection en cascade, titres modifiables, application ou rejet)
+- [x] 3.6 Jeu d'évaluation des prompts (`uv run python -m app.llm.evals.run`, clé API requise)
+- [ ] 3.7 OCR des documents scannés (aujourd'hui refusés avec un message explicite)
+- [ ] 3.8 Recherche sémantique pgvector, si la recherche plein texte ne suffit pas pour les TdR et rapports
+- [ ] 3.9 Suivi de l'usage IA dans l'interface d'administration (l'API `GET /orgs/{id}/ai/usage` existe)
 
 ## Étape 4 : TdR
 - 4.1 Modèles DOCX par organisation

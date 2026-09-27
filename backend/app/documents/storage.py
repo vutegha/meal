@@ -47,8 +47,22 @@ class S3Storage:
             aws_access_key_id=settings.s3_access_key,
             aws_secret_access_key=settings.s3_secret_key,
         )
+        self._bucket_ready = False
+
+    def _ensure_bucket(self) -> None:
+        """Crée le compartiment au premier dépôt (MinIO démarre sans compartiment)."""
+        if self._bucket_ready:
+            return
+        from botocore.exceptions import ClientError
+
+        try:
+            self.client.head_bucket(Bucket=self.bucket)
+        except ClientError:
+            self.client.create_bucket(Bucket=self.bucket)
+        self._bucket_ready = True
 
     async def put(self, key: str, data: bytes, content_type: str) -> None:
+        await asyncio.to_thread(self._ensure_bucket)
         await asyncio.to_thread(
             self.client.put_object, Bucket=self.bucket, Key=key, Body=data, ContentType=content_type
         )

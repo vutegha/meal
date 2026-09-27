@@ -40,6 +40,16 @@ npm run dev                                # http://localhost:5173
 
 Variables utiles côté API : `DATABASE_URL` (par défaut `postgresql+asyncpg://meal:meal@localhost:5432/meal`), `REDIS_URL`, `SECRET_KEY`.
 
+## Fonctions d'IA
+
+L'extraction du cadre logique à partir des documents du projet appelle l'API Claude. Renseignez `ANTHROPIC_API_KEY` dans `.env` ; sans clé, le reste de l'application fonctionne et l'extraction renvoie une erreur explicite. Le plafond de dépense mensuel par organisation se règle avec `AI_MONTHLY_BUDGET_USD` (50 USD par défaut).
+
+Pour mesurer la qualité du prompt d'extraction (appel réel, quelques centimes) :
+
+```bash
+cd backend && uv run python -m app.llm.evals.run
+```
+
 ## Tests et qualité
 
 ```bash
