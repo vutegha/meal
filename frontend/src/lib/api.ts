@@ -1,12 +1,7 @@
 import { type Tokens, tokenStore } from "./tokens";
 
 export type Role =
-  | "admin"
-  | "project_manager"
-  | "meal_officer"
-  | "field_agent"
-  | "finance"
-  | "viewer";
+  "admin" | "project_manager" | "meal_officer" | "field_agent" | "finance" | "viewer";
 
 export const ROLES: Role[] = [
   "admin",
