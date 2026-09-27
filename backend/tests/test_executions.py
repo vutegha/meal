@@ -1,10 +1,12 @@
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from httpx import AsyncClient
 from PIL import Image
 
+from app.services.faces import detect_faces
 from tests.conftest import register
 from tests.test_organizations import add_member, login
 from tests.test_projects import build_logframe, create_project
@@ -109,6 +111,7 @@ async def test_evidence_photo_and_document(client: AsyncClient) -> None:
     assert picture["taken_at"].startswith("2026-03-14T10:30")
     assert picture["latitude"] == "-1.675000" and picture["longitude"] == "29.250000"
     assert picture["consent_given"] is True
+    assert picture["faces"] == 0 and picture["blur_faces"] is True
     again = await client.post(
         url,
         headers=h,
@@ -233,3 +236,63 @@ async def test_expenses_roles_and_isolation(client: AsyncClient) -> None:
     assert (await client.delete(exe, headers=h)).status_code == 204
     summary = (await client.get(f"{base}/budget/summary", headers=h)).json()
     assert summary["spent"] == "3200.00"  # la dépense reste, détachée de l'exécution
+
+
+FACE = Path(__file__).parent / "fixtures" / "visage.jpg"  # photo NASA, domaine public
+
+
+def visible_faces(data: bytes) -> list[tuple[int, int, int, int]]:
+    """Visages de la photo d'essai encore reconnaissables sur une vignette."""
+    faces = detect_faces(Image.open(FACE))
+    return [
+        box
+        for box in detect_faces(Image.open(BytesIO(data)))
+        if any(abs(box[0] - x) < w and abs(box[1] - y) < h for x, y, w, h in faces)
+    ]
+
+
+async def test_faces_are_blurred(client: AsyncClient) -> None:
+    ctx, base, nodes, _ = await setup(client)
+    h = ctx["headers"]
+    execution = (
+        await client.post(
+            f"{base}/executions", headers=h, json=execution_body(nodes["activity"]["id"])
+        )
+    ).json()
+    await add_member(client, ctx, "agent@example.org", "field_agent")
+    await add_member(client, ctx, "agent2@example.org", "field_agent")
+    agent = await login(client, "agent@example.org")
+    other_agent = await login(client, "agent2@example.org")
+
+    r = await client.post(
+        f"{base}/executions/{execution['id']}/evidence",
+        headers=agent,
+        files={"file": ("groupe.jpg", FACE.read_bytes(), "image/jpeg")},
+    )
+    assert r.status_code == 201, r.text
+    picture = r.json()
+    assert picture["faces"] >= 1 and picture["blur_faces"] is True
+    url = f"{base}/evidence/{picture['id']}"
+
+    thumb = await client.get(f"{url}/thumbnail", headers=other_agent)
+    assert visible_faces(thumb.content) == []
+    # L'original n'est pas flouté : l'auteur et les responsables seulement.
+    assert (await client.get(f"{url}/file", headers=other_agent)).status_code == 403
+    assert (await client.get(f"{url}/file", headers=agent)).status_code == 200
+    assert (await client.get(f"{url}/file", headers=h)).status_code == 200
+
+    # Montrer les visages : un responsable, et seulement avec le consentement.
+    r = await client.patch(url, headers=agent, json={"blur_faces": False})
+    assert r.status_code == 403
+    r = await client.patch(url, headers=h, json={"blur_faces": False})
+    assert r.status_code == 409
+    r = await client.patch(url, headers=h, json={"blur_faces": False, "consent_given": True})
+    assert r.status_code == 200 and r.json()["blur_faces"] is False
+    thumb = await client.get(f"{url}/thumbnail", headers=h)
+    assert visible_faces(thumb.content)
+
+    # Consentement retiré : les visages sont de nouveau floutés.
+    r = await client.patch(url, headers=agent, json={"consent_given": False})
+    assert r.status_code == 200 and r.json()["blur_faces"] is True
+    thumb = await client.get(f"{url}/thumbnail", headers=h)
+    assert visible_faces(thumb.content) == []

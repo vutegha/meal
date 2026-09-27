@@ -23,9 +23,9 @@ import { ExecutionBadge } from "./ExecutionBadge";
 import { ReportPanel } from "./ReportPanel";
 
 /** Image protégée : chargée avec le jeton de l'utilisateur, puis affichée depuis la mémoire. */
-function AuthImage({ path, alt }: { path: string; alt: string }) {
+function AuthImage({ path, alt, version = "" }: { path: string; alt: string; version?: string }) {
   const blob = useQuery({
-    queryKey: ["blob", path],
+    queryKey: ["blob", path, version],
     queryFn: () => fetchBlob(path),
     staleTime: Infinity,
   });
@@ -64,6 +64,14 @@ function EvidenceItem({
       }),
     onSuccess: onChanged,
   });
+  const toggleBlur = useMutation({
+    mutationFn: () =>
+      executionsApi.updateEvidence(orgId, projectId, evidence.id, {
+        blur_faces: !evidence.blur_faces,
+      }),
+    onSuccess: onChanged,
+  });
+  const { role } = useCurrentOrg();
   const remove = useMutation({
     mutationFn: () => executionsApi.removeEvidence(orgId, projectId, evidence.id),
     onSuccess: onChanged,
@@ -75,7 +83,11 @@ function EvidenceItem({
     <li className="space-y-1 text-sm">
       {evidence.has_thumbnail ? (
         <button className="block w-full" onClick={() => open.mutate()} title={evidence.filename}>
-          <AuthImage path={path("thumbnail")} alt={evidence.caption || evidence.filename} />
+          <AuthImage
+            path={path("thumbnail")}
+            alt={evidence.caption || evidence.filename}
+            version={`${evidence.blur_faces}-${evidence.consent_given}`}
+          />
         </button>
       ) : (
         <button
@@ -112,6 +124,22 @@ function EvidenceItem({
           )}
         </p>
       )}
+      {evidence.faces > 0 && (
+        <p className="text-xs text-slate-600">
+          {evidence.blur_faces
+            ? t("execution.facesBlurred", { count: evidence.faces })
+            : t("execution.facesVisible", { count: evidence.faces })}
+          {permissions.plan(role) && (evidence.blur_faces ? evidence.consent_given : true) && (
+            <button
+              className="ml-2 text-brand-700 underline"
+              onClick={() => toggleBlur.mutate()}
+              disabled={toggleBlur.isPending}
+            >
+              {evidence.blur_faces ? t("execution.showFaces") : t("execution.blurFaces")}
+            </button>
+          )}
+        </p>
+      )}
       {canCollect && (
         <button
           className="text-xs text-red-700"
@@ -122,7 +150,7 @@ function EvidenceItem({
           {t("logframe.delete")}
         </button>
       )}
-      <ErrorText error={toggleConsent.error ?? remove.error ?? open.error} />
+      <ErrorText error={toggleConsent.error ?? toggleBlur.error ?? remove.error ?? open.error} />
     </li>
   );
 }

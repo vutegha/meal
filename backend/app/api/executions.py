@@ -4,6 +4,7 @@ Les créations acceptent un `client_uuid` généré par l'application hors ligne
 même saisie (après une coupure réseau) renvoie l'élément existant au lieu de le dupliquer.
 """
 
+import asyncio
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -39,7 +40,7 @@ from app.schemas.execution import (
     Participants,
 )
 from app.services import projects as svc
-from app.services.evidence import UnsupportedFile, process
+from app.services.evidence import UnsupportedFile, process, render_thumbnail
 
 router = APIRouter(prefix="/orgs/{org_id}/projects/{project_id}", tags=["exécution"])
 
@@ -54,13 +55,23 @@ Spender = Annotated[
 ]
 
 
+_COMPUTED = {"has_thumbnail", "faces", "blur_faces"}
+
+
 def evidence_out(evidence: Evidence) -> EvidenceOut:
+    extra = evidence.extra or {}
     return EvidenceOut.model_validate(
         {
-            **{k: getattr(evidence, k) for k in EvidenceOut.model_fields if k != "has_thumbnail"},
+            **{k: getattr(evidence, k) for k in EvidenceOut.model_fields if k not in _COMPUTED},
             "has_thumbnail": bool(evidence.thumbnail_key),
+            "faces": extra.get("faces", 0),
+            "blur_faces": extra.get("blur_faces", True),
         }
     )
+
+
+# Voir les visages d'une photo (original, vignette non floutée) : responsables et suivi-évaluation.
+FACE_ROLES = (Role.ADMIN, Role.PROJECT_MANAGER, Role.MEAL_OFFICER)
 
 
 async def _spent(session: SessionDep, execution_ids: list[UUID]) -> dict[UUID, Decimal]:
@@ -365,12 +376,45 @@ async def update_evidence(
 ) -> EvidenceOut:
     project = await svc.get_project(session, org_id, project_id)
     evidence = await _get_evidence(session, project, evidence_id)
-    for field, value in body.model_dump(exclude_unset=True, exclude_none=True).items():
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    blur = changes.pop("blur_faces", None)
+    for field, value in changes.items():
         setattr(evidence, field, value)
+    # Consentement retiré : les visages redeviennent floutés.
+    if not evidence.consent_given and not (evidence.extra or {}).get("blur_faces", True):
+        await _set_blur(evidence, True, member, force=True)
+    elif blur is not None and evidence.thumbnail_key:
+        await _set_blur(evidence, blur, member)
     _log(session, member, "evidence.updated", "evidence", evidence.id, {"name": evidence.filename})
     await session.commit()
     await session.refresh(evidence)
     return evidence_out(evidence)
+
+
+async def _set_blur(
+    evidence: Evidence, blur: bool, member: Membership, force: bool = False
+) -> None:
+    extra = evidence.extra or {}
+    if blur == extra.get("blur_faces", True):
+        return
+    if not force and member.role not in FACE_ROLES:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Seul un responsable peut décider du floutage des visages"
+        )
+    if not blur and not evidence.consent_given:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Sans consentement des personnes photographiées, les visages restent floutés",
+        )
+    storage = get_storage()
+    try:
+        thumbnail, faces = await asyncio.to_thread(
+            render_thumbnail, await storage.get(evidence.storage_key), blur
+        )
+    except UnsupportedFile as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    await storage.put(evidence.thumbnail_key, thumbnail, "image/webp")
+    evidence.extra = {**extra, "blur_faces": blur, "faces": faces}
 
 
 @router.delete("/evidence/{evidence_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -402,13 +446,24 @@ async def download_evidence(
     project_id: UUID,
     evidence_id: UUID,
     variant: str,
-    _: AnyMember,
+    member: AnyMember,
     session: SessionDep,
 ) -> Response:
     if variant not in ("file", "thumbnail"):
         raise svc.not_found("Fichier")
     project = await svc.get_project(session, org_id, project_id)
     evidence = await _get_evidence(session, project, evidence_id)
+    # L'original n'est pas flouté : réservé aux responsables et à l'auteur de la photo.
+    if (
+        variant == "file"
+        and (evidence.extra or {}).get("faces")
+        and member.role not in FACE_ROLES
+        and evidence.uploaded_by != member.user_id
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Photo avec visages : l'original est réservé aux responsables",
+        )
     key = evidence.storage_key if variant == "file" else evidence.thumbnail_key
     if not key:
         raise svc.not_found("Vignette")

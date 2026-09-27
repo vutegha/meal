@@ -627,6 +627,8 @@ export interface Evidence {
   consent_given: boolean;
   has_thumbnail: boolean;
   page_count: number;
+  faces: number;
+  blur_faces: boolean;
   created_at: string;
 }
 
@@ -696,7 +698,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Omit<EvidenceInput, "client_uuid">>,
+    body: Partial<Omit<EvidenceInput, "client_uuid">> & { blur_faces?: boolean },
   ) =>
     request<Evidence>(`${project(orgId, projectId)}/evidence/${evidenceId}`, json("PATCH", body)),
   removeEvidence: (orgId: string, projectId: string, evidenceId: string) =>

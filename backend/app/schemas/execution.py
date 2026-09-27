@@ -74,6 +74,9 @@ class EvidenceOut(BaseModel):
     consent_given: bool
     has_thumbnail: bool
     page_count: int
+    # Visages détectés sur la photo ; floutés sur la vignette sauf décision contraire.
+    faces: int = 0
+    blur_faces: bool = True
     created_at: datetime
 
 
@@ -81,6 +84,7 @@ class EvidenceUpdate(BaseModel):
     kind: EvidenceKind | None = None
     caption: str | None = Field(default=None, max_length=2000)
     consent_given: bool | None = None
+    blur_faces: bool | None = None
 
 
 class ExecutionExpenseIn(BaseModel):

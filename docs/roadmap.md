@@ -49,7 +49,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 5.1 Exécution d'activité : dates, lieu et position GPS, participants désagrégés (sexe, âge, handicap), déroulement et écarts, dépenses réelles rattachées
 - [x] 5.2 Dépôt de preuves : photos (date et GPS lus dans l'EXIF, vignette WebP sans métadonnées), consentement, comptes rendus et listes de présence dont le texte est extrait
 - [x] 5.3 PWA hors ligne (vite-plugin-pwa/Workbox, file d'envoi Dexie/IndexedDB), synchronisation idempotente par `client_uuid`
-- [ ] 5.4 Floutage automatique des visages
+- [x] 5.4 Floutage automatique des visages sur les vignettes (affichage et rapports), détecteurs OpenCV locaux ; original réservé aux responsables et à l'auteur ; visages montrés seulement avec consentement, refloutés si le consentement est retiré ; reprise des anciennes photos : `uv run python -m app.scripts.blur_faces`
 - [ ] 5.5 Audio et vidéo ; compression des photos côté téléphone avant envoi
 - [x] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution) : questions texte, nombre, choix unique ou multiple, oui/non, date ; publication et clôture ; saisie hors ligne par la file d'envoi ; synthèse par question, tableau des réponses, export Excel ; questions figées une fois des réponses reçues
 

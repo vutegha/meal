@@ -63,7 +63,7 @@ def _degrees(value: Any, ref: str) -> Decimal | None:
 def _process_image(
     data: bytes,
 ) -> tuple[bytes, datetime | None, Decimal | None, Decimal | None, dict[str, Any]]:
-    from PIL import Image, ImageOps, UnidentifiedImageError
+    from PIL import Image, UnidentifiedImageError
 
     try:
         image = Image.open(BytesIO(data))
@@ -83,15 +83,43 @@ def _process_image(
     latitude = _degrees(gps.get(2), gps.get(1, "N")) if gps else None
     longitude = _degrees(gps.get(4), gps.get(3, "E")) if gps else None
 
-    # La vignette est redressée et ne garde aucune métadonnée (ni GPS ni appareil).
+    thumbnail, faces = _thumbnail(image, blur=True)
+    extra = {"width": image.width, "height": image.height, "faces": faces, "blur_faces": True}
+    return thumbnail, taken_at, latitude, longitude, extra
+
+
+def _thumbnail(image: Any, blur: bool) -> tuple[bytes, int]:
+    """Vignette WebP redressée, sans aucune métadonnée (ni GPS ni appareil), visages floutés.
+
+    Renvoie aussi le nombre de visages détectés, floutés ou non.
+    """
+    from PIL import ImageOps
+
+    from app.services.faces import blur_faces, detect_faces
+
     thumbnail = ImageOps.exif_transpose(image)
     thumbnail.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE))
     if thumbnail.mode not in ("RGB", "RGBA"):
         thumbnail = thumbnail.convert("RGB")
+    if blur:
+        thumbnail, faces = blur_faces(thumbnail)
+    else:
+        faces = len(detect_faces(thumbnail))
     buffer = BytesIO()
     thumbnail.save(buffer, format="WEBP", quality=80)
-    extra = {"width": image.width, "height": image.height}
-    return buffer.getvalue(), taken_at, latitude, longitude, extra
+    return buffer.getvalue(), faces
+
+
+def render_thumbnail(data: bytes, blur: bool) -> tuple[bytes, int]:
+    """Refait la vignette d'une photo déjà déposée (floutage activé ou retiré)."""
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        image = Image.open(BytesIO(data))
+        image.load()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise UnsupportedFile("Image illisible") from exc
+    return _thumbnail(image, blur)
 
 
 async def process(data: bytes, filename: str, content_type: str | None) -> ProcessedFile:
