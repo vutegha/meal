@@ -27,9 +27,13 @@ from app.models.project import (
     Project,
     ProjectStatus,
 )
+from app.models.report import NarrativeReport, ReportStatus, ReportVersion
 from app.models.tor import TermsOfReference, TorStatus, TorVersion
 
 __all__ = [
+    "NarrativeReport",
+    "ReportStatus",
+    "ReportVersion",
     "ActivityExecution",
     "Evidence",
     "EvidenceKind",

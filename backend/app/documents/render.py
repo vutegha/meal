@@ -32,11 +32,21 @@ class Section:
 
 
 @dataclass
+class Figure:
+    """Image JPEG ou PNG avec sa légende (les deux formats lus par Word et par le PDF)."""
+
+    data: bytes
+    caption: str
+
+
+@dataclass
 class RenderedDocument:
     title: str
     subtitle: str
     meta: list[tuple[str, str]]
     sections: list[Section]
+    figures: list[Figure] = field(default_factory=list)
+    figures_title: str = "Photos"
 
 
 _BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
@@ -140,6 +150,14 @@ def to_docx(document: RenderedDocument) -> bytes:
                         if row_index == 0:
                             for run in cell.paragraphs[0].runs:
                                 run.bold = True
+    if document.figures:
+        from docx.shared import Cm
+
+        word.add_heading(f"{len(document.sections) + 1}. {document.figures_title}", level=1)
+        for figure in document.figures:
+            word.add_picture(BytesIO(figure.data), width=Cm(12))
+            if figure.caption:
+                word.add_paragraph(figure.caption).runs[0].italic = True
     buffer = BytesIO()
     word.save(buffer)
     return buffer.getvalue()
@@ -181,6 +199,14 @@ def to_html(document: RenderedDocument) -> str:
                     for row in body
                 )
                 parts.append(f"<table><tr>{header}</tr>{rows}</table>")
+    if document.figures:
+        parts.append(
+            f"<h2>{len(document.sections) + 1}. {html.escape(document.figures_title)}</h2>"
+        )
+        for index, figure in enumerate(document.figures):
+            parts.append(f"<p><img src='figure-{index}' width='380'/></p>")
+            if figure.caption:
+                parts.append(f"<p class='caption'>{html.escape(figure.caption)}</p>")
     return "\n".join(parts)
 
 
@@ -190,6 +216,7 @@ h1 { font-size: 18pt; color: #0f5b52; margin-bottom: 4pt; }
 h2 { font-size: 13pt; color: #0f5b52; margin-top: 14pt; }
 h3 { font-size: 11pt; }
 .subtitle { font-style: italic; color: #555; }
+.caption { font-style: italic; color: #555; font-size: 9pt; }
 table { border-collapse: collapse; width: 100%; margin: 6pt 0; }
 th, td { border: 0.5pt solid #999; padding: 3pt 5pt; text-align: left; vertical-align: top; }
 th { background-color: #eef4f3; }
@@ -199,7 +226,10 @@ th { background-color: #eef4f3; }
 def to_pdf(document: RenderedDocument) -> bytes:
     import pymupdf
 
-    story = pymupdf.Story(html=to_html(document), user_css=_CSS)
+    archive = pymupdf.Archive()
+    for index, figure in enumerate(document.figures):
+        archive.add(figure.data, f"figure-{index}")
+    story = pymupdf.Story(html=to_html(document), user_css=_CSS, archive=archive)
     buffer = BytesIO()
     writer = pymupdf.DocumentWriter(buffer)
     page = pymupdf.paper_rect("a4")

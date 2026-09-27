@@ -187,5 +187,9 @@ class IndicatorValue(IdMixin, TimestampMixin, Base):
     disaggregation: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     source: Mapped[str] = mapped_column(Text, default="")
     recorded_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # Exécution d'activité dont provient la valeur (étape 6), pour la traçabilité.
+    execution_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("activity_executions.id", ondelete="SET NULL"), index=True
+    )
 
     indicator: Mapped[Indicator] = relationship(back_populates="values")

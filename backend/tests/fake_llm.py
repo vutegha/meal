@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.llm.client import LLMError, LLMResult
 from app.schemas.ai import LogframeExtraction
+from app.schemas.report import ReportDraft
 from app.schemas.tor import TorDraft
 
 T = TypeVar("T", bound=BaseModel)
@@ -165,7 +166,34 @@ TOR_DRAFT = TorDraft.model_validate(
     }
 )
 
-FIXTURES: dict[type[BaseModel], BaseModel] = {LogframeExtraction: EXTRACTION, TorDraft: TOR_DRAFT}
+# Le renvoi [S9] n'existe pas et doit être signalé ; la suggestion pour « X9 » doit être écartée.
+REPORT_DRAFT = ReportDraft.model_validate(
+    {
+        "title": "Rapport : formation AVEC de Kiwanja",
+        "sections": [
+            {"key": "resume", "content": "36 membres ont été formés à Kiwanja [S1][P1]."},
+            {"key": "deroulement", "content": "Deux groupes ont été constitués [S1] [S9]."},
+            {"key": "participants", "content": "Ce texte doit être ignoré."},
+            {"key": "lecons", "content": "[À compléter : retours des participants]"},
+        ],
+        "missing_information": ["Retours des participants"],
+        "indicator_suggestions": [
+            {
+                "indicator_code": "I1",
+                "value": 36,
+                "justification": "36 participants selon le compte rendu",
+                "source_ref": "S2",
+            },
+            {"indicator_code": "X9", "value": 3, "justification": "inconnu", "source_ref": "S1"},
+        ],
+    }
+)
+
+FIXTURES: dict[type[BaseModel], BaseModel] = {
+    LogframeExtraction: EXTRACTION,
+    TorDraft: TOR_DRAFT,
+    ReportDraft: REPORT_DRAFT,
+}
 
 
 class FakeLLM:

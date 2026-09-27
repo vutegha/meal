@@ -13,6 +13,7 @@ from app.core.db import SessionLocal
 from app.llm.client import LLMError
 from app.models import Job, JobStatus
 from app.services.extraction import run_logframe_extraction
+from app.services.report import run_report_generation
 from app.services.tor import run_tor_generation
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ Handler = Callable[[AsyncSession, Job], Awaitable[dict[str, Any]]]
 HANDLERS: dict[str, Handler] = {
     "logframe_extraction": run_logframe_extraction,
     "tor_generation": run_tor_generation,
+    "report_generation": run_report_generation,
 }
 
 
