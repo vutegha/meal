@@ -1,14 +1,14 @@
 from httpx import AsyncClient
 
-from app.core.db import SessionLocal
+from app.core.db import system_session
 from app.scripts.seed import DEMO_EMAIL, seed
 
 
 async def test_seed_creates_usable_demo_project(client: AsyncClient) -> None:
-    async with SessionLocal() as session:
+    async with system_session() as session:
         password = await seed(session)
     assert password
-    async with SessionLocal() as session:
+    async with system_session() as session:
         assert await seed(session) is None  # idempotent
 
     tokens = (

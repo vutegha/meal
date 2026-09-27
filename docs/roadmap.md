@@ -22,7 +22,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 2.4 Indicateurs, valeurs périodiques désagrégées, calcul du taux d'atteinte
 - [x] 2.5 Export XLSX du cadre logique, du budget et des indicateurs ; contrôles de cohérence
 - [x] 2.8 Données de démonstration (`uv run python -m app.scripts.seed`)
-- [ ] 2.6 Row Level Security PostgreSQL sur les tables métier (PR dédiée, avec un rôle applicatif non propriétaire)
+- [x] 2.6 Row Level Security PostgreSQL sur les tables métier : rôle applicatif `meal_app` non propriétaire, organisation positionnée à chaque transaction, tests dédiés
 - [ ] 2.7 Client API TypeScript généré depuis l'OpenAPI ; composants shadcn/ui
 - [ ] 2.9 Cibles par période, multi-devises et taux de change, export PDF
 

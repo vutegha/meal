@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_name: str = "We MEAL"
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://meal:meal@localhost:5432/meal"
+    # Rôle non propriétaire endossé par l'API pour que la Row Level Security s'applique.
+    # Vide : pas de changement de rôle (déconseillé hors développement).
+    db_app_role: str = "meal_app"
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = "change-me-in-production"
     access_token_minutes: int = 15

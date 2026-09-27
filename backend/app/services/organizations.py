@@ -5,6 +5,7 @@ import unicodedata
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import bind_org
 from app.models import Membership, Organization, Role, User
 from app.services import audit
 
@@ -31,6 +32,7 @@ async def create_organization(
     )
     session.add(org)
     await session.flush()
+    await bind_org(session, org.id)
     session.add(Membership(organization_id=org.id, user_id=owner.id, role=Role.ADMIN))
     audit.record(
         session,

@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.db import SessionLocal
+from app.core.db import bind_org, system_session
 from app.llm.client import LLMError
 from app.models import Job, JobStatus
 from app.services.extraction import run_logframe_extraction
@@ -30,8 +30,9 @@ HANDLERS: dict[str, Handler] = {
 
 
 async def run_job(job_id: UUID) -> None:
-    async with SessionLocal() as session:
+    async with system_session() as session:
         job = await session.get_one(Job, job_id)
+        await bind_org(session, job.organization_id)
         job.status = JobStatus.RUNNING
         await session.commit()
         try:

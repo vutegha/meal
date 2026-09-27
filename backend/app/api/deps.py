@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import bind_org, get_session
 from app.core.security import decode_token
 from app.models import Membership, Role, User
 
@@ -54,6 +54,7 @@ def require_membership(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Organisation introuvable")
         if roles and membership.role not in roles:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Droits insuffisants")
+        await bind_org(session, org_id)
         return membership
 
     return dependency

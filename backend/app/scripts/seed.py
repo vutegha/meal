@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import SessionLocal
+from app.core.db import system_session
 from app.core.security import hash_password
 from app.models import (
     Aggregation,
@@ -274,7 +274,7 @@ async def seed(session: AsyncSession) -> str | None:
 
 
 async def main() -> None:
-    async with SessionLocal() as session:
+    async with system_session() as session:
         password = await seed(session)
     if password is None:
         print(f"Le compte {DEMO_EMAIL} existe déjà : rien à faire.")

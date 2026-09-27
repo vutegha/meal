@@ -42,7 +42,7 @@ Ce document décrit l'architecture cible de l'application et l'état actuel de s
 
 ## Multi-tenant
 
-Toutes les ressources métier appartiennent à une organisation et sont exposées sous `/api/v1/orgs/{org_id}/…`. La dépendance `require_membership` (dans `api/deps.py`) vérifie que l'utilisateur authentifié est membre de l'organisation et, si demandé, qu'il a l'un des rôles autorisés. Une requête sur une organisation dont l'utilisateur n'est pas membre renvoie **404** (on ne révèle pas son existence). Voir [ADR 0002](adr/0002-tenancy.md) pour l'ajout de la Row Level Security PostgreSQL.
+Toutes les ressources métier appartiennent à une organisation et sont exposées sous `/api/v1/orgs/{org_id}/…`. La dépendance `require_membership` (dans `api/deps.py`) vérifie que l'utilisateur authentifié est membre de l'organisation et, si demandé, qu'il a l'un des rôles autorisés. Une requête sur une organisation dont l'utilisateur n'est pas membre renvoie **404** (on ne révèle pas son existence). En défense en profondeur, la Row Level Security PostgreSQL filtre chaque table métier sur l'organisation de la requête : voir [ADR 0002](adr/0002-tenancy.md).
 
 ## Authentification
 
@@ -103,7 +103,7 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Fondations : monorepo, Compose, auth, organisations, rôles, audit, CI | fait |
-| 2 | Cadre logique manuel, budget, indicateurs | fait (sauf RLS, voir roadmap) |
+| 2 | Cadre logique manuel, budget, indicateurs | fait |
 | 3 | Import de documents et extraction IA | fait (sauf OCR, voir roadmap) |
 | 4 | TdR | fait (sauf modèles par organisation, voir roadmap) |
 | 5 | Exécution, collecte PWA hors ligne | fait (sauf floutage automatique, voir roadmap) |
