@@ -9,6 +9,7 @@ import { flattenTree, formatMoney, formatNumber, formatRate } from "@/lib/format
 import {
   budgetSummaryQuery,
   executionsQuery,
+  feedbackStatsQuery,
   indicatorsQuery,
   logframeQuery,
   reportsQuery,
@@ -52,6 +53,7 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
   const executions = useQuery(executionsQuery(orgId, project.id));
   const tors = useQuery(torsQuery(orgId, project.id));
   const reports = useQuery(reportsQuery(orgId, project.id));
+  const feedback = useQuery(feedbackStatsQuery(orgId, project.id));
 
   if ([logframe, budget, indicators, executions, tors, reports].some((q) => q.isPending))
     return <p className="text-sm text-slate-500">{t("common.loading")}</p>;
@@ -134,6 +136,26 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
           <p>{t("dashboard.indicatorsOnTrack", { count: onTrack })}</p>
         </Kpi>
       </div>
+
+      {!!feedback.data?.total && (
+        <Card title={t("dashboard.accountability")}>
+          <p className="text-sm text-slate-700">
+            {t("dashboard.feedbackSummary", {
+              total: feedback.data.total,
+              open: feedback.data.open,
+              rate: formatRate(feedback.data.response_rate, lang),
+            })}
+            {feedback.data.overdue > 0 && (
+              <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
+                {t("dashboard.feedbackOverdue", { count: feedback.data.overdue })}
+              </span>
+            )}{" "}
+            <Link to="." search={{ tab: "feedback" }} className="text-brand-700 hover:underline">
+              {t("dashboard.seeFeedback")}
+            </Link>
+          </p>
+        </Card>
+      )}
 
       {reached > 0 && (
         <Card title={t("dashboard.disaggregation")}>

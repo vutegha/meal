@@ -47,11 +47,12 @@ Toutes les clés primaires sont des UUID. Les horodatages sont en UTC (`timestam
 | `narrative_reports` | id, project_id, execution_id (unique), title, status (`draft`, `submitted`, `approved`), sections (jsonb), sources (jsonb : ref S1/P1, libellé, preuve), missing_information, indicator_suggestions (jsonb : indicateur, valeur, justification, source, valeur enregistrée), version, review_comment, submitted_by/at, approved_by/at |
 | `report_versions` | id, report_id, version, title, sections, note, created_by |
 | `indicator_values.execution_id` | rattache une valeur d'indicateur à l'exécution dont le rapport l'a proposée |
-| `periodic_reports` | id, project_id, period_start, period_end, kind, content (jsonb), status |
+| `periodic_reports` | id, project_id, kind (`monthly`, `quarterly`, `annual`, `donor`), period_start, period_end, title, status, sections, sources, missing_information, instructions, version, review_comment, submitted_by/at, approved_by/at |
+| `periodic_report_versions` | id, report_id, version, title, sections, note, created_by |
 
 ## Redevabilité et apprentissage (étape 7)
 
 | Entité | Champs principaux |
 |---|---|
-| `feedback_entries` | id, project_id, channel, category, sensitivity, description, status, received_at, responded_at, assigned_to |
-| `lessons_learned` | id, project_id, source_report_id, title, description, tags (jsonb) |
+| `feedback_entries` | id, project_id, reference (unique par projet, RET-0001), received_on, channel, category, sensitive, description, location, activity_id, anonymous, contact, status (`received`, `in_progress`, `responded`, `closed`), assigned_to, response, responded_on, closed_on, created_by, client_uuid |
+| `lessons_learned` | id, project_id, title, description, recommendation, tags (jsonb), activity_id, source_report_id, created_by |

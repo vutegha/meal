@@ -770,3 +770,221 @@ export const reportsApi = {
   exportPath: (orgId: string, projectId: string, reportId: string, format: "docx" | "pdf") =>
     `${project(orgId, projectId)}/reports/${reportId}/export.${format}`,
 };
+
+// --- Rapports périodiques (étape 7) ---------------------------------------------
+
+export type PeriodicKind = "monthly" | "quarterly" | "annual" | "donor";
+export const PERIODIC_KINDS: PeriodicKind[] = ["monthly", "quarterly", "annual", "donor"];
+
+export interface PeriodicSummary {
+  id: string;
+  kind: PeriodicKind;
+  period_start: string;
+  period_end: string;
+  title: string;
+  status: TorStatus;
+  version: number;
+  updated_at: string;
+}
+
+export interface Periodic extends PeriodicSummary {
+  project_id: string;
+  sections: TorSection[];
+  sources: ReportSource[];
+  missing_information: string[];
+  instructions: string;
+  review_comment: string;
+  submitted_at: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
+const periodicPath = (orgId: string, projectId: string, reportId = "") =>
+  `${project(orgId, projectId)}/periodic-reports${reportId ? `/${reportId}` : ""}`;
+
+export const periodicApi = {
+  list: (orgId: string, projectId: string) =>
+    request<PeriodicSummary[]>(periodicPath(orgId, projectId)),
+  get: (orgId: string, projectId: string, reportId: string) =>
+    request<Periodic>(periodicPath(orgId, projectId, reportId)),
+  create: (
+    orgId: string,
+    projectId: string,
+    body: { kind: PeriodicKind; period_start: string; period_end: string; instructions: string },
+  ) => request<Periodic>(periodicPath(orgId, projectId), json("POST", body)),
+  generate: (orgId: string, projectId: string, reportId: string) =>
+    request<Job>(`${periodicPath(orgId, projectId, reportId)}/generate`, { method: "POST" }),
+  refresh: (orgId: string, projectId: string, reportId: string) =>
+    request<Periodic>(`${periodicPath(orgId, projectId, reportId)}/refresh`, { method: "POST" }),
+  update: (
+    orgId: string,
+    projectId: string,
+    reportId: string,
+    body: { title: string; sections: TorSection[] },
+  ) => request<Periodic>(periodicPath(orgId, projectId, reportId), json("PUT", body)),
+  transition: (
+    orgId: string,
+    projectId: string,
+    reportId: string,
+    action: "submit" | "approve" | "return" | "reopen",
+    comment = "",
+  ) =>
+    request<Periodic>(
+      `${periodicPath(orgId, projectId, reportId)}/${action}`,
+      action === "approve" || action === "return" ? json("POST", { comment }) : { method: "POST" },
+    ),
+  remove: (orgId: string, projectId: string, reportId: string) =>
+    request<void>(periodicPath(orgId, projectId, reportId), { method: "DELETE" }),
+  versions: (orgId: string, projectId: string, reportId: string) =>
+    request<TorVersion[]>(`${periodicPath(orgId, projectId, reportId)}/versions`),
+  exportPath: (orgId: string, projectId: string, reportId: string, format: "docx" | "pdf") =>
+    `${periodicPath(orgId, projectId, reportId)}/export.${format}`,
+};
+
+// --- Plaintes et retours, leçons apprises (étape 7) -----------------------------------
+
+export type FeedbackChannel =
+  "hotline" | "suggestion_box" | "community_meeting" | "field_visit" | "sms" | "email" | "other";
+export const FEEDBACK_CHANNELS: FeedbackChannel[] = [
+  "community_meeting",
+  "field_visit",
+  "hotline",
+  "suggestion_box",
+  "sms",
+  "email",
+  "other",
+];
+export type FeedbackCategory =
+  | "information"
+  | "suggestion"
+  | "appreciation"
+  | "complaint"
+  | "fraud"
+  | "sexual_exploitation"
+  | "safety"
+  | "other";
+export const FEEDBACK_CATEGORIES: FeedbackCategory[] = [
+  "complaint",
+  "information",
+  "suggestion",
+  "appreciation",
+  "fraud",
+  "sexual_exploitation",
+  "safety",
+  "other",
+];
+export const SENSITIVE_CATEGORIES: FeedbackCategory[] = ["fraud", "sexual_exploitation", "safety"];
+export type FeedbackStatus = "received" | "in_progress" | "responded" | "closed";
+export const FEEDBACK_STATUSES: FeedbackStatus[] = [
+  "received",
+  "in_progress",
+  "responded",
+  "closed",
+];
+
+export interface FeedbackEntry {
+  id: string;
+  project_id: string;
+  reference: string;
+  received_on: string;
+  channel: FeedbackChannel;
+  category: FeedbackCategory;
+  sensitive: boolean;
+  description: string;
+  location: string;
+  activity_id: string | null;
+  anonymous: boolean;
+  contact: string;
+  status: FeedbackStatus;
+  assigned_to: string | null;
+  response: string;
+  responded_on: string | null;
+  closed_on: string | null;
+  created_by: string | null;
+  created_at: string;
+  due_on: string;
+  overdue: boolean;
+  response_days: number | null;
+}
+
+export interface FeedbackIn {
+  received_on: string;
+  channel: FeedbackChannel;
+  category: FeedbackCategory;
+  description: string;
+  location: string;
+  activity_id: string | null;
+  anonymous: boolean;
+  contact: string;
+  client_uuid: string;
+}
+
+export interface FeedbackStats {
+  total: number;
+  open: number;
+  overdue: number;
+  response_rate: number | null;
+  average_response_days: number | null;
+  by_status: Partial<Record<FeedbackStatus, number>>;
+  by_category: Partial<Record<FeedbackCategory, number>>;
+  by_channel: Partial<Record<FeedbackChannel, number>>;
+  hidden_sensitive: number;
+}
+
+export interface Lesson {
+  id: string;
+  project_id: string;
+  project_code: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  tags: string[];
+  activity_id: string | null;
+  source_report_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type LessonIn = Pick<
+  Lesson,
+  "title" | "description" | "recommendation" | "tags" | "activity_id" | "source_report_id"
+>;
+
+export const accountabilityApi = {
+  feedback: (orgId: string, projectId: string) =>
+    request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
+  feedbackStats: (orgId: string, projectId: string) =>
+    request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
+  addFeedback: (orgId: string, projectId: string, body: FeedbackIn) =>
+    request<FeedbackEntry>(`${project(orgId, projectId)}/feedback`, json("POST", body)),
+  updateFeedback: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: Partial<
+      Pick<
+        FeedbackEntry,
+        "status" | "assigned_to" | "response" | "responded_on" | "category" | "sensitive"
+      >
+    >,
+  ) =>
+    request<FeedbackEntry>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}`,
+      json("PATCH", body),
+    ),
+  deleteFeedback: (orgId: string, projectId: string, feedbackId: string) =>
+    request<void>(`${project(orgId, projectId)}/feedback/${feedbackId}`, { method: "DELETE" }),
+  lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tag) params.set("tag", tag);
+    const base = projectId ? `${project(orgId, projectId)}/lessons` : `/orgs/${orgId}/lessons`;
+    return request<Lesson[]>(`${base}${params.size ? `?${params}` : ""}`);
+  },
+  addLesson: (orgId: string, projectId: string, body: LessonIn) =>
+    request<Lesson>(`${project(orgId, projectId)}/lessons`, json("POST", body)),
+  updateLesson: (orgId: string, projectId: string, lessonId: string, body: Partial<LessonIn>) =>
+    request<Lesson>(`${project(orgId, projectId)}/lessons/${lessonId}`, json("PATCH", body)),
+  deleteLesson: (orgId: string, projectId: string, lessonId: string) =>
+    request<void>(`${project(orgId, projectId)}/lessons/${lessonId}`, { method: "DELETE" }),
+};

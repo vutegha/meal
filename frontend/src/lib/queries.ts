@@ -1,6 +1,15 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { aiApi, api, executionsApi, projectsApi, reportsApi, torApi } from "./api";
+import {
+  accountabilityApi,
+  aiApi,
+  api,
+  executionsApi,
+  periodicApi,
+  projectsApi,
+  reportsApi,
+  torApi,
+} from "./api";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
 
@@ -105,14 +114,40 @@ export const reportQuery = (orgId: string, projectId: string, reportId: string) 
     queryFn: () => reportsApi.get(orgId, projectId, reportId),
   });
 
-export const reportVersionsQuery = (orgId: string, projectId: string, reportId: string) =>
-  queryOptions({
-    queryKey: [...projectKey(orgId, projectId), "reports", reportId, "versions"],
-    queryFn: () => reportsApi.versions(orgId, projectId, reportId),
-  });
-
 export const reportsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "reports"],
     queryFn: () => reportsApi.list(orgId, projectId),
+  });
+
+export const periodicListQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "periodic"],
+    queryFn: () => periodicApi.list(orgId, projectId),
+  });
+
+export const periodicQuery = (orgId: string, projectId: string, reportId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "periodic", reportId],
+    queryFn: () => periodicApi.get(orgId, projectId, reportId),
+  });
+
+export const feedbackQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "feedback"],
+    queryFn: () => accountabilityApi.feedback(orgId, projectId),
+  });
+
+export const feedbackStatsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "feedback", "stats"],
+    queryFn: () => accountabilityApi.feedbackStats(orgId, projectId),
+  });
+
+export const lessonsQuery = (orgId: string, projectId: string | null, q = "", tag = "") =>
+  queryOptions({
+    queryKey: projectId
+      ? [...projectKey(orgId, projectId), "lessons", { q, tag }]
+      : ["orgs", orgId, "lessons", { q, tag }],
+    queryFn: () => accountabilityApi.lessons(orgId, projectId, q, tag),
   });

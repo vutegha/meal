@@ -60,6 +60,9 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [ ] 6.4 Tests de bout en bout Playwright du parcours complet dans la CI
 
 ## Étape 7 : agrégation et redevabilité
-- 7.1 Rapports périodiques et bailleur
-- 7.2 Registre des plaintes et retours
-- 7.3 Registre des leçons apprises
+- [x] 7.1 Rapports périodiques (mensuel, trimestriel, annuel) et bailleur : tableaux calculés (activités de la période, indicateurs sur la période et en cumul, budget prévu, dépensé sur la période et cumulé), texte rédigé par l'IA à partir des rapports d'activité, des retours et des leçons, avec renvois aux sources ; même circuit de validation et mêmes exports que les autres documents
+- [x] 7.2 Registre des plaintes et retours : référence, canal, type, délai de réponse (14 jours, 3 pour les cas sensibles), attribution, réponse, statistiques ; cas sensibles (fraude, exploitation et abus sexuels, sécurité) visibles des seuls responsables et personnes concernées ; contact masqué
+- [x] 7.3 Registre des leçons apprises : recherche, étiquettes, lien avec l'activité et le rapport d'origine ; API de consultation à l'échelle de l'organisation
+- [ ] 7.4 Écran des leçons de toute l'organisation (l'API existe)
+- [ ] 7.5 Classification IA des retours (modèle léger) et saisie hors ligne des retours
+- [ ] 7.6 Modèles de rapport propres à chaque bailleur

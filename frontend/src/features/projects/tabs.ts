@@ -5,6 +5,9 @@ export const PROJECT_TABS = [
   "indicators",
   "tor",
   "execution",
+  "reports",
+  "feedback",
+  "lessons",
   "documents",
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number];

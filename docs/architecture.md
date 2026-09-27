@@ -88,6 +88,12 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - Une saisie refusée par l'API (données invalides) reste visible dans la file avec le message d'erreur, au lieu d'être renvoyée indéfiniment.
 - Les photos gardent leur original (accès réservé aux membres) ; la vignette affichée est redressée et ne contient aucune métadonnée. Une photo sans consentement n'est pas reprise dans les rapports.
 
+## Redevabilité
+
+- Le registre des plaintes et retours applique la confidentialité côté serveur : une entrée sensible (fraude, exploitation et abus sexuels, sécurité) renvoie 404 à qui n'est ni chef de projet, ni administrateur, ni la personne qui l'a saisie, ni celle qui la traite. Les statistiques la comptent sans la détailler.
+- Le contact d'une personne n'est montré qu'à ceux qui traitent les retours, et jamais pour un retour anonyme. Le journal d'audit ne garde que la référence, pas le contenu.
+- Le rapport périodique ne transmet à l'IA que les retours non sensibles, sans donnée personnelle, et le nombre de cas sensibles.
+
 ## Journal d'audit
 
 Chaque écriture passe par `services/audit.py::record` dans la même transaction que la modification : organisation, auteur, action, type et identifiant de l'entité, données utiles. Consultable par les administrateurs.
@@ -102,4 +108,4 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 | 4 | TdR | fait (sauf modèles par organisation, voir roadmap) |
 | 5 | Exécution, collecte PWA hors ligne | fait (sauf floutage automatique, voir roadmap) |
 | 6 | Rapport narratif, tableau de bord | fait (sauf tests de bout en bout en CI, voir roadmap) |
-| 7 | Agrégation, plaintes, leçons apprises | à faire |
+| 7 | Agrégation, plaintes, leçons apprises | fait (sauf écran des leçons de l'organisation et classification IA des retours, voir roadmap) |
