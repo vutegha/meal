@@ -1,0 +1,14 @@
+{
+  "nodes": {
+    "goal": ["conditions de vie"],
+    "outcome": ["OS1"],
+    "output": ["R1.1", "R1.2"],
+    "activity": ["A1.1.1", "A1.1.2", "A1.2.1"]
+  },
+  "indicators": [
+    {"node": "OS1", "baseline": 38, "target": 55},
+    {"node": "R1.1", "target": 600},
+    {"node": "R1.2", "target": 120}
+  ],
+  "budget_totals": {"A1.1.1": 19200, "A1.1.2": 3600, "A1.2.1": 13500, "support": 21600}
+}

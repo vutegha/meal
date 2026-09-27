@@ -1,0 +1,31 @@
+PROPOSITION DE PROJET
+Projet : Renforcement de la résilience économique des ménages vulnérables dans le territoire de Rutshuru
+Bailleur sollicité : Fonds de démonstration pour le développement
+Durée : 24 mois (janvier 2026 – décembre 2027)
+Devise du budget : USD
+
+1. CONTEXTE ET JUSTIFICATION
+Le territoire de Rutshuru, au Nord-Kivu, connaît des déplacements répétés de population. Selon l'enquête de base menée en 2025, le revenu mensuel moyen des ménages ciblés est de 38 USD et seuls 12 % des ménages ont accès à un service d'épargne.
+
+2. CADRE LOGIQUE
+Objectif général : Contribuer à l'amélioration durable des conditions de vie des ménages vulnérables du territoire de Rutshuru.
+
+Objectif spécifique 1 (OS1) : Les ménages ciblés augmentent et diversifient leurs sources de revenus.
+Indicateur OS1.a : Revenu mensuel moyen des ménages ciblés. Valeur de référence : 38 USD. Cible : 55 USD. Source : enquêtes de suivi semestrielles.
+
+Résultat 1.1 (R1.1) : 30 associations villageoises d'épargne et de crédit (AVEC) sont créées et fonctionnelles.
+Indicateur R1.1.a : Nombre de membres d'AVEC formés, désagrégé par sexe. Cible : 600 personnes. Source : listes de présence des formations.
+Activité A1.1.1 : Former les membres des AVEC à la gestion de l'épargne et du crédit.
+Activité A1.1.2 : Doter chaque AVEC d'un kit de démarrage (coffre, carnets, calculatrice).
+
+Résultat 1.2 (R1.2) : Les jeunes formés lancent une activité génératrice de revenus.
+Indicateur R1.2.a : Nombre de jeunes ayant lancé une activité génératrice de revenus. Cible : 120 jeunes.
+Activité A1.2.1 : Organiser des formations professionnelles de trois mois pour 150 jeunes.
+
+Hypothèse : la situation sécuritaire permet l'accès régulier des équipes aux villages ciblés.
+
+3. BUDGET RÉSUMÉ
+Ligne 1.1 – Formateurs AVEC : 4 formateurs x 800 USD par mois x 6 mois = 19 200 USD (activité A1.1.1).
+Ligne 2.1 – Kits de démarrage AVEC : 30 kits x 120 USD = 3 600 USD (activité A1.1.2).
+Ligne 2.2 – Formations professionnelles : 150 jeunes x 90 USD = 13 500 USD (activité A1.2.1).
+Ligne 9.1 – Loyer du bureau de Rutshuru : 900 USD par mois x 24 mois = 21 600 USD (coûts de support).

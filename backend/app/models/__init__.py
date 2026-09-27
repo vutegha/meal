@@ -1,3 +1,13 @@
+from app.models.ai import (
+    AiCall,
+    AiProposal,
+    DocumentPage,
+    DocumentStatus,
+    Job,
+    JobStatus,
+    ProposalStatus,
+    SourceDocument,
+)
 from app.models.organization import AuditLog, Membership, Organization, Role, User
 from app.models.project import (
     PARENT_LEVEL,
@@ -13,6 +23,14 @@ from app.models.project import (
 )
 
 __all__ = [
+    "AiCall",
+    "AiProposal",
+    "DocumentPage",
+    "DocumentStatus",
+    "Job",
+    "JobStatus",
+    "ProposalStatus",
+    "SourceDocument",
     "PARENT_LEVEL",
     "Aggregation",
     "AuditLog",

@@ -1,9 +1,12 @@
 import os
+import tempfile
 from collections.abc import AsyncIterator
 from typing import Any
 
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://meal:meal@localhost:5432/meal_test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-with-enough-length-0123456789")
+os.environ["JOBS_INLINE"] = "true"
+os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="wemeal-test-files-")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -17,7 +20,15 @@ from app.main import app
 async def database() -> AsyncIterator[None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        for enum_type in ("role", "project_status", "node_level", "aggregation"):
+        for enum_type in (
+            "role",
+            "project_status",
+            "node_level",
+            "aggregation",
+            "document_status",
+            "job_status",
+            "proposal_status",
+        ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.run_sync(Base.metadata.create_all)
     yield
