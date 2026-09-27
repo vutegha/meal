@@ -341,7 +341,7 @@ export interface SourceDocument {
   filename: string;
   kind: string;
   size_bytes: number;
-  status: "uploaded" | "extracted" | "failed";
+  status: "uploaded" | "ocr" | "extracted" | "failed";
   page_count: number;
   text_chars: number;
   error: string;

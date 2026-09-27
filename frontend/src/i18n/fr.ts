@@ -154,11 +154,17 @@ export const fr = {
       "Importez la proposition de projet, le cadre logique ou le budget du bailleur. L'IA en déduit un cadre logique que vous validez avant qu'il soit enregistré.",
     upload: "Importer des documents",
     uploading: "Import en cours…",
-    formats: "PDF, Word, Excel ou texte, 25 Mo maximum",
+    formats:
+      "PDF, Word, Excel, texte ou photo de page, 25 Mo maximum. Les pages scannées sont lues par l'IA.",
     empty: "Aucun document importé.",
     pages: "{{count}} page(s)",
     page: "p. {{page}}",
-    status: { uploaded: "Importé", extracted: "Texte extrait", failed: "Illisible" },
+    status: {
+      uploaded: "Importé",
+      ocr: "Lecture des pages scannées…",
+      extracted: "Texte extrait",
+      failed: "Illisible",
+    },
     confirmDelete: "Supprimer ce document ?",
     search: "Rechercher",
     searchPlaceholder: "Rechercher dans les documents (ex. : formation AVEC)",
@@ -485,6 +491,7 @@ export const fr = {
       report_generation: "Rapports d'activité",
       periodic_generation: "Rapports périodiques",
       feedback_classification: "Classement des retours",
+      document_ocr: "Lecture de pages scannées",
     },
   },
   templates: {

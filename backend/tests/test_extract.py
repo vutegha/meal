@@ -12,7 +12,8 @@ def test_detect_kind() -> None:
     assert detect_kind("rapport.PDF", None) == "pdf"
     assert detect_kind("x", "application/pdf") == "pdf"
     assert detect_kind("budget.xlsx", "application/octet-stream") == "xlsx"
-    assert detect_kind("photo.jpg", "image/jpeg") is None
+    assert detect_kind("photo.jpg", "image/jpeg") == "image"  # page photographiée, lue par OCR
+    assert detect_kind("clip.mp4", "video/mp4") is None
 
 
 def test_pdf_pages() -> None:

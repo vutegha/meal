@@ -27,6 +27,8 @@ def _enum(cls: type[enum.Enum], name: str) -> Enum:
 
 class DocumentStatus(enum.StrEnum):
     UPLOADED = "uploaded"
+    # Pages scannées en cours de reconnaissance de caractères (voir services/ocr.py).
+    OCR = "ocr"
     EXTRACTED = "extracted"
     FAILED = "failed"
 

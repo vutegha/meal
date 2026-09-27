@@ -53,8 +53,10 @@ async def test_upload_search_and_delete(client: AsyncClient) -> None:
 
     dup = await upload(client, ctx, base, "copie.txt", SAMPLE.read_bytes(), "text/plain")
     assert dup.status_code == 409
-    bad = await upload(client, ctx, base, "photo.jpg", b"\xff\xd8", "image/jpeg")
+    bad = await upload(client, ctx, base, "clip.mp4", b"\x00\x00", "video/mp4")
     assert bad.status_code == 415
+    broken = await upload(client, ctx, base, "photo.jpg", b"\xff\xd8", "image/jpeg")
+    assert broken.json()["status"] == "failed" and broken.json()["error"] == "Image illisible"
     empty = await upload(client, ctx, base, "vide.txt", b"   ", "text/plain")
     assert empty.json()["status"] == "failed"
 
@@ -72,7 +74,7 @@ async def test_upload_search_and_delete(client: AsyncClient) -> None:
         d["filename"]
         for d in (await client.get(f"{base}/documents", headers=ctx["headers"])).json()
     ]
-    assert names == ["vide.txt"]
+    assert names == ["photo.jpg", "vide.txt"]
 
 
 async def test_upload_size_limit(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:

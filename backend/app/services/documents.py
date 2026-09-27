@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.documents.extract import ExtractionError, detect_kind, extract_pages
 from app.documents.storage import get_storage
-from app.models import DocumentPage, DocumentStatus, Project, SourceDocument
+from app.models import DocumentPage, DocumentStatus, Job, Project, SourceDocument
 
 
 async def ingest(
@@ -32,7 +32,8 @@ async def ingest(
     if kind is None:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "Format non pris en charge : PDF, Word (.docx), Excel (.xlsx) ou texte",
+            "Format non pris en charge : PDF, Word (.docx), Excel (.xlsx), texte ou image "
+            "(JPEG, PNG)",
         )
     digest = hashlib.sha256(data).hexdigest()
     if await session.scalar(
@@ -75,7 +76,35 @@ async def ingest(
                 text=page.text.replace("\x00", ""),
             )
         )
-    document.status = DocumentStatus.EXTRACTED
     document.page_count = len(pages)
     document.text_chars = sum(len(p.text) for p in pages)
+    scanned = [p.number for p in pages if p.needs_ocr]
+    if not scanned:
+        document.status = DocumentStatus.EXTRACTED
+        return document
+    # Pages scannées : la reconnaissance de caractères part en tâche de fond.
+    document.status = DocumentStatus.OCR
+    limit = settings.ocr_max_pages
+    if len(scanned) > limit:
+        document.error = f"Seules les {limit} premières pages scannées sont lues."
+    await session.flush()
+    session.add(
+        Job(
+            organization_id=project.organization_id,
+            project_id=project.id,
+            kind="document_ocr",
+            params={"document_id": str(document.id), "pages": scanned[:limit]},
+            created_by=uploaded_by,
+        )
+    )
     return document
+
+
+async def pending_ocr(session: AsyncSession, document: SourceDocument) -> Job | None:
+    """Tâche de reconnaissance créée à l'import, à lancer une fois l'import enregistré."""
+    if document.status != DocumentStatus.OCR:
+        return None
+    jobs = await session.scalars(
+        select(Job).where(Job.kind == "document_ocr", Job.project_id == document.project_id)
+    )
+    return next((j for j in jobs if j.params.get("document_id") == str(document.id)), None)

@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     llm_model_extraction: str = "claude-opus-5-5"
     llm_model_drafting: str = "claude-sonnet-5"
     llm_model_light: str = "claude-haiku-4-5"
+    # Lecture des pages scannées (images) : un modèle capable de lire l'écriture manuscrite.
+    llm_model_ocr: str = "claude-sonnet-5"
+    ocr_max_pages: int = 40
     # Plafond mensuel des dépenses IA par organisation, en USD (0 = illimité)
     ai_monthly_budget_usd: float = 50.0
     # Taille maximale du texte envoyé en une fois (au-delà : erreur explicite, pas de troncature)

@@ -8,6 +8,7 @@ from app.schemas.accountability import FeedbackSuggestion, PeriodicDraft
 from app.schemas.ai import LogframeExtraction
 from app.schemas.report import ReportDraft
 from app.schemas.tor import TorDraft
+from app.services.ocr import OcrPage
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -212,7 +213,13 @@ FEEDBACK_SUGGESTION = FeedbackSuggestion(
     justification="Paiement exigé en échange de l'aide : fraude.",
 )
 
+OCR_PAGE = OcrPage(
+    text="COMPTE RENDU DE MISSION\nFormation des AVEC à Kiwanja : 36 participants, dont 22 femmes.",
+    legible=True,
+)
+
 FIXTURES: dict[type[BaseModel], BaseModel] = {
+    OcrPage: OCR_PAGE,
     FeedbackSuggestion: FEEDBACK_SUGGESTION,
     PeriodicDraft: PERIODIC_DRAFT,
     LogframeExtraction: EXTRACTION,

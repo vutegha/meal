@@ -13,6 +13,7 @@ from app.core.db import bind_org, system_session
 from app.llm.client import LLMError
 from app.models import Job, JobStatus
 from app.services.extraction import run_logframe_extraction
+from app.services.ocr import run_document_ocr
 from app.services.periodic import run_periodic_generation
 from app.services.report import run_report_generation
 from app.services.tor import run_tor_generation
@@ -26,6 +27,7 @@ HANDLERS: dict[str, Handler] = {
     "tor_generation": run_tor_generation,
     "report_generation": run_report_generation,
     "periodic_generation": run_periodic_generation,
+    "document_ocr": run_document_ocr,
 }
 
 

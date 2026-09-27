@@ -9,9 +9,26 @@ SUPPORTED_TYPES = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "text/plain": "txt",
     "text/markdown": "txt",
+    "image/jpeg": "image",
+    "image/png": "image",
 }
 
-EXTENSIONS = {".pdf": "pdf", ".docx": "docx", ".xlsx": "xlsx", ".txt": "txt", ".md": "txt"}
+EXTENSIONS = {
+    ".pdf": "pdf",
+    ".docx": "docx",
+    ".xlsx": "xlsx",
+    ".txt": "txt",
+    ".md": "txt",
+    ".jpg": "image",
+    ".jpeg": "image",
+    ".png": "image",
+}
+
+# En dessous, une page de PDF qui contient une image est considérée comme scannée et passe
+# par la reconnaissance de caractères.
+MIN_TEXT_CHARS = 40
+# Taille maximale (en pixels, plus grand côté) des images de page envoyées au modèle.
+OCR_MAX_SIDE = 1600
 
 # Nombre approximatif de caractères par « page » pour les formats sans pagination.
 CHARS_PER_PAGE = 3000
@@ -25,6 +42,7 @@ class ExtractionError(Exception):
 class Page:
     number: int
     text: str
+    needs_ocr: bool = False
 
 
 def detect_kind(filename: str, content_type: str | None) -> str | None:
@@ -55,9 +73,49 @@ def _pdf(data: bytes) -> list[Page]:
 
     try:
         with pymupdf.open(stream=data, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
-            return [Page(i + 1, page.get_text()) for i, page in enumerate(doc)]
+            # Page scannée : presque pas de texte, mais une image à lire.
+            return [
+                Page(
+                    i + 1,
+                    text := page.get_text(),
+                    needs_ocr=len(text.strip()) < MIN_TEXT_CHARS and bool(page.get_images()),
+                )
+                for i, page in enumerate(doc)
+            ]
     except Exception as exc:  # pymupdf lève des exceptions génériques
         raise ExtractionError("PDF illisible") from exc
+
+
+def _image(data: bytes) -> list[Page]:
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        Image.open(BytesIO(data)).verify()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ExtractionError("Image illisible") from exc
+    return [Page(1, "", needs_ocr=True)]
+
+
+def page_image(data: bytes, kind: str, number: int) -> bytes:
+    """Image PNG d'une page, réduite pour la lecture par le modèle."""
+    from PIL import Image
+
+    if kind == "pdf":
+        import pymupdf
+
+        with pymupdf.open(stream=data, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
+            page = doc[number - 1]
+            zoom = min(2.0, OCR_MAX_SIDE / max(page.rect.width, page.rect.height))
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))  # type: ignore[no-untyped-call]
+            return bytes(pixmap.tobytes("png"))
+    try:
+        image = Image.open(BytesIO(data))
+        image.thumbnail((OCR_MAX_SIDE, OCR_MAX_SIDE))
+        buffer = BytesIO()
+        image.convert("RGB").save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+    except OSError as exc:
+        raise ExtractionError("Image illisible") from exc
 
 
 def _docx(data: bytes) -> list[Page]:
@@ -102,10 +160,8 @@ def _txt(data: bytes) -> list[Page]:
 
 
 def extract_pages(data: bytes, kind: str) -> list[Page]:
-    pages = {"pdf": _pdf, "docx": _docx, "xlsx": _xlsx, "txt": _txt}[kind](data)
-    if not any(p.text.strip() for p in pages):
-        raise ExtractionError(
-            "Aucun texte trouvé. Le document est peut-être scanné (la reconnaissance de "
-            "caractères n'est pas encore disponible)."
-        )
+    readers = {"pdf": _pdf, "docx": _docx, "xlsx": _xlsx, "txt": _txt, "image": _image}
+    pages = readers[kind](data)
+    if not any(p.text.strip() or p.needs_ocr for p in pages):
+        raise ExtractionError("Aucun texte trouvé dans ce document.")
     return pages

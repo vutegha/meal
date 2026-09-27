@@ -65,6 +65,8 @@ export const documentsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "documents"],
     queryFn: () => aiApi.documents(orgId, projectId),
+    // Pages scannées en cours de lecture par le worker : on suit leur avancement.
+    refetchInterval: (query) => (query.state.data?.some((d) => d.status === "ocr") ? 4000 : false),
   });
 
 export const proposalsQuery = (orgId: string, projectId: string) =>

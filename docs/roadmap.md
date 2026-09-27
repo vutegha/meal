@@ -33,7 +33,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 3.4 Extraction du cadre logique, du budget et des indicateurs avec citations vérifiées dans le texte
 - [x] 3.5 Écran de validation des propositions (sélection en cascade, titres modifiables, application ou rejet)
 - [x] 3.6 Jeu d'évaluation des prompts (`uv run python -m app.llm.evals.run`, clé API requise)
-- [ ] 3.7 OCR des documents scannés (aujourd'hui refusés avec un message explicite)
+- [x] 3.7 OCR des documents scannés et des photos de pages : page rendue en image puis lue par Claude (vision), sans dépendance système ; pages peu lisibles signalées ; 40 pages au plus par document (`OCR_MAX_PAGES`)
 - [ ] 3.8 Recherche sémantique pgvector, si la recherche plein texte ne suffit pas pour les TdR et rapports
 - [x] 3.9 Suivi de l'usage IA dans l'administration : coût du mois et plafond, six derniers mois, répartition par usage et par projet, derniers appels
 

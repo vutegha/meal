@@ -32,7 +32,7 @@ from app.schemas.ai import (
 )
 from app.services import projects as svc
 from app.services.ai import month_cost, month_start
-from app.services.documents import ingest
+from app.services.documents import ingest, pending_ocr
 from app.services.jobs import enqueue
 from app.services.proposals import apply_logframe
 
@@ -81,7 +81,10 @@ async def upload_document(
         document.id,
         {"name": document.filename},
     )
+    ocr = await pending_ocr(session, document)
     await session.commit()
+    if ocr is not None:
+        await enqueue(ocr)
     await session.refresh(document)
     return document
 
