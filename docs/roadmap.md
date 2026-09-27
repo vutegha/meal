@@ -57,7 +57,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 6.1 Rédaction IA traçable prévu/réalisé : chaque fait renvoie à sa source (notes [S1], TdR, comptes rendus, photos [P1]) ; renvois inconnus signalés, manques listés ; participants et budget calculés
 - [x] 6.2 Édition, versions, circuit de validation, export Word et PDF avec les photos consenties
 - [x] 6.3 Valeurs d'indicateurs proposées depuis les sources, vérifiées puis enregistrées ; tableau de bord du projet (budget, activités, personnes atteintes, indicateurs, suivi par activité)
-- [ ] 6.4 Tests de bout en bout Playwright du parcours complet dans la CI
+- [x] 6.4 Tests de bout en bout Playwright du parcours complet dans la CI (`npm run e2e`, faux modèle IA, base `meal_e2e`)
 
 ## Étape 7 : agrégation et redevabilité
 - [x] 7.1 Rapports périodiques (mensuel, trimestriel, annuel) et bailleur : tableaux calculés (activités de la période, indicateurs sur la période et en cumul, budget prévu, dépensé sur la période et cumulé), texte rédigé par l'IA à partir des rapports d'activité, des retours et des leçons, avec renvois aux sources ; même circuit de validation et mêmes exports que les autres documents

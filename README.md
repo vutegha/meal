@@ -55,4 +55,5 @@ cd backend && uv run python -m app.llm.evals.run
 ```bash
 cd backend && uv run ruff check . && uv run mypy app && uv run pytest   # base meal_test requise
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+cd frontend && npm run e2e   # parcours complet dans Chromium ; base meal_e2e requise, lance API (faux modèle IA) et Vite
 ```
