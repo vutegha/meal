@@ -127,6 +127,33 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await expect(page.getByText("1 retour en attente d'envoi.")).toBeHidden();
   await expect(page.getByText("Les séances commencent trop tard.")).toBeVisible();
 
+  // Formulaire de collecte : conception, publication, réponse sans réseau puis synthèse
+  await page.getByRole("button", { name: "Formulaires", exact: true }).click();
+  await page.getByRole("button", { name: "+ Nouveau formulaire" }).click();
+  await page.getByLabel("Titre du formulaire").fill("Suivi post-distribution");
+  await page.getByLabel("Libellé").fill("Kit reçu complet ?");
+  await page.getByLabel("Type de réponse").selectOption("yesno");
+  await page.getByRole("button", { name: "+ Ajouter une question" }).click();
+  await page.getByLabel("Libellé").nth(1).fill("Articles utilisés");
+  await page.getByLabel("Type de réponse").nth(1).selectOption("multiselect");
+  await page.getByLabel("Choix possibles (un par ligne)").fill("Savon\nBâche\nJerrican");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await page.getByRole("button", { name: "Publier" }).click();
+  await expect(page.getByText("Publié")).toBeVisible();
+
+  await page.context().setOffline(true);
+  await page.getByRole("button", { name: "Saisir une réponse" }).click();
+  await page.getByLabel("Oui").check();
+  await page.getByLabel("Savon").check();
+  await page.getByLabel("Jerrican").check();
+  await page.getByRole("button", { name: "Enregistrer la réponse" }).click();
+  await expect(page.getByText("1 réponse(s) de formulaire en attente d'envoi.")).toBeVisible();
+  await page.context().setOffline(false);
+  await page.evaluate("window.dispatchEvent(new Event('online'))");
+  await expect(page.getByText("1 réponse(s) de formulaire en attente d'envoi.")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Synthèse" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Savon, Jerrican" })).toBeVisible();
+
   // Tableau de bord : l'activité réalisée et les 36 personnes atteintes
   await page.getByRole("button", { name: "Tableau de bord" }).click();
   await expect(page.getByText("Suivi par activité")).toBeVisible();

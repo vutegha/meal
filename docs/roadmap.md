@@ -51,7 +51,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 5.3 PWA hors ligne (vite-plugin-pwa/Workbox, file d'envoi Dexie/IndexedDB), synchronisation idempotente par `client_uuid`
 - [ ] 5.4 Floutage automatique des visages
 - [ ] 5.5 Audio et vidéo ; compression des photos côté téléphone avant envoi
-- [ ] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution)
+- [x] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution) : questions texte, nombre, choix unique ou multiple, oui/non, date ; publication et clôture ; saisie hors ligne par la file d'envoi ; synthèse par question, tableau des réponses, export Excel ; questions figées une fois des réponses reçues
 
 ## Étape 6 : rapport narratif
 - [x] 6.1 Rédaction IA traçable prévu/réalisé : chaque fait renvoie à sa source (notes [S1], TdR, comptes rendus, photos [P1]) ; renvois inconnus signalés, manques listés ; participants et budget calculés

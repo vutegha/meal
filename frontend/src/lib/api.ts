@@ -1097,3 +1097,107 @@ export const templatesApi = {
   remove: (orgId: string, id: string) =>
     request<void>(`/orgs/${orgId}/templates/${id}`, { method: "DELETE" }),
 };
+
+// --- Formulaires de collecte -------------------------------------------------------------
+
+export const FIELD_TYPES = [
+  "text",
+  "number",
+  "integer",
+  "select",
+  "multiselect",
+  "yesno",
+  "date",
+] as const;
+export type FieldType = (typeof FIELD_TYPES)[number];
+export type FormStatus = "draft" | "published" | "closed";
+export type AnswerValue = string | number | boolean | string[];
+
+export interface FormField {
+  key: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
+  options: string[];
+  hint: string;
+}
+
+export interface CollectionForm {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: FormStatus;
+  fields: FormField[];
+  activity_id: string | null;
+  created_at: string;
+  submissions: number;
+}
+
+export type FormInput = Pick<CollectionForm, "title" | "description" | "activity_id" | "fields">;
+
+export interface SubmissionInput {
+  answers: Record<string, AnswerValue>;
+  location: string;
+  latitude: number | null;
+  longitude: number | null;
+  collected_at: string;
+  client_uuid: string;
+}
+
+export interface Submission extends Omit<SubmissionInput, "client_uuid"> {
+  id: string;
+  form_id: string;
+  submitted_by: string | null;
+  submitter_name: string;
+}
+
+export interface FieldSummary {
+  key: string;
+  label: string;
+  type: FieldType;
+  answered: number;
+  counts: Record<string, number>;
+  total: number | null;
+  mean: number | null;
+  min: number | null;
+  max: number | null;
+  samples: string[];
+}
+
+export interface FormSummary {
+  submissions: number;
+  fields: FieldSummary[];
+}
+
+const formsPath = (orgId: string, projectId: string, formId?: string) =>
+  `${project(orgId, projectId)}/forms${formId ? `/${formId}` : ""}`;
+
+export const formsApi = {
+  list: (orgId: string, projectId: string) =>
+    request<CollectionForm[]>(formsPath(orgId, projectId)),
+  get: (orgId: string, projectId: string, formId: string) =>
+    request<CollectionForm>(formsPath(orgId, projectId, formId)),
+  create: (orgId: string, projectId: string, body: FormInput) =>
+    request<CollectionForm>(formsPath(orgId, projectId), json("POST", body)),
+  update: (
+    orgId: string,
+    projectId: string,
+    formId: string,
+    body: Partial<FormInput> & { status?: FormStatus },
+  ) => request<CollectionForm>(formsPath(orgId, projectId, formId), json("PATCH", body)),
+  remove: (orgId: string, projectId: string, formId: string) =>
+    request<void>(formsPath(orgId, projectId, formId), { method: "DELETE" }),
+  submit: (orgId: string, projectId: string, formId: string, body: SubmissionInput) =>
+    request<Submission>(`${formsPath(orgId, projectId, formId)}/submissions`, json("POST", body)),
+  submissions: (orgId: string, projectId: string, formId: string) =>
+    request<Submission[]>(`${formsPath(orgId, projectId, formId)}/submissions`),
+  removeSubmission: (orgId: string, projectId: string, formId: string, id: string) =>
+    request<void>(`${formsPath(orgId, projectId, formId)}/submissions/${id}`, {
+      method: "DELETE",
+    }),
+  summary: (orgId: string, projectId: string, formId: string) =>
+    request<FormSummary>(`${formsPath(orgId, projectId, formId)}/summary`),
+  exportPath: (orgId: string, projectId: string, formId: string) =>
+    `${formsPath(orgId, projectId, formId)}/export.xlsx`,
+};

@@ -8,6 +8,8 @@ import {
   type ExecutionInput,
   executionsApi,
   type FeedbackIn,
+  formsApi,
+  type SubmissionInput,
 } from "./api";
 
 /**
@@ -51,10 +53,21 @@ export interface PendingFeedback {
   error?: string;
 }
 
+export interface PendingSubmission {
+  client_uuid: string;
+  orgId: string;
+  projectId: string;
+  formId: string;
+  body: SubmissionInput;
+  createdAt: number;
+  error?: string;
+}
+
 class OutboxDb extends Dexie {
   executions!: Table<PendingExecution, string>;
   evidence!: Table<PendingEvidence, string>;
   feedback!: Table<PendingFeedback, string>;
+  submissions!: Table<PendingSubmission, string>;
 
   constructor() {
     super("wemeal-outbox");
@@ -64,6 +77,8 @@ class OutboxDb extends Dexie {
     });
     // Plaintes et retours recueillis sans réseau (réunion communautaire, visite de terrain).
     this.version(2).stores({ feedback: "client_uuid, projectId" });
+    // Réponses aux formulaires de collecte (enquêtes, suivi post-distribution).
+    this.version(3).stores({ submissions: "client_uuid, projectId, formId" });
   }
 }
 
@@ -149,6 +164,22 @@ export async function queueFeedback(orgId: string, projectId: string, body: Feed
   });
 }
 
+export async function queueSubmission(
+  orgId: string,
+  projectId: string,
+  formId: string,
+  body: SubmissionInput,
+) {
+  await outbox.submissions.put({
+    client_uuid: body.client_uuid,
+    orgId,
+    projectId,
+    formId,
+    body,
+    createdAt: Date.now(),
+  });
+}
+
 /** Erreur définitive (données refusées) : inutile de réessayer telle quelle. */
 const isRejected = (error: unknown) =>
   error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401;
@@ -194,6 +225,18 @@ async function runSync(): Promise<SyncResult> {
         await outbox.feedback.delete(item.client_uuid);
       },
       (message) => outbox.feedback.update(item.client_uuid, { error: message }),
+    );
+    if (!ok) return result;
+  }
+
+  for (const item of byAge(await outbox.submissions.toArray())) {
+    if (item.error) continue;
+    const ok = await attempt(
+      async () => {
+        await formsApi.submit(item.orgId, item.projectId, item.formId, item.body);
+        await outbox.submissions.delete(item.client_uuid);
+      },
+      (message) => outbox.submissions.update(item.client_uuid, { error: message }),
     );
     if (!ok) return result;
   }
@@ -246,9 +289,12 @@ export function syncOutbox(): Promise<SyncResult> {
   return running;
 }
 
-export async function discard(table: "executions" | "evidence" | "feedback", clientUuid: string) {
-  if (table === "feedback") {
-    await outbox.feedback.delete(clientUuid);
+export async function discard(
+  table: "executions" | "evidence" | "feedback" | "submissions",
+  clientUuid: string,
+) {
+  if (table === "feedback" || table === "submissions") {
+    await outbox[table].delete(clientUuid);
   } else if (table === "executions") {
     await outbox.transaction("rw", outbox.executions, outbox.evidence, async () => {
       await outbox.evidence.where("execution_client_uuid").equals(clientUuid).delete();
@@ -263,6 +309,7 @@ export interface Pending {
   executions: PendingExecution[];
   evidence: PendingEvidence[];
   feedback: PendingFeedback[];
+  submissions: PendingSubmission[];
 }
 
 /** Éléments en attente pour un projet, mis à jour en direct. */
@@ -271,12 +318,14 @@ export function usePending(projectId: string): Pending {
     executions: [],
     evidence: [],
     feedback: [],
+    submissions: [],
   });
   useEffect(() => {
     const subscription = liveQuery(async () => ({
       executions: await outbox.executions.where("projectId").equals(projectId).toArray(),
       evidence: await outbox.evidence.where("projectId").equals(projectId).toArray(),
       feedback: await outbox.feedback.where("projectId").equals(projectId).toArray(),
+      submissions: await outbox.submissions.where("projectId").equals(projectId).toArray(),
     })).subscribe({ next: setPending, error: () => undefined });
     return () => subscription.unsubscribe();
   }, [projectId]);

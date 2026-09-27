@@ -107,11 +107,13 @@ const projectRoute = createRoute({
     tor?: string;
     execution?: string;
     periodic?: string;
+    form?: string;
   } => ({
     tab: PROJECT_TABS.includes(search.tab as ProjectTab) ? (search.tab as ProjectTab) : "dashboard",
     tor: typeof search.tor === "string" ? search.tor : undefined,
     execution: typeof search.execution === "string" ? search.execution : undefined,
     periodic: typeof search.periodic === "string" ? search.periodic : undefined,
+    form: typeof search.form === "string" ? search.form : undefined,
   }),
   component: ProjectPage,
 });

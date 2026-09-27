@@ -11,6 +11,7 @@ import { DashboardTab } from "./DashboardTab";
 import { DocumentsTab } from "./DocumentsTab";
 import { ExecutionTab } from "./ExecutionTab";
 import { FeedbackTab } from "./FeedbackTab";
+import { FormsTab } from "./FormsTab";
 import { IndicatorsTab } from "./IndicatorsTab";
 import { LessonsTab } from "./LessonsTab";
 import { LogframeTab } from "./LogframeTab";
@@ -99,6 +100,7 @@ export function ProjectPage() {
       {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
       {tab === "tor" && <TorTab orgId={orgId} project={p} />}
       {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
+      {tab === "forms" && <FormsTab orgId={orgId} projectId={projectId} />}
       {tab === "reports" && <PeriodicTab project={p} />}
       {tab === "feedback" && <FeedbackTab orgId={orgId} projectId={projectId} />}
       {tab === "lessons" && <LessonsTab orgId={orgId} projectId={projectId} />}

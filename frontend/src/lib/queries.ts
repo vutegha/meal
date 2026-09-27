@@ -5,6 +5,7 @@ import {
   aiApi,
   api,
   executionsApi,
+  formsApi,
   periodicApi,
   projectsApi,
   reportsApi,
@@ -172,4 +173,28 @@ export const builtinTemplatesQuery = (orgId: string) =>
     queryKey: ["orgs", orgId, "templates", "builtin"],
     queryFn: () => templatesApi.builtin(orgId),
     staleTime: Infinity,
+  });
+
+export const formsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms"],
+    queryFn: () => formsApi.list(orgId, projectId),
+  });
+
+export const formQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId],
+    queryFn: () => formsApi.get(orgId, projectId, formId),
+  });
+
+export const formSummaryQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId, "summary"],
+    queryFn: () => formsApi.summary(orgId, projectId, formId),
+  });
+
+export const submissionsQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId, "submissions"],
+    queryFn: () => formsApi.submissions(orgId, projectId, formId),
   });
