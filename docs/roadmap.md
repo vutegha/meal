@@ -35,7 +35,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 3.6 Jeu d'évaluation des prompts (`uv run python -m app.llm.evals.run`, clé API requise)
 - [ ] 3.7 OCR des documents scannés (aujourd'hui refusés avec un message explicite)
 - [ ] 3.8 Recherche sémantique pgvector, si la recherche plein texte ne suffit pas pour les TdR et rapports
-- [ ] 3.9 Suivi de l'usage IA dans l'interface d'administration (l'API `GET /orgs/{id}/ai/usage` existe)
+- [x] 3.9 Suivi de l'usage IA dans l'administration : coût du mois et plafond, six derniers mois, répartition par usage et par projet, derniers appels
 
 ## Étape 4 : TdR
 - [x] 4.1 Modèle de sections des TdR (12 sections, dont redevabilité et protection)

@@ -119,5 +119,11 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await expect(page.getByText("Suivi par activité")).toBeVisible();
   await expect(page.getByText("36", { exact: true })).toBeVisible();
 
+  // Consommation IA de l'organisation : extraction, TdR, rapport et classement journalisés
+  await page.getByRole("link", { name: "Membres et audit" }).click();
+  await expect(page.getByRole("heading", { name: "Consommation IA" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Extraction du cadre logique" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Classement des retours" })).toBeVisible();
+
   expect(errors).toEqual([]);
 });

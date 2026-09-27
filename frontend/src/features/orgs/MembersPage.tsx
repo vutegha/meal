@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui";
 import { permissions } from "@/lib/permissions";
 
+import { AiUsagePanel } from "./AiUsagePanel";
 import { AuditPanel } from "./AuditPanel";
 import { MembersPanel } from "./MembersPanel";
 import { useCurrentOrg } from "./useCurrentOrg";
@@ -22,6 +23,7 @@ export function MembersPage() {
         </p>
       </Card>
       <MembersPanel orgId={orgId} isAdmin={isAdmin} currentUserId={me.id} />
+      {isAdmin && <AiUsagePanel orgId={orgId} />}
       {isAdmin && <AuditPanel orgId={orgId} />}
     </>
   );

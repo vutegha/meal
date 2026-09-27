@@ -151,3 +151,9 @@ export const lessonsQuery = (orgId: string, projectId: string | null, q = "", ta
       : ["orgs", orgId, "lessons", { q, tag }],
     queryFn: () => accountabilityApi.lessons(orgId, projectId, q, tag),
   });
+
+export const aiUsageQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "ai-usage"],
+    queryFn: () => aiApi.usage(orgId),
+  });

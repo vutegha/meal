@@ -153,7 +153,39 @@ class ProposalOut(ORMModel):
     reviewed_at: datetime | None
 
 
+class AiUsageRow(BaseModel):
+    key: str
+    label: str = ""
+    calls: int
+    errors: int
+    cost_usd: Decimal
+    input_tokens: int
+    output_tokens: int
+
+
+class AiCallOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    created_at: datetime
+    purpose: str
+    model: str
+    status: str
+    error: str
+    cost_usd: Decimal
+    duration_ms: int
+    input_tokens: int
+    output_tokens: int
+    project_code: str | None = None
+
+
 class AiUsage(BaseModel):
     month_cost_usd: Decimal
     monthly_budget_usd: Decimal | None
     calls_this_month: int
+    # Mois en cours, par usage (extraction, TdR, rapports…) et par projet.
+    by_purpose: list[AiUsageRow] = []
+    by_project: list[AiUsageRow] = []
+    # Six derniers mois, du plus ancien au plus récent (clé AAAA-MM).
+    by_month: list[AiUsageRow] = []
+    recent: list[AiCallOut] = []

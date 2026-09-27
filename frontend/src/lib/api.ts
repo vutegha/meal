@@ -431,7 +431,42 @@ export interface ApplyLogframe {
   budget_lines: ProposedBudgetLine[];
 }
 
+export interface AiUsageRow {
+  key: string;
+  label: string;
+  calls: number;
+  errors: number;
+  cost_usd: string;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface AiCallLog {
+  id: string;
+  created_at: string;
+  purpose: string;
+  model: string;
+  status: string;
+  error: string;
+  cost_usd: string;
+  duration_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  project_code: string | null;
+}
+
+export interface AiUsage {
+  month_cost_usd: string;
+  monthly_budget_usd: string | null;
+  calls_this_month: number;
+  by_purpose: AiUsageRow[];
+  by_project: AiUsageRow[];
+  by_month: AiUsageRow[];
+  recent: AiCallLog[];
+}
+
 export const aiApi = {
+  usage: (orgId: string) => request<AiUsage>(`/orgs/${orgId}/ai/usage`),
   documents: (orgId: string, projectId: string) =>
     request<SourceDocument[]>(`${project(orgId, projectId)}/documents`),
   upload: (orgId: string, projectId: string, file: File) => {

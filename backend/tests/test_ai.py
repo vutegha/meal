@@ -118,6 +118,12 @@ async def test_extraction_creates_verified_proposal(client: AsyncClient, fake_ll
     assert usage["calls_this_month"] == 1
     # 12 000 × 4 + 3 000 × 20 + 10 000 × 5 (écriture du cache), par million de jetons.
     assert usage["month_cost_usd"] == "0.158000"
+    [purpose] = usage["by_purpose"]
+    assert purpose["key"] == "logframe_extraction"
+    assert purpose["calls"] == 1 and purpose["errors"] == 0
+    assert usage["by_project"][0]["label"].startswith("P1 · ")
+    assert usage["by_month"][-1]["cost_usd"] == "0.158000"
+    assert usage["recent"][0]["project_code"] == "P1"
 
 
 async def test_apply_selected_items(client: AsyncClient, fake_llm: FakeLLM) -> None:
