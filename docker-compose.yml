@@ -1,7 +1,7 @@
 name: wemeal
 
 x-backend-env: &backend-env
-  DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:-meal}@db:5432/meal
+  DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
   S3_ENDPOINT: http://minio:9000
@@ -14,7 +14,7 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: meal
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
       POSTGRES_DB: meal
     volumes: [db-data:/var/lib/postgresql/data]
     healthcheck:

@@ -10,7 +10,7 @@ Application web pour faciliter les activités MEAL (suivi, évaluation, redevabi
 ## Démarrer avec Docker
 
 ```bash
-cp .env.example .env   # puis renseigner SECRET_KEY et MINIO_ROOT_PASSWORD
+cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et MINIO_ROOT_PASSWORD
 docker compose up --build
 ```
 
