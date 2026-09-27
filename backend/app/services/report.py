@@ -32,7 +32,7 @@ from app.models import (
 )
 from app.schemas.execution import Participants
 from app.schemas.report import ReportDraft
-from app.services import audit
+from app.services import audit, templates
 from app.services import projects as svc
 from app.services.ai import call_structured
 from app.services.tor import TO_COMPLETE, activity_lines, fmt
@@ -276,7 +276,9 @@ async def run_report_generation(session: AsyncSession, job: Job) -> dict[str, An
 
     sources, blocks = await build_sources(session, execution)
     context = await build_context(session, project, execution, blocks)
-    wanted = [(k, t) for k, t in REPORT_SECTIONS if k not in COMPUTED]
+    plan = await templates.resolve(
+        session, project, "report", REPORT_SECTIONS, report.template_id if report else None
+    )
     result = await call_structured(
         session,
         organization_id=project.organization_id,
@@ -285,7 +287,7 @@ async def run_report_generation(session: AsyncSession, job: Job) -> dict[str, An
         prompt_version=prompt.VERSION,
         model=get_settings().llm_model_drafting,
         system=prompt.SYSTEM,
-        content=prompt.build_content(context, wanted),
+        content=prompt.build_content(context, templates.wanted(plan, COMPUTED)),
         output_type=ReportDraft,
         effort="medium",
     )
@@ -296,14 +298,7 @@ async def run_report_generation(session: AsyncSession, job: Job) -> dict[str, An
         "participants": participants_markdown(execution),
         "budget": await budget_markdown(session, project, execution),
     }
-    sections = [
-        {
-            "key": key,
-            "title": title,
-            "content": computed.get(key) or written.get(key) or TO_COMPLETE,
-        }
-        for key, title in REPORT_SECTIONS
-    ]
+    sections = templates.assemble(plan, {**written, **computed}, TO_COMPLETE)
 
     indicators = {
         i.code: i
@@ -337,6 +332,7 @@ async def run_report_generation(session: AsyncSession, job: Job) -> dict[str, An
         report.version += 1
     report.title = (draft.title or f"Rapport : {execution.title}")[:300]
     report.sections = sections
+    report.template_id = plan.template_id
     report.sources = sources
     report.missing_information = draft.missing_information
     report.indicator_suggestions = suggestions

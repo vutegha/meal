@@ -158,6 +158,8 @@ class PeriodicIn(BaseModel):
     period_start: date
     period_end: date
     instructions: str = Field(default="", max_length=4000)
+    # Modèle à suivre ; sinon celui du bailleur du projet ou de l'organisation.
+    template_id: UUID | None = None
 
     @model_validator(mode="after")
     def _period(self) -> "PeriodicIn":
@@ -181,6 +183,7 @@ class PeriodicSummary(BaseModel):
 
 class PeriodicOut(PeriodicSummary):
     project_id: UUID
+    template_id: UUID | None = None
     sections: list[TorSection]
     sources: list[ReportSource]
     missing_information: list[str]

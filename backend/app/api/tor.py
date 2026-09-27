@@ -23,6 +23,7 @@ from app.schemas.tor import (
     TorVersionOut,
 )
 from app.services import projects as svc
+from app.services import templates
 from app.services import tor as tor_svc
 from app.services.jobs import enqueue
 
@@ -70,19 +71,18 @@ async def create_tor(
     )
     if existing:
         raise _conflict("Cette activité a déjà des TdR")
-    sections = tor_svc.blank_sections()
+    plan = await templates.resolve(session, project, "tor", tor_svc.DEFAULT_SECTIONS)
     budget = tor_svc.budget_markdown(
         await tor_svc.activity_lines(session, activity), project.currency
     )
-    for section in sections:
-        if section["key"] == tor_svc.BUDGET_KEY:
-            section["content"] = budget
+    sections = tor_svc.blank_sections(plan, budget)
     tor = TermsOfReference(
         organization_id=org_id,
         project_id=project.id,
         activity_id=activity.id,
         title=f"TdR : {activity.title}"[:300],
         sections=sections,
+        template_id=plan.template_id,
         created_by=member.user_id,
     )
     session.add(tor)
@@ -118,7 +118,11 @@ async def generate_tor(
         organization_id=org_id,
         project_id=project.id,
         kind="tor_generation",
-        params={"activity_id": str(activity.id), "instructions": body.instructions},
+        params={
+            "activity_id": str(activity.id),
+            "instructions": body.instructions,
+            "template_id": str(body.template_id) if body.template_id else None,
+        },
         created_by=member.user_id,
     )
     session.add(job)
@@ -274,6 +278,9 @@ async def export_tor(
     project = await svc.get_project(session, org_id, project_id)
     tor = await tor_svc.get_tor(session, project, tor_id)
     document = await tor_svc.render_document(session, project, tor)
+    document.layout = (
+        await templates.layout_for(session, project, "tor", tor.template_id) or document.layout
+    )
     content = await asyncio.to_thread(to_docx if fmt == "docx" else to_pdf, document)
     ascii_title = unicodedata.normalize("NFKD", tor.title).encode("ascii", "ignore").decode()
     slug = re.sub(r"[^A-Za-z0-9]+", "-", ascii_title).strip("-")[:60] or "TdR"

@@ -26,7 +26,7 @@ from app.models import (
     TorVersion,
 )
 from app.schemas.tor import TorDraft
-from app.services import audit
+from app.services import audit, templates
 from app.services import projects as svc
 from app.services.ai import call_structured
 
@@ -57,8 +57,8 @@ MAX_PASSAGES = 6
 MAX_PASSAGE_CHARS = 3000
 
 
-def blank_sections() -> list[dict[str, Any]]:
-    return [{"key": key, "title": title, "content": ""} for key, title in DEFAULT_SECTIONS]
+def blank_sections(plan: templates.Plan, budget: str) -> list[dict[str, Any]]:
+    return templates.assemble(plan, {BUDGET_KEY: budget}, "")
 
 
 def fmt(value: Decimal | float, decimals: int = 2) -> str:
@@ -209,16 +209,9 @@ async def build_context(
     return "\n".join(parts)
 
 
-def merge_sections(draft: TorDraft, budget: str) -> list[dict[str, Any]]:
+def merge_sections(plan: templates.Plan, draft: TorDraft, budget: str) -> list[dict[str, Any]]:
     written = {section.key: section.content.strip() for section in draft.sections}
-    return [
-        {
-            "key": key,
-            "title": title,
-            "content": budget if key == BUDGET_KEY else written.get(key) or TO_COMPLETE,
-        }
-        for key, title in DEFAULT_SECTIONS
-    ]
+    return templates.assemble(plan, {**written, BUDGET_KEY: budget}, TO_COMPLETE)
 
 
 async def run_tor_generation(session: AsyncSession, job: Job) -> dict[str, Any]:
@@ -231,7 +224,10 @@ async def run_tor_generation(session: AsyncSession, job: Job) -> dict[str, Any]:
         raise LLMError("Ces TdR sont soumis ou approuvés : repassez-les en brouillon d'abord.")
 
     context = await build_context(session, project, activity, job.params.get("instructions", ""))
-    wanted = [(key, title) for key, title in DEFAULT_SECTIONS if key != BUDGET_KEY]
+    chosen = job.params.get("template_id") or (tor.template_id if tor else None)
+    plan = await templates.resolve(
+        session, project, "tor", DEFAULT_SECTIONS, UUID(str(chosen)) if chosen else None
+    )
     result = await call_structured(
         session,
         organization_id=project.organization_id,
@@ -240,13 +236,13 @@ async def run_tor_generation(session: AsyncSession, job: Job) -> dict[str, Any]:
         prompt_version=prompt.VERSION,
         model=get_settings().llm_model_drafting,
         system=prompt.SYSTEM,
-        content=prompt.build_content(context, wanted),
+        content=prompt.build_content(context, templates.wanted(plan, {BUDGET_KEY})),
         output_type=TorDraft,
         effort="medium",
     )
     draft = result.output
     sections = merge_sections(
-        draft, budget_markdown(await activity_lines(session, activity), project.currency)
+        plan, draft, budget_markdown(await activity_lines(session, activity), project.currency)
     )
     if tor is None:
         tor = TermsOfReference(
@@ -260,6 +256,7 @@ async def run_tor_generation(session: AsyncSession, job: Job) -> dict[str, Any]:
         tor.version += 1
     tor.title = draft.title[:300] or f"TdR : {activity.title}"[:300]
     tor.sections = sections
+    tor.template_id = plan.template_id
     tor.missing_information = draft.missing_information
     await session.flush()
     snapshot(session, tor, job.created_by, "Rédigé par l'IA")

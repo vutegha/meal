@@ -10,6 +10,7 @@ from app.api import (
     periodic,
     projects,
     reports,
+    templates,
     tor,
 )
 from app.core.config import get_settings
@@ -40,6 +41,7 @@ api.include_router(executions.router)
 api.include_router(reports.router)
 api.include_router(accountability.router)
 api.include_router(periodic.router)
+api.include_router(templates.router)
 app.include_router(api)
 
 

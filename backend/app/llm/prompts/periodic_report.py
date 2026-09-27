@@ -34,9 +34,12 @@ listes numérotées (1. ), **gras**. Pas de titres : chaque section a déjà le 
 
 
 def build_content(
-    context: str, sections: list[tuple[str, str]], instructions: str
+    context: str, sections: list[tuple[str, str, str]], instructions: str
 ) -> list[dict[str, Any]]:
-    wanted = "\n".join(f"- {key} : {title}" for key, title in sections)
+    wanted = "\n".join(
+        f"- {key} : {title}" + (f" (consigne de l'organisation : {guidance})" if guidance else "")
+        for key, title, guidance in sections
+    )
     ask = (
         "Rédige le rapport de cette période. Remplis chacune de ces sections (clé : titre) et "
         f"seulement celles-ci :\n{wanted}"

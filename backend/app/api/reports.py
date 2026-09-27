@@ -26,6 +26,7 @@ from app.schemas.report import ApplySuggestionIn, ReportOut, ReportSummary
 from app.schemas.tor import TorReview, TorUpdate, TorVersionOut
 from app.services import projects as svc
 from app.services import report as report_svc
+from app.services import templates
 from app.services.jobs import enqueue
 
 router = APIRouter(prefix="/orgs/{org_id}/projects/{project_id}", tags=["rapports"])
@@ -272,6 +273,10 @@ async def export_report(
     project = await svc.get_project(session, org_id, project_id)
     report = await report_svc.get_report(session, project, report_id)
     document = await report_svc.render_document(session, project, report)
+    document.layout = (
+        await templates.layout_for(session, project, "report", report.template_id)
+        or document.layout
+    )
     content = await asyncio.to_thread(to_docx if fmt == "docx" else to_pdf, document)
     ascii_title = unicodedata.normalize("NFKD", report.title).encode("ascii", "ignore").decode()
     slug = re.sub(r"[^A-Za-z0-9]+", "-", ascii_title).strip("-")[:60] or "Rapport"

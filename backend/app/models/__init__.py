@@ -38,9 +38,12 @@ from app.models.project import (
     ProjectStatus,
 )
 from app.models.report import NarrativeReport, ReportStatus, ReportVersion
+from app.models.template import TEMPLATE_KINDS, DocumentTemplate
 from app.models.tor import TermsOfReference, TorStatus, TorVersion
 
 __all__ = [
+    "TEMPLATE_KINDS",
+    "DocumentTemplate",
     "FeedbackCategory",
     "FeedbackChannel",
     "FeedbackEntry",

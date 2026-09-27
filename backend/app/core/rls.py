@@ -33,6 +33,7 @@ TENANT_TABLES = (
     "narrative_reports",
     "report_versions",
     "lessons_learned",
+    "document_templates",
 )
 
 POLICY = (
