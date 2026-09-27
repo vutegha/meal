@@ -160,11 +160,27 @@ export interface Project {
   status: ProjectStatus;
   zones: string[];
   target_groups: string[];
+  exchange_rates: ExchangeRate[];
   created_at: string;
 }
 
+/** 1 unité de `currency` vaut `rate` unités de la devise du projet, à partir de `valid_from`. */
+export interface ExchangeRate {
+  currency: string;
+  rate: string;
+  valid_from: string;
+}
+
 export type ProjectInput = Pick<Project, "code" | "title"> &
-  Partial<Omit<Project, "id" | "created_at">>;
+  Partial<Omit<Project, "id" | "created_at" | "exchange_rates">>;
+
+export interface ExpenseInput {
+  amount: string;
+  spent_on: string;
+  reference: string;
+  currency?: string;
+  exchange_rate?: string | null;
+}
 
 export interface LogframeNode {
   id: string;
@@ -232,6 +248,18 @@ export interface Indicator {
   owner_id: string | null;
   achieved: string | null;
   achievement_rate: number | null;
+  period_targets: PeriodProgress[];
+}
+
+export interface PeriodTarget {
+  period_start: string;
+  period_end: string;
+  target: string;
+}
+
+export interface PeriodProgress extends PeriodTarget {
+  achieved: string | null;
+  achievement_rate: number | null;
 }
 
 /** GET authentifié renvoyant le contenu brut (fichiers, images). */
@@ -293,18 +321,27 @@ export const projectsApi = {
   ) => request<BudgetLine>(`${project(orgId, projectId)}/budget/lines`, json("POST", body)),
   deleteBudgetLine: (orgId: string, projectId: string, lineId: string) =>
     request<void>(`${project(orgId, projectId)}/budget/lines/${lineId}`, { method: "DELETE" }),
-  addExpense: (
-    orgId: string,
-    projectId: string,
-    lineId: string,
-    body: { amount: string; spent_on: string; reference: string },
-  ) =>
+  setExchangeRates: (orgId: string, projectId: string, rates: ExchangeRate[]) =>
+    request<Project>(`${project(orgId, projectId)}/exchange-rates`, json("PUT", rates)),
+  documentPath: (orgId: string, projectId: string, format: "pdf" | "docx") =>
+    `${project(orgId, projectId)}/export.${format}`,
+  addExpense: (orgId: string, projectId: string, lineId: string, body: ExpenseInput) =>
     request<unknown>(
       `${project(orgId, projectId)}/budget/lines/${lineId}/expenses`,
       json("POST", body),
     ),
   indicators: (orgId: string, projectId: string) =>
     request<Indicator[]>(`${project(orgId, projectId)}/indicators`),
+  updateIndicator: (
+    orgId: string,
+    projectId: string,
+    indicatorId: string,
+    body: { period_targets?: PeriodTarget[] },
+  ) =>
+    request<Indicator>(
+      `${project(orgId, projectId)}/indicators/${indicatorId}`,
+      json("PATCH", body),
+    ),
   addIndicator: (
     orgId: string,
     projectId: string,
@@ -733,7 +770,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     executionId: string,
-    body: { budget_line_id: string; amount: string; spent_on: string; reference: string },
+    body: ExpenseInput & { budget_line_id: string },
   ) =>
     request<ExecutionExpense>(
       `${project(orgId, projectId)}/executions/${executionId}/expenses`,

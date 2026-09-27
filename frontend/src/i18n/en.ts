@@ -119,6 +119,17 @@ export const en: Messages = {
     amount: "Amount",
     date: "Date",
     reference: "Reference",
+    currency: "Currency",
+    rateFor: "Rate {{from}} → {{to}}",
+    exchangeRates: "Exchange rates",
+    exchangeRatesIntro:
+      "For expenses paid in another currency: the amount is converted to {{currency}} at the rate in force on the expense date, unless a rate is entered with the expense.",
+    rateValue: "Value in {{currency}}",
+    validFrom: "Valid from",
+    addRate: "Add a rate",
+    editRates: "Edit rates",
+    noRates: "No rates: all expenses are in the project currency.",
+    since: "since {{date}}",
     record: "Save",
   },
   indicators: {
@@ -140,6 +151,13 @@ export const en: Messages = {
     periodStart: "Period start",
     periodEnd: "Period end",
     value: "Value",
+    periodTargets: "Targets by period",
+    periodTargetsSumHint:
+      "Target for each period: total expected over the period (values recorded in the period are added up).",
+    periodTargetsLatestHint:
+      "Target for each period: level to reach by the end of the period (latest value recorded in the period).",
+    addPeriod: "Add a period",
+    period: "Period",
     record: "Save",
   },
   roles: {

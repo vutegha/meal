@@ -65,7 +65,7 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page.getByRole("button", { name: "Approuver" }).last().click();
   await expect(page.getByText("Approuvé", { exact: true })).toBeVisible();
   const tor = page.waitForEvent("download");
-  await page.getByRole("button", { name: "⬇ PDF" }).click();
+  await page.getByRole("button", { name: "⬇ PDF" }).last().click();
   expect((await tor).suggestedFilename()).toMatch(/\.pdf$/);
 
   // Exécution sur le terrain
@@ -99,7 +99,7 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page.getByRole("button", { name: "Approuver" }).last().click();
   await expect(page.getByText("Approuvé").first()).toBeVisible();
   const report = page.waitForEvent("download");
-  await page.getByRole("button", { name: "⬇ PDF" }).click();
+  await page.getByRole("button", { name: "⬇ PDF" }).last().click();
   expect((await report).suggestedFilename()).toMatch(/\.pdf$/);
 
   await page.getByRole("link", { name: "Leçons apprises" }).click();
@@ -158,6 +158,9 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page.getByRole("button", { name: "Tableau de bord" }).click();
   await expect(page.getByText("Suivi par activité")).toBeVisible();
   await expect(page.getByText("36", { exact: true })).toBeVisible();
+  const logframe = page.waitForEvent("download");
+  await page.getByRole("button", { name: "⬇ PDF" }).first().click();
+  expect((await logframe).suggestedFilename()).toBe("cadre-logique-E2E-01.pdf");
 
   // Consommation IA de l'organisation : extraction, TdR, rapport et classement journalisés
   await page.getByRole("link", { name: "Membres et audit" }).click();

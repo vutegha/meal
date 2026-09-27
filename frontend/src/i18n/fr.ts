@@ -118,6 +118,17 @@ export const fr = {
     amount: "Montant",
     date: "Date",
     reference: "Référence",
+    currency: "Devise",
+    rateFor: "Taux {{from}} → {{to}}",
+    exchangeRates: "Taux de change",
+    exchangeRatesIntro:
+      "Pour les dépenses payées dans une autre devise : le montant est converti en {{currency}} au taux en vigueur à la date de la dépense, sauf taux saisi avec la dépense.",
+    rateValue: "Valeur en {{currency}}",
+    validFrom: "À partir du",
+    addRate: "Ajouter un taux",
+    editRates: "Modifier les taux",
+    noRates: "Aucun taux : toutes les dépenses sont dans la devise du projet.",
+    since: "depuis le {{date}}",
     record: "Enregistrer",
   },
   indicators: {
@@ -139,6 +150,13 @@ export const fr = {
     periodStart: "Début de période",
     periodEnd: "Fin de période",
     value: "Valeur",
+    periodTargets: "Cibles par période",
+    periodTargetsSumHint:
+      "Cible de chaque période : total attendu sur la période (les valeurs saisies dans la période s'additionnent).",
+    periodTargetsLatestHint:
+      "Cible de chaque période : niveau à atteindre en fin de période (dernière valeur saisie dans la période).",
+    addPeriod: "Ajouter une période",
+    period: "Période",
     record: "Enregistrer",
   },
   roles: {

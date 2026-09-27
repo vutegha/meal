@@ -27,10 +27,12 @@ export function ProjectPage() {
   const { tab } = useSearch({ from: "/orgs/$orgId/projects/$projectId" });
   const project = useQuery(projectQuery(orgId, projectId));
   const exportFile = useMutation({
-    mutationFn: () =>
+    mutationFn: (format: "xlsx" | "pdf" | "docx") =>
       download(
-        projectsApi.exportPath(orgId, projectId),
-        `cadre-logique-${project.data?.code ?? "projet"}.xlsx`,
+        format === "xlsx"
+          ? projectsApi.exportPath(orgId, projectId)
+          : projectsApi.documentPath(orgId, projectId, format),
+        `cadre-logique-${project.data?.code ?? "projet"}.${format}`,
       ),
   });
 
@@ -63,13 +65,29 @@ export function ProjectPage() {
             </p>
           </div>
           <StatusBadge status={p.status} />
-          <Button
-            variant="ghost"
-            onClick={() => exportFile.mutate()}
-            disabled={exportFile.isPending}
-          >
-            ⬇ {t("projects.export")}
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("xlsx")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ {t("projects.export")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("pdf")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ PDF
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("docx")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ Word
+            </Button>
+          </div>
         </div>
         <ErrorText error={exportFile.error} />
       </Card>

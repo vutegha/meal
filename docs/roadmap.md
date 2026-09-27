@@ -24,7 +24,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 2.8 Données de démonstration (`uv run python -m app.scripts.seed`)
 - [x] 2.6 Row Level Security PostgreSQL sur les tables métier : rôle applicatif `meal_app` non propriétaire, organisation positionnée à chaque transaction, tests dédiés
 - [ ] 2.7 Client API TypeScript généré depuis l'OpenAPI ; composants shadcn/ui
-- [ ] 2.9 Cibles par période, multi-devises et taux de change, export PDF
+- [x] 2.9 Cibles intermédiaires par période (atteint et taux par période) ; taux de change du projet et dépenses saisies en devise étrangère, converties au taux en vigueur ou saisi, montant d'origine conservé ; export PDF et Word du cadre logique, des indicateurs et du budget
 
 ## Étape 3 : import et extraction IA
 - [x] 3.1 Upload (stockage local ou S3/MinIO), extraction du texte page par page (PyMuPDF, python-docx, openpyxl, texte)
