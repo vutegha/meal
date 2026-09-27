@@ -44,7 +44,9 @@ Toutes les clés primaires sont des UUID. Les horodatages sont en UTC (`timestam
 | `activity_executions` | id, project_id, activity_id, title, start_date, end_date, location, latitude, longitude, participants (jsonb : women, men, girls, boys, with_disability), notes, status (`in_progress`, `completed`), client_uuid (unique, idempotence hors ligne) |
 | `evidence` | id, execution_id, kind (`photo`, `report`, `minutes`, `attendance`, `other`), filename, content_type, sha256, storage_key, thumbnail_key, caption, taken_at et latitude/longitude (EXIF), consent_given, text (extrait des documents), page_count, uploaded_by, client_uuid |
 | `expenses.execution_id` | rattache une dépense réelle à l'exécution qui l'a occasionnée |
-| `narrative_reports` | id, execution_id, version, status, content (jsonb), citations (jsonb), missing_info (jsonb), approved_by |
+| `narrative_reports` | id, project_id, execution_id (unique), title, status (`draft`, `submitted`, `approved`), sections (jsonb), sources (jsonb : ref S1/P1, libellé, preuve), missing_information, indicator_suggestions (jsonb : indicateur, valeur, justification, source, valeur enregistrée), version, review_comment, submitted_by/at, approved_by/at |
+| `report_versions` | id, report_id, version, title, sections, note, created_by |
+| `indicator_values.execution_id` | rattache une valeur d'indicateur à l'exécution dont le rapport l'a proposée |
 | `periodic_reports` | id, project_id, period_start, period_end, kind, content (jsonb), status |
 
 ## Redevabilité et apprentissage (étape 7)

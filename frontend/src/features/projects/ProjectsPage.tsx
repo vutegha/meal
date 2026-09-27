@@ -106,7 +106,7 @@ export function ProjectsPage() {
                 <Link
                   to="/orgs/$orgId/projects/$projectId"
                   params={{ orgId, projectId: project.id }}
-                  search={{ tab: "logframe" }}
+                  search={{ tab: "dashboard" }}
                   className="flex flex-wrap items-center gap-3 rounded-md px-2 py-3 hover:bg-slate-50"
                 >
                   <span className="font-mono text-xs text-slate-500">{project.code}</span>

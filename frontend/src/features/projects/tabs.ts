@@ -1,4 +1,5 @@
 export const PROJECT_TABS = [
+  "dashboard",
   "logframe",
   "budget",
   "indicators",

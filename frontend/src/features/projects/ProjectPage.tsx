@@ -7,6 +7,7 @@ import { download, projectsApi } from "@/lib/api";
 import { projectQuery } from "@/lib/queries";
 
 import { BudgetTab } from "./BudgetTab";
+import { DashboardTab } from "./DashboardTab";
 import { DocumentsTab } from "./DocumentsTab";
 import { ExecutionTab } from "./ExecutionTab";
 import { IndicatorsTab } from "./IndicatorsTab";
@@ -89,6 +90,7 @@ export function ProjectPage() {
         ))}
       </nav>
 
+      {tab === "dashboard" && <DashboardTab orgId={orgId} project={p} />}
       {tab === "logframe" && <LogframeTab orgId={orgId} projectId={projectId} />}
       {tab === "budget" && <BudgetTab orgId={orgId} project={p} />}
       {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}

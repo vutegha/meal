@@ -4,10 +4,42 @@ import { parseMarkdown } from "@/lib/markdown";
 
 /** Affiche le Markdown simple des documents rédigés (même sous-ensemble que les exports). */
 
+const MARKS = /(\[[SP]\d+\]|\[source introuvable\]|\[À compléter[^\]]*\])/;
+
+/** Renvois aux sources et manques signalés, mis en évidence pour le relecteur. */
+function Marks({ text }: { text: string }): ReactNode {
+  return text.split(MARKS).map((part, index) => {
+    if (index % 2 === 0) return part;
+    if (part === "[source introuvable]")
+      return (
+        <mark key={index} className="rounded bg-red-100 px-1 text-red-800">
+          {part}
+        </mark>
+      );
+    if (part.startsWith("[À compléter"))
+      return (
+        <mark key={index} className="rounded bg-amber-100 px-1 text-amber-900">
+          {part}
+        </mark>
+      );
+    return (
+      <sup key={index} className="ml-0.5 font-mono text-[10px] font-semibold text-brand-700">
+        {part.slice(1, -1)}
+      </sup>
+    );
+  });
+}
+
 function Inline({ text }: { text: string }): ReactNode {
-  return text
-    .split(/\*\*(.+?)\*\*/)
-    .map((part, index) => (index % 2 ? <strong key={index}>{part}</strong> : part));
+  return text.split(/\*\*(.+?)\*\*/).map((part, index) =>
+    index % 2 ? (
+      <strong key={index}>
+        <Marks text={part} />
+      </strong>
+    ) : (
+      <Marks key={index} text={part} />
+    ),
+  );
 }
 
 export function Markdown({ source }: { source: string }) {

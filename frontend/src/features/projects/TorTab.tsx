@@ -28,7 +28,7 @@ const statusStyles: Record<TorStatus, string> = {
   approved: "bg-emerald-100 text-emerald-800",
 };
 
-function TorBadge({ status }: { status: TorStatus }) {
+export function TorBadge({ status }: { status: TorStatus }) {
   const { t } = useTranslation();
   return (
     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusStyles[status]}`}>
@@ -188,7 +188,7 @@ function TorList({ orgId, projectId }: { orgId: string; projectId: string }) {
 
 // --- Édition et validation d'un TdR -------------------------------------------------
 
-function ReviewBox({
+export function ReviewBox({
   onDone,
   action,
 }: {

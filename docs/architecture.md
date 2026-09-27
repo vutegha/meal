@@ -76,6 +76,7 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation (`AI_MONTHLY_BUDGET_USD`) bloque les appels au-delà.
 - Les modèles sont configurables : `LLM_MODEL_EXTRACTION` (claude-opus-5-5 par défaut), `LLM_MODEL_DRAFTING`, `LLM_MODEL_LIGHT`.
 - Les TdR sont rédigés par l'IA (`LLM_MODEL_DRAFTING`) à partir du cadre logique, des indicateurs, des pages de documents les plus pertinentes (recherche plein texte) et des consignes de l'utilisateur. Les informations absentes sont laissées en « [À compléter] » et listées. La section budget est toujours calculée depuis le budget du projet, jamais rédigée par le modèle.
+- Le rapport narratif d'une exécution est rédigé à partir de sources numérotées : saisie et notes (S1), TdR, texte des comptes rendus et listes de présence, légendes des photos consenties (P1…). Chaque phrase factuelle renvoie à sa source ; un renvoi vers une source inexistante est remplacé par « [source introuvable] ». Les sections participants et budget sont calculées. Les valeurs d'indicateurs proposées ne sont enregistrées qu'après vérification humaine.
 - Un document trop volumineux est refusé avec un message explicite plutôt que tronqué en silence.
 - Les tâches longues passent par le worker ARQ ; `JOBS_INLINE=true` les exécute dans la requête (tests, développement).
 
@@ -100,5 +101,5 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 | 3 | Import de documents et extraction IA | fait (sauf OCR, voir roadmap) |
 | 4 | TdR | fait (sauf modèles par organisation, voir roadmap) |
 | 5 | Exécution, collecte PWA hors ligne | fait (sauf floutage automatique, voir roadmap) |
-| 6 | Rapport narratif, tableaux de bord | à faire |
+| 6 | Rapport narratif, tableau de bord | fait (sauf tests de bout en bout en CI, voir roadmap) |
 | 7 | Agrégation, plaintes, leçons apprises | à faire |

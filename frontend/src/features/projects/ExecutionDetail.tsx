@@ -20,6 +20,7 @@ import { budgetLinesQuery, executionQuery, logframeQuery } from "@/lib/queries";
 
 import { FilePicker } from "./ExecutionForm";
 import { ExecutionBadge } from "./ExecutionBadge";
+import { ReportPanel } from "./ReportPanel";
 
 /** Image protégée : chargée avec le jeton de l'utilisateur, puis affichée depuis la mémoire. */
 function AuthImage({ path, alt }: { path: string; alt: string }) {
@@ -427,6 +428,8 @@ export function ExecutionDetailView({
         )}
         {canSpend && <ExpenseForm orgId={orgId} project={project} detail={d} onDone={refresh} />}
       </Card>
+
+      <ReportPanel orgId={orgId} projectId={project.id} executionId={d.id} />
     </>
   );
 }

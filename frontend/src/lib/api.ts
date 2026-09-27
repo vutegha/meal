@@ -683,3 +683,90 @@ export const executionsApi = {
       json("POST", body),
     ),
 };
+
+// --- Rapports narratifs (étape 6) ----------------------------------------------
+
+export interface ReportSummary {
+  id: string;
+  execution_id: string;
+  title: string;
+  status: TorStatus;
+  version: number;
+  updated_at: string;
+}
+
+export interface ReportSource {
+  ref: string;
+  label: string;
+  evidence_id: string | null;
+}
+
+export interface IndicatorSuggestion {
+  indicator_id: string;
+  code: string;
+  name: string;
+  unit: string;
+  value: string;
+  justification: string;
+  source_ref: string;
+  applied_value_id: string | null;
+}
+
+export interface Report extends ReportSummary {
+  project_id: string;
+  sections: TorSection[];
+  sources: ReportSource[];
+  missing_information: string[];
+  indicator_suggestions: IndicatorSuggestion[];
+  review_comment: string;
+  submitted_at: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
+export const reportsApi = {
+  list: (orgId: string, projectId: string, executionId?: string) =>
+    request<ReportSummary[]>(
+      `${project(orgId, projectId)}/reports${executionId ? `?execution_id=${executionId}` : ""}`,
+    ),
+  get: (orgId: string, projectId: string, reportId: string) =>
+    request<Report>(`${project(orgId, projectId)}/reports/${reportId}`),
+  generate: (orgId: string, projectId: string, executionId: string) =>
+    request<Job>(`${project(orgId, projectId)}/executions/${executionId}/report/generate`, {
+      method: "POST",
+    }),
+  update: (
+    orgId: string,
+    projectId: string,
+    reportId: string,
+    body: { title: string; sections: TorSection[] },
+  ) => request<Report>(`${project(orgId, projectId)}/reports/${reportId}`, json("PUT", body)),
+  transition: (
+    orgId: string,
+    projectId: string,
+    reportId: string,
+    action: "submit" | "approve" | "return" | "reopen",
+    comment = "",
+  ) =>
+    request<Report>(
+      `${project(orgId, projectId)}/reports/${reportId}/${action}`,
+      action === "approve" || action === "return" ? json("POST", { comment }) : { method: "POST" },
+    ),
+  applySuggestion: (
+    orgId: string,
+    projectId: string,
+    reportId: string,
+    index: number,
+    value: string,
+  ) =>
+    request<Report>(
+      `${project(orgId, projectId)}/reports/${reportId}/suggestions/${index}/apply`,
+      json("POST", { value }),
+    ),
+  remove: (orgId: string, projectId: string, reportId: string) =>
+    request<void>(`${project(orgId, projectId)}/reports/${reportId}`, { method: "DELETE" }),
+  versions: (orgId: string, projectId: string, reportId: string) =>
+    request<TorVersion[]>(`${project(orgId, projectId)}/reports/${reportId}/versions`),
+  exportPath: (orgId: string, projectId: string, reportId: string, format: "docx" | "pdf") =>
+    `${project(orgId, projectId)}/reports/${reportId}/export.${format}`,
+};

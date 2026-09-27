@@ -84,7 +84,7 @@ afterEach(() => {
   tokenStore.set(null);
 });
 
-it("connecte l'utilisateur puis ouvre le cadre logique d'un projet", async () => {
+it("connecte l'utilisateur ouvre le tableau de bord d'un projet puis son cadre logique", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => Promise.resolve(respond(url))),
@@ -107,8 +107,15 @@ it("connecte l'utilisateur puis ouvre le cadre logique d'un projet", async () =>
   expect(router.state.location.pathname).toBe("/orgs/org-1");
 
   await user.click(await screen.findByText("Résilience des ménages"));
-  expect(await screen.findByText("Réduire la vulnérabilité")).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/orgs/org-1/projects/p1");
+  expect(screen.getByRole("button", { name: "Tableau de bord" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  expect(await screen.findByText(/Rien à afficher pour l'instant/)).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Cadre logique" }));
+  expect(await screen.findByText("Réduire la vulnérabilité")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Cadre logique" })).toHaveAttribute(
     "aria-current",
     "page",

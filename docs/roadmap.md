@@ -54,10 +54,10 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [ ] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution)
 
 ## Étape 6 : rapport narratif
-- 6.1 Génération traçable prévu/réalisé, informations manquantes signalées
-- 6.2 Édition, validation, export
-- 6.3 Mise à jour des indicateurs et de l'exécution budgétaire ; tableaux de bord
-- 6.4 Tests de bout en bout Playwright du parcours complet
+- [x] 6.1 Rédaction IA traçable prévu/réalisé : chaque fait renvoie à sa source (notes [S1], TdR, comptes rendus, photos [P1]) ; renvois inconnus signalés, manques listés ; participants et budget calculés
+- [x] 6.2 Édition, versions, circuit de validation, export Word et PDF avec les photos consenties
+- [x] 6.3 Valeurs d'indicateurs proposées depuis les sources, vérifiées puis enregistrées ; tableau de bord du projet (budget, activités, personnes atteintes, indicateurs, suivi par activité)
+- [ ] 6.4 Tests de bout en bout Playwright du parcours complet dans la CI
 
 ## Étape 7 : agrégation et redevabilité
 - 7.1 Rapports périodiques et bailleur

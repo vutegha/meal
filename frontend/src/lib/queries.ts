@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { aiApi, api, executionsApi, projectsApi, torApi } from "./api";
+import { aiApi, api, executionsApi, projectsApi, reportsApi, torApi } from "./api";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
 
@@ -91,4 +91,28 @@ export const executionQuery = (orgId: string, projectId: string, executionId: st
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "executions", executionId],
     queryFn: () => executionsApi.get(orgId, projectId, executionId),
+  });
+
+export const executionReportsQuery = (orgId: string, projectId: string, executionId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "reports", { executionId }],
+    queryFn: () => reportsApi.list(orgId, projectId, executionId),
+  });
+
+export const reportQuery = (orgId: string, projectId: string, reportId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "reports", reportId],
+    queryFn: () => reportsApi.get(orgId, projectId, reportId),
+  });
+
+export const reportVersionsQuery = (orgId: string, projectId: string, reportId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "reports", reportId, "versions"],
+    queryFn: () => reportsApi.versions(orgId, projectId, reportId),
+  });
+
+export const reportsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "reports"],
+    queryFn: () => reportsApi.list(orgId, projectId),
   });
