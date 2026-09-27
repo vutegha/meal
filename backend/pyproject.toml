@@ -44,7 +44,7 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]
