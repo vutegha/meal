@@ -8,6 +8,12 @@ from app.models.ai import (
     ProposalStatus,
     SourceDocument,
 )
+from app.models.execution import (
+    ActivityExecution,
+    Evidence,
+    EvidenceKind,
+    ExecutionStatus,
+)
 from app.models.organization import AuditLog, Membership, Organization, Role, User
 from app.models.project import (
     PARENT_LEVEL,
@@ -24,6 +30,10 @@ from app.models.project import (
 from app.models.tor import TermsOfReference, TorStatus, TorVersion
 
 __all__ = [
+    "ActivityExecution",
+    "Evidence",
+    "EvidenceKind",
+    "ExecutionStatus",
     "AiCall",
     "AiProposal",
     "DocumentPage",

@@ -130,6 +130,10 @@ class Expense(IdMixin, TimestampMixin, Base):
     spent_on: Mapped[date]
     reference: Mapped[str] = mapped_column(String(100), default="")
     description: Mapped[str] = mapped_column(Text, default="")
+    # Dépense réelle rattachée à une exécution d'activité (étape 5), sinon nulle.
+    execution_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("activity_executions.id", ondelete="SET NULL"), index=True
+    )
 
     budget_line: Mapped[BudgetLine] = relationship(back_populates="expenses")
 
