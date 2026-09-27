@@ -43,7 +43,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 4.3 Édition par section, versions, circuit de validation (soumission, approbation, renvoi commenté, réouverture)
 - [x] 4.4 Export Word (python-docx) et PDF (PyMuPDF, sans dépendance système)
 - [x] 4.5 Modèles de sections (titres, ordre, consignes transmises à l'IA) et de mise en page (en-tête, pied de page, couleur, numéros de page) propres à chaque organisation, pour les TdR et les rapports
-- [ ] 4.6 Éditeur riche (TipTap) à la place du Markdown simple
+- [x] 4.6 Éditeur riche (TipTap) des TdR et rapports : intertitres, gras, listes, tableaux ; contenu toujours enregistré en Markdown simple (mêmes exports), bascule vers le texte brut ; chargé à la demande
 
 ## Étape 5 : exécution et collecte
 - [x] 5.1 Exécution d'activité : dates, lieu et position GPS, participants désagrégés (sexe, âge, handicap), déroulement et écarts, dépenses réelles rattachées

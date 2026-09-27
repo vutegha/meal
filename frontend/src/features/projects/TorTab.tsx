@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Markdown } from "@/components/Markdown";
+import { LazyRichEditor as RichEditor } from "@/components/LazyRichEditor";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import {
@@ -385,16 +386,12 @@ function TorEditor({ orgId, projectId, tor }: { orgId: string; projectId: string
               </h3>
               {editable ? (
                 <>
-                  <textarea
-                    aria-label={section.title}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-[13px] leading-relaxed"
-                    rows={Math.min(18, Math.max(3, section.content.split("\n").length + 1))}
+                  <RichEditor
+                    label={section.title}
                     value={section.content}
-                    onChange={(e) =>
-                      setSections(
-                        sections.map((s, i) =>
-                          i === index ? { ...s, content: e.target.value } : s,
-                        ),
+                    onChange={(content) =>
+                      setSections((current) =>
+                        current.map((s, i) => (i === index ? { ...s, content } : s)),
                       )
                     }
                   />

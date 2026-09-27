@@ -59,11 +59,26 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
     .first()
     .click();
   await page.getByRole("button", { name: "✨ Lancer la rédaction" }).click();
-  await expect(page.getByLabel("Visibilité du bailleur")).toBeVisible();
+  // Éditeur riche : une phrase en gras ajoutée à la section du modèle
+  const visibility = page.getByRole("textbox", { name: "Visibilité du bailleur" });
+  await visibility.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page
+    .locator("div")
+    .filter({ has: visibility })
+    .filter({ has: page.getByRole("toolbar") })
+    .last()
+    .getByRole("button", { name: "Gras" })
+    .click();
+  await page.keyboard.type("Logo du bailleur sur tous les supports.");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(visibility.locator("strong")).toHaveText("Logo du bailleur sur tous les supports.");
   await page.getByRole("button", { name: "Soumettre pour validation" }).click();
   await page.getByRole("button", { name: "Approuver" }).first().click();
   await page.getByRole("button", { name: "Approuver" }).last().click();
   await expect(page.getByText("Approuvé", { exact: true })).toBeVisible();
+  await expect(page.locator("strong", { hasText: "Logo du bailleur" })).toBeVisible();
   const tor = page.waitForEvent("download");
   await page.getByRole("button", { name: "⬇ PDF" }).last().click();
   expect((await tor).suggestedFilename()).toMatch(/\.pdf$/);
