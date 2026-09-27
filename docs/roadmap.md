@@ -42,7 +42,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 4.2 Rédaction IA d'un TdR par activité : cadre logique, indicateurs, passages des documents, consignes ; budget calculé depuis le budget du projet
 - [x] 4.3 Édition par section, versions, circuit de validation (soumission, approbation, renvoi commenté, réouverture)
 - [x] 4.4 Export Word (python-docx) et PDF (PyMuPDF, sans dépendance système)
-- [ ] 4.5 Modèles de sections et de mise en page propres à chaque organisation
+- [x] 4.5 Modèles de sections (titres, ordre, consignes transmises à l'IA) et de mise en page (en-tête, pied de page, couleur, numéros de page) propres à chaque organisation, pour les TdR et les rapports
 - [ ] 4.6 Éditeur riche (TipTap) à la place du Markdown simple
 
 ## Étape 5 : exécution et collecte
@@ -65,4 +65,4 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 7.3 Registre des leçons apprises : recherche, étiquettes, lien avec l'activité et le rapport d'origine ; API de consultation à l'échelle de l'organisation
 - [x] 7.4 Écran des leçons de toute l'organisation : recherche, étiquettes, filtre par projet, lien vers le projet
 - [x] 7.5 Classification IA des retours (modèle léger, seul le texte est envoyé ; catégorie sensible forcée confidentielle et urgente) et saisie hors ligne des retours par la file d'envoi
-- [ ] 7.6 Modèles de rapport propres à chaque bailleur
+- [x] 7.6 Modèles propres à chaque bailleur, choisis selon le bailleur du projet, ou au cas par cas pour un rapport périodique

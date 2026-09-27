@@ -12,6 +12,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { MembersPage } from "@/features/orgs/MembersPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
+import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
@@ -90,6 +91,12 @@ const lessonsRoute = createRoute({
   component: OrgLessonsPage,
 });
 
+const templatesRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/templates",
+  component: TemplatesPage,
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/projects/$projectId",
@@ -113,7 +120,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
-  orgRoute.addChildren([orgIndexRoute, lessonsRoute, membersRoute, projectRoute]),
+  orgRoute.addChildren([orgIndexRoute, lessonsRoute, templatesRoute, membersRoute, projectRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

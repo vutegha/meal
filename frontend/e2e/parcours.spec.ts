@@ -21,6 +21,18 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page.getByLabel("Mot de passe").fill("motdepasse-e2e");
   await page.getByRole("button", { name: "Créer mon compte" }).click();
 
+  // Modèle de TdR de l'organisation : une section de plus et un en-tête sur les exports
+  await page.getByRole("link", { name: "Modèles" }).click();
+  await page.getByRole("button", { name: "+ Nouveau modèle" }).first().click();
+  await page.getByLabel("Nom du modèle").fill("TdR maison");
+  await page.getByLabel("Modèle par défaut").check();
+  await page.getByRole("button", { name: "+ Ajouter une section" }).click();
+  await page.getByLabel("Titre de la section").last().fill("Visibilité du bailleur");
+  await page.getByLabel("En-tête").fill("ONG de test · Document interne");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(page.getByText("TdR maison")).toBeVisible();
+  await page.getByRole("link", { name: "Projets" }).click();
+
   // Projet
   await page.getByRole("button", { name: "+ Nouveau projet" }).click();
   await page.getByLabel("Code").fill("E2E-01");
@@ -47,6 +59,7 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
     .first()
     .click();
   await page.getByRole("button", { name: "✨ Lancer la rédaction" }).click();
+  await expect(page.getByLabel("Visibilité du bailleur")).toBeVisible();
   await page.getByRole("button", { name: "Soumettre pour validation" }).click();
   await page.getByRole("button", { name: "Approuver" }).first().click();
   await page.getByRole("button", { name: "Approuver" }).last().click();

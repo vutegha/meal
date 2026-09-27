@@ -845,7 +845,13 @@ export const periodicApi = {
   create: (
     orgId: string,
     projectId: string,
-    body: { kind: PeriodicKind; period_start: string; period_end: string; instructions: string },
+    body: {
+      kind: PeriodicKind;
+      period_start: string;
+      period_end: string;
+      instructions: string;
+      template_id?: string | null;
+    },
   ) => request<Periodic>(periodicPath(orgId, projectId), json("POST", body)),
   generate: (orgId: string, projectId: string, reportId: string) =>
     request<Job>(`${periodicPath(orgId, projectId, reportId)}/generate`, { method: "POST" }),
@@ -1041,4 +1047,53 @@ export const accountabilityApi = {
     request<Lesson>(`${project(orgId, projectId)}/lessons/${lessonId}`, json("PATCH", body)),
   deleteLesson: (orgId: string, projectId: string, lessonId: string) =>
     request<void>(`${project(orgId, projectId)}/lessons/${lessonId}`, { method: "DELETE" }),
+};
+
+// --- Modèles de documents ---------------------------------------------------------------
+
+export const TEMPLATE_KINDS = ["tor", "report", "periodic"] as const;
+export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+
+export interface TemplateSection {
+  key: string;
+  title: string;
+  guidance: string;
+}
+
+export interface TemplateLayout {
+  header: string;
+  footer: string;
+  color: string;
+}
+
+export interface DocumentTemplate {
+  id: string;
+  kind: TemplateKind;
+  name: string;
+  donor: string;
+  is_default: boolean;
+  sections: TemplateSection[];
+  layout: TemplateLayout;
+  created_at: string;
+}
+
+export type TemplateIn = Omit<DocumentTemplate, "id" | "created_at">;
+
+export interface BuiltinSection {
+  key: string;
+  title: string;
+  computed: boolean;
+}
+
+export type BuiltinTemplates = Record<TemplateKind, BuiltinSection[]>;
+
+export const templatesApi = {
+  list: (orgId: string) => request<DocumentTemplate[]>(`/orgs/${orgId}/templates`),
+  builtin: (orgId: string) => request<BuiltinTemplates>(`/orgs/${orgId}/templates/builtin`),
+  create: (orgId: string, body: TemplateIn) =>
+    request<DocumentTemplate>(`/orgs/${orgId}/templates`, json("POST", body)),
+  update: (orgId: string, id: string, body: Partial<TemplateIn>) =>
+    request<DocumentTemplate>(`/orgs/${orgId}/templates/${id}`, json("PATCH", body)),
+  remove: (orgId: string, id: string) =>
+    request<void>(`/orgs/${orgId}/templates/${id}`, { method: "DELETE" }),
 };

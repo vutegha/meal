@@ -8,6 +8,7 @@ import {
   periodicApi,
   projectsApi,
   reportsApi,
+  templatesApi,
   torApi,
 } from "./api";
 
@@ -156,4 +157,17 @@ export const aiUsageQuery = (orgId: string) =>
   queryOptions({
     queryKey: ["orgs", orgId, "ai-usage"],
     queryFn: () => aiApi.usage(orgId),
+  });
+
+export const templatesQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "templates"],
+    queryFn: () => templatesApi.list(orgId),
+  });
+
+export const builtinTemplatesQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "templates", "builtin"],
+    queryFn: () => templatesApi.builtin(orgId),
+    staleTime: Infinity,
   });

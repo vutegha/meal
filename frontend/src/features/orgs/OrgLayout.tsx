@@ -18,7 +18,7 @@ export function OrgLayout() {
   const online = useOnline();
   // « Projets » reste actif sur la liste et sur chaque projet.
   const path = useRouterState({ select: (state) => state.location.pathname });
-  const onProjects = !/\/(lessons|members)\/?$/.test(path);
+  const onProjects = !/\/(lessons|templates|members)\/?$/.test(path);
   useOutboxSync();
   const { data: me } = useSuspenseQuery(meQuery);
   const [creating, setCreating] = useState(false);
@@ -92,6 +92,13 @@ export function OrgLayout() {
               className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
             >
               {t("nav.lessons")}
+            </Link>
+            <Link
+              to="/orgs/$orgId/templates"
+              params={{ orgId }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.templates")}
             </Link>
             <Link
               to="/orgs/$orgId/members"
