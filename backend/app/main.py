@@ -6,6 +6,7 @@ from app.api import (
     ai,
     auth,
     executions,
+    forms,
     organizations,
     periodic,
     projects,
@@ -42,6 +43,7 @@ api.include_router(reports.router)
 api.include_router(accountability.router)
 api.include_router(periodic.router)
 api.include_router(templates.router)
+api.include_router(forms.router)
 app.include_router(api)
 
 

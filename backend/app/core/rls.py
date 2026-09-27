@@ -34,6 +34,8 @@ TENANT_TABLES = (
     "report_versions",
     "lessons_learned",
     "document_templates",
+    "collection_forms",
+    "form_submissions",
 )
 
 POLICY = (
