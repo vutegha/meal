@@ -1,3 +1,31 @@
 from app.models.organization import AuditLog, Membership, Organization, Role, User
+from app.models.project import (
+    PARENT_LEVEL,
+    Aggregation,
+    BudgetLine,
+    Expense,
+    Indicator,
+    IndicatorValue,
+    LogframeNode,
+    NodeLevel,
+    Project,
+    ProjectStatus,
+)
 
-__all__ = ["AuditLog", "Membership", "Organization", "Role", "User"]
+__all__ = [
+    "PARENT_LEVEL",
+    "Aggregation",
+    "AuditLog",
+    "BudgetLine",
+    "Expense",
+    "Indicator",
+    "IndicatorValue",
+    "LogframeNode",
+    "Membership",
+    "NodeLevel",
+    "Organization",
+    "Project",
+    "ProjectStatus",
+    "Role",
+    "User",
+]

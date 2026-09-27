@@ -17,7 +17,8 @@ from app.main import app
 async def database() -> AsyncIterator[None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.execute(text("DROP TYPE IF EXISTS role"))
+        for enum_type in ("role", "project_status", "node_level", "aggregation"):
+            await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
