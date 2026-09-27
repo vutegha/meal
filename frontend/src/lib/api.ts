@@ -96,6 +96,26 @@ async function errorMessage(response: Response): Promise<string> {
   return response.statusText;
 }
 
+/** fetch authentifié pour le client généré : jeton, puis nouvel essai après rafraîchissement. */
+export async function authFetch(input: Request): Promise<Response> {
+  const retry = input.clone();
+  const withToken = (req: Request, token?: string) => {
+    if (token) req.headers.set("Authorization", `Bearer ${token}`);
+    return fetch(req);
+  };
+  let response = await withToken(input, tokenStore.get()?.access_token);
+  if (response.status === 401 && tokenStore.get()) {
+    const fresh = await refreshTokens();
+    if (fresh) response = await withToken(retry, fresh.access_token);
+  }
+  return response;
+}
+
+export function detailMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | undefined)?.detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response = await send(path, init, tokenStore.get()?.access_token);
   if (response.status === 401 && tokenStore.get()) {
@@ -1231,34 +1251,5 @@ export interface FormSummary {
   fields: FieldSummary[];
 }
 
-const formsPath = (orgId: string, projectId: string, formId?: string) =>
-  `${project(orgId, projectId)}/forms${formId ? `/${formId}` : ""}`;
-
-export const formsApi = {
-  list: (orgId: string, projectId: string) =>
-    request<CollectionForm[]>(formsPath(orgId, projectId)),
-  get: (orgId: string, projectId: string, formId: string) =>
-    request<CollectionForm>(formsPath(orgId, projectId, formId)),
-  create: (orgId: string, projectId: string, body: FormInput) =>
-    request<CollectionForm>(formsPath(orgId, projectId), json("POST", body)),
-  update: (
-    orgId: string,
-    projectId: string,
-    formId: string,
-    body: Partial<FormInput> & { status?: FormStatus },
-  ) => request<CollectionForm>(formsPath(orgId, projectId, formId), json("PATCH", body)),
-  remove: (orgId: string, projectId: string, formId: string) =>
-    request<void>(formsPath(orgId, projectId, formId), { method: "DELETE" }),
-  submit: (orgId: string, projectId: string, formId: string, body: SubmissionInput) =>
-    request<Submission>(`${formsPath(orgId, projectId, formId)}/submissions`, json("POST", body)),
-  submissions: (orgId: string, projectId: string, formId: string) =>
-    request<Submission[]>(`${formsPath(orgId, projectId, formId)}/submissions`),
-  removeSubmission: (orgId: string, projectId: string, formId: string, id: string) =>
-    request<void>(`${formsPath(orgId, projectId, formId)}/submissions/${id}`, {
-      method: "DELETE",
-    }),
-  summary: (orgId: string, projectId: string, formId: string) =>
-    request<FormSummary>(`${formsPath(orgId, projectId, formId)}/summary`),
-  exportPath: (orgId: string, projectId: string, formId: string) =>
-    `${formsPath(orgId, projectId, formId)}/export.xlsx`,
-};
+export const formExportPath = (orgId: string, projectId: string, formId: string) =>
+  `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;

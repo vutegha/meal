@@ -38,6 +38,10 @@ jobs:
           uv run alembic check
           uv run alembic downgrade base
       - run: uv run pytest -q
+      - name: Schéma OpenAPI du client généré à jour
+        run: |
+          uv run python -m app.scripts.openapi ../frontend/openapi.json
+          git diff --exit-code ../frontend/openapi.json
 
   frontend:
     runs-on: ubuntu-latest
@@ -52,6 +56,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Types générés depuis l'OpenAPI à jour
+        run: |
+          npm run api:generate
+          git diff --exit-code src/lib/schema.gen.ts
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck

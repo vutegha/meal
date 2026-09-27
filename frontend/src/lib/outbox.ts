@@ -8,9 +8,9 @@ import {
   type ExecutionInput,
   executionsApi,
   type FeedbackIn,
-  formsApi,
   type SubmissionInput,
 } from "./api";
+import { formsApi } from "./formsApi";
 
 /**
  * File d'envoi hors ligne. Toute saisie terrain y est d'abord enregistrée, puis envoyée dès que

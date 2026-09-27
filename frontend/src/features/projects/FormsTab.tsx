@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
+import { Badge, Button, Card, ErrorText, Field, Select } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import {
   type CollectionForm,
@@ -14,7 +14,6 @@ import {
   type FormField,
   type FormInput,
   type FormStatus,
-  formsApi,
 } from "@/lib/api";
 import { flattenTree } from "@/lib/format";
 import {
@@ -39,20 +38,13 @@ import { move } from "@/lib/templates";
 import { useOnline } from "@/lib/useOnline";
 
 import { useInvalidateProject } from "./useInvalidateProject";
+import { formsApi } from "@/lib/formsApi";
 
-const statusStyles: Record<FormStatus, string> = {
-  draft: "bg-slate-100 text-slate-700",
-  published: "bg-emerald-100 text-emerald-800",
-  closed: "bg-amber-100 text-amber-800",
-};
+const statusTones = { draft: "neutral", published: "success", closed: "warning" } as const;
 
 function FormStatusBadge({ status }: { status: FormStatus }) {
   const { t } = useTranslation();
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[status]}`}>
-      {t(`forms.status.${status}`)}
-    </span>
-  );
+  return <Badge tone={statusTones[status]}>{t(`forms.status.${status}`)}</Badge>;
 }
 
 function useActivities(orgId: string, projectId: string) {
