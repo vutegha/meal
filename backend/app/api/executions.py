@@ -5,6 +5,7 @@ même saisie (après une coupure réseau) renvoie l'élément existant au lieu d
 """
 
 import asyncio
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -40,7 +41,7 @@ from app.schemas.execution import (
     Participants,
 )
 from app.services import projects as svc
-from app.services.evidence import UnsupportedFile, process, render_thumbnail
+from app.services.evidence import UnsupportedFile, media_type, process, render_thumbnail
 
 router = APIRouter(prefix="/orgs/{org_id}/projects/{project_id}", tags=["exécution"])
 
@@ -299,6 +300,11 @@ async def upload_evidence(
     caption: Annotated[str, Form(max_length=2000)] = "",
     consent_given: Annotated[bool, Form()] = False,
     client_uuid: Annotated[UUID | None, Form()] = None,
+    # Date et position lues sur le téléphone : la photo compressée avant envoi a perdu son EXIF,
+    # et les vidéos n'en ont pas. Celles du fichier priment.
+    taken_at: Annotated[datetime | None, Form()] = None,
+    latitude: Annotated[Decimal | None, Form(ge=-90, le=90)] = None,
+    longitude: Annotated[Decimal | None, Form(ge=-180, le=180)] = None,
 ) -> EvidenceOut:
     project = await svc.get_project(session, org_id, project_id)
     execution = await _get_execution(session, project, execution_id)
@@ -312,14 +318,16 @@ async def upload_evidence(
             response.status_code = status.HTTP_200_OK
             return evidence_out(existing)
 
-    limit = get_settings().max_upload_mb * 1024 * 1024
-    data = await file.read(limit + 1)
-    if len(data) > limit:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            f"Fichier trop volumineux (maximum {get_settings().max_upload_mb} Mo)",
-        )
     filename = file.filename or "piece"
+    settings = get_settings()
+    max_mb = (
+        settings.max_media_mb if media_type(filename, file.content_type) else settings.max_upload_mb
+    )
+    data = await file.read(max_mb * 1024 * 1024 + 1)
+    if len(data) > max_mb * 1024 * 1024:
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE, f"Fichier trop volumineux (maximum {max_mb} Mo)"
+        )
     try:
         processed = await process(data, filename, file.content_type)
     except UnsupportedFile as exc:
@@ -335,6 +343,8 @@ async def upload_evidence(
         await storage.put(thumbnail_key, processed.thumbnail, "image/webp")
     if processed.is_image and kind == EvidenceKind.OTHER:
         kind = EvidenceKind.PHOTO
+    if media := processed.extra.get("media"):
+        kind = EvidenceKind(media)
     evidence = Evidence(
         organization_id=org_id,
         project_id=project.id,
@@ -347,9 +357,9 @@ async def upload_evidence(
         storage_key=key,
         thumbnail_key=thumbnail_key,
         caption=caption,
-        taken_at=processed.taken_at,
-        latitude=processed.latitude,
-        longitude=processed.longitude,
+        taken_at=processed.taken_at or taken_at,
+        latitude=processed.latitude if processed.latitude is not None else latitude,
+        longitude=processed.longitude if processed.longitude is not None else longitude,
         consent_given=consent_given,
         text=processed.text,
         page_count=processed.page_count,

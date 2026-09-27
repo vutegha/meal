@@ -41,6 +41,53 @@ function AuthImage({ path, alt, version = "" }: { path: string; alt: string; ver
   return <img src={url} alt={alt} className="aspect-[4/3] w-full rounded object-cover" />;
 }
 
+/** Lecture d'un enregistrement audio ou vidéo, chargé à la demande (fichiers lourds). */
+function MediaPlayer({ path, evidence }: { path: string; evidence: Evidence }) {
+  const { t } = useTranslation();
+  const [load, setLoad] = useState(false);
+  const blob = useQuery({
+    queryKey: ["blob", path],
+    queryFn: () => fetchBlob(path),
+    staleTime: Infinity,
+    enabled: load,
+  });
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!blob.data) return;
+    const objectUrl = URL.createObjectURL(blob.data);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- l'URL dépend d'une ressource externe à libérer
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob.data]);
+  const video = evidence.kind === "video";
+  if (url)
+    return video ? (
+      <video src={url} controls className="aspect-[4/3] w-full rounded bg-black" />
+    ) : (
+      <div className="flex aspect-[4/3] w-full items-center rounded bg-slate-50 p-2">
+        <audio src={url} controls className="w-full" />
+      </div>
+    );
+  return (
+    <button
+      className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded bg-slate-50 p-2 text-center text-xs text-slate-600 hover:bg-slate-100"
+      onClick={() => setLoad(true)}
+      disabled={blob.isFetching}
+    >
+      <span className="text-2xl">{video ? "🎥" : "🎙"}</span>
+      <span>
+        {blob.isFetching
+          ? t("common.loading")
+          : video
+            ? t("execution.play")
+            : t("execution.listen")}
+      </span>
+      <span className="line-clamp-1 break-all text-slate-500">{evidence.filename}</span>
+      <ErrorText error={blob.error} />
+    </button>
+  );
+}
+
 function EvidenceItem({
   evidence,
   orgId,
@@ -89,6 +136,8 @@ function EvidenceItem({
             version={`${evidence.blur_faces}-${evidence.consent_given}`}
           />
         </button>
+      ) : evidence.kind === "audio" || evidence.kind === "video" ? (
+        <MediaPlayer path={path("file")} evidence={evidence} />
       ) : (
         <button
           className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded bg-slate-50 p-2 text-center text-xs text-slate-600 hover:bg-slate-100"
@@ -108,7 +157,7 @@ function EvidenceItem({
           ` · 📍 ${Number(evidence.latitude).toFixed(4)}, ${Number(evidence.longitude).toFixed(4)}`}
         {evidence.page_count > 0 && t("documents.pages", { count: evidence.page_count })}
       </p>
-      {evidence.kind === "photo" && (
+      {["photo", "audio", "video"].includes(evidence.kind) && (
         <p className={`text-xs ${evidence.consent_given ? "text-emerald-700" : "text-amber-700"}`}>
           {evidence.consent_given
             ? `✓ ${t("execution.consentOk")}`

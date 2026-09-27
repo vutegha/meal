@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
     max_upload_mb: int = 25
+    # Enregistrements audio et vidéo déposés comme preuves.
+    max_media_mb: int = 200
 
     # Tâches longues : exécutées dans la requête (développement, tests) ou par le worker ARQ
     jobs_inline: bool = False

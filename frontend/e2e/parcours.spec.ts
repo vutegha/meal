@@ -81,7 +81,7 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page
     .getByLabel("Déroulement et écarts constatés")
     .fill("Deux groupes au lieu d'un, faute de salle assez grande.");
-  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await page.getByRole("button", { name: /Formation AVEC de Kiwanja/ }).click();
 
   // Rapport narratif rédigé par l'IA, validé et exporté

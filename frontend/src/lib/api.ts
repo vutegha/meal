@@ -585,8 +585,17 @@ export interface Participants {
 }
 
 export type ExecutionStatus = "in_progress" | "completed";
-export type EvidenceKind = "report" | "minutes" | "attendance" | "photo" | "other";
-export const EVIDENCE_KINDS: EvidenceKind[] = ["photo", "report", "minutes", "attendance", "other"];
+export type EvidenceKind =
+  "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+export const EVIDENCE_KINDS: EvidenceKind[] = [
+  "photo",
+  "audio",
+  "video",
+  "report",
+  "minutes",
+  "attendance",
+  "other",
+];
 
 export interface ExecutionInput {
   activity_id: string;
@@ -652,6 +661,10 @@ export interface EvidenceInput {
   caption: string;
   consent_given: boolean;
   client_uuid: string;
+  // Lus sur le téléphone avant compression (la photo envoyée n'a plus d'EXIF).
+  taken_at?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const executionsApi = {
@@ -689,6 +702,11 @@ export const executionsApi = {
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
     body.append("client_uuid", meta.client_uuid);
+    if (meta.taken_at) body.append("taken_at", meta.taken_at);
+    if (meta.latitude !== undefined && meta.longitude !== undefined) {
+      body.append("latitude", String(meta.latitude));
+      body.append("longitude", String(meta.longitude));
+    }
     return request<Evidence>(`${project(orgId, projectId)}/executions/${executionId}/evidence`, {
       method: "POST",
       body,
@@ -698,7 +716,9 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Omit<EvidenceInput, "client_uuid">> & { blur_faces?: boolean },
+    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given">> & {
+      blur_faces?: boolean;
+    },
   ) =>
     request<Evidence>(`${project(orgId, projectId)}/evidence/${evidenceId}`, json("PATCH", body)),
   removeEvidence: (orgId: string, projectId: string, evidenceId: string) =>

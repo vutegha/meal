@@ -296,3 +296,47 @@ async def test_faces_are_blurred(client: AsyncClient) -> None:
     assert r.status_code == 200 and r.json()["blur_faces"] is True
     thumb = await client.get(f"{url}/thumbnail", headers=h)
     assert visible_faces(thumb.content) == []
+
+
+async def test_audio_video_and_phone_metadata(client: AsyncClient) -> None:
+    ctx, base, nodes, _ = await setup(client)
+    h = ctx["headers"]
+    execution = (
+        await client.post(
+            f"{base}/executions", headers=h, json=execution_body(nodes["activity"]["id"])
+        )
+    ).json()
+    url = f"{base}/executions/{execution['id']}/evidence"
+    phone = {"taken_at": "2026-03-15T09:00:00Z", "latitude": "-1.2", "longitude": "29.4"}
+
+    # Mémo vocal enregistré par le navigateur : type avec codec, date et position du téléphone.
+    r = await client.post(
+        url,
+        headers=h,
+        files={"file": ("temoignage.webm", b"\x1aE\xdf\xa3audio", "audio/webm;codecs=opus")},
+        data={"caption": "Témoignage d'une participante", **phone},
+    )
+    assert r.status_code == 201, r.text
+    audio = r.json()
+    assert audio["kind"] == "audio" and audio["content_type"] == "audio/webm"
+    assert audio["taken_at"].startswith("2026-03-15T09:00")
+    assert audio["latitude"] == "-1.200000" and not audio["has_thumbnail"]
+    played = await client.get(f"{base}/evidence/{audio['id']}/file", headers=h)
+    assert played.headers["content-type"] == "audio/webm"
+
+    r = await client.post(url, headers=h, files={"file": ("seance.MOV", b"\x00\x00moov", "")})
+    assert r.json()["kind"] == "video" and r.json()["content_type"] == "video/quicktime"
+
+    # Photo compressée sur le téléphone (sans EXIF) : on garde la date et la position envoyées.
+    plain = BytesIO()
+    Image.new("RGB", (64, 48), "blue").save(plain, "JPEG")
+    r = await client.post(
+        url, headers=h, files={"file": ("p.jpg", plain.getvalue(), "image/jpeg")}, data=phone
+    )
+    assert r.json()["kind"] == "photo" and r.json()["longitude"] == "29.400000"
+    # Photo avec EXIF : celles du fichier priment.
+    r = await client.post(
+        url, headers=h, files={"file": ("e.jpg", photo(), "image/jpeg")}, data=phone
+    )
+    assert r.json()["latitude"] == "-1.675000"
+    assert r.json()["taken_at"].startswith("2026-03-14T10:30")

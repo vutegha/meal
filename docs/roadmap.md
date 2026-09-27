@@ -50,7 +50,7 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 5.2 Dépôt de preuves : photos (date et GPS lus dans l'EXIF, vignette WebP sans métadonnées), consentement, comptes rendus et listes de présence dont le texte est extrait
 - [x] 5.3 PWA hors ligne (vite-plugin-pwa/Workbox, file d'envoi Dexie/IndexedDB), synchronisation idempotente par `client_uuid`
 - [x] 5.4 Floutage automatique des visages sur les vignettes (affichage et rapports), détecteurs OpenCV locaux ; original réservé aux responsables et à l'auteur ; visages montrés seulement avec consentement, refloutés si le consentement est retiré ; reprise des anciennes photos : `uv run python -m app.scripts.blur_faces`
-- [ ] 5.5 Audio et vidéo ; compression des photos côté téléphone avant envoi
+- [x] 5.5 Audio et vidéo (mémos vocaux, vidéos du téléphone, 200 Mo au plus : `MAX_MEDIA_MB`), écoutés et vus dans l'application, consentement demandé ; photos réduites (2048 px, JPEG) sur le téléphone avant la file d'envoi, date et position lues dans l'EXIF avant compression
 - [x] 5.6 Formulaires de collecte personnalisables (enquêtes, suivi post-distribution) : questions texte, nombre, choix unique ou multiple, oui/non, date ; publication et clôture ; saisie hors ligne par la file d'envoi ; synthèse par question, tableau des réponses, export Excel ; questions figées une fois des réponses reçues
 
 ## Étape 6 : rapport narratif
