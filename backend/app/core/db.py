@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
@@ -31,7 +32,12 @@ class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+# Montants (Decimal) et dates des colonnes JSONB : enregistrés en texte, relus par Pydantic.
+engine = create_async_engine(
+    get_settings().database_url,
+    pool_pre_ping=True,
+    json_serializer=lambda value: json.dumps(value, default=str),
+)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 

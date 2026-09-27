@@ -93,6 +93,8 @@ class ExecutionExpenseIn(BaseModel):
     spent_on: date
     reference: str = Field(default="", max_length=100)
     description: str = Field(default="", max_length=2000)
+    currency: str = Field(default="", pattern="^([A-Z]{3})?$")
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
 
 
 class ExecutionExpenseOut(BaseModel):
@@ -104,6 +106,9 @@ class ExecutionExpenseOut(BaseModel):
     spent_on: date
     reference: str
     description: str
+    currency: str = ""
+    original_amount: Decimal | None = None
+    exchange_rate: Decimal | None = None
 
 
 class ExecutionOut(BaseModel):

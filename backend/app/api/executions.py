@@ -515,7 +515,11 @@ async def add_execution_expense(
     )
     if line is None:
         raise svc.not_found("Ligne budgétaire")
-    expense = Expense(organization_id=org_id, execution_id=execution.id, **body.model_dump())
+    fields = body.model_dump(exclude={"amount", "currency", "exchange_rate"})
+    money = svc.convert_expense(
+        project, body.amount, body.currency, body.exchange_rate, body.spent_on
+    )
+    expense = Expense(organization_id=org_id, execution_id=execution.id, **fields, **money)
     session.add(expense)
     await session.flush()
     _log(

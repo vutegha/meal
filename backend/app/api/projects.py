@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import AnyMember, SessionDep, require_membership
+from app.documents.render import to_docx, to_pdf
 from app.models import (
     PARENT_LEVEL,
     BudgetLine,
@@ -24,6 +26,7 @@ from app.schemas.project import (
     BudgetLineOut,
     BudgetLineUpdate,
     BudgetSummary,
+    ExchangeRate,
     ExpenseIn,
     ExpenseOut,
     IndicatorIn,
@@ -42,7 +45,7 @@ from app.schemas.project import (
 )
 from app.services import audit
 from app.services import projects as svc
-from app.services.export import logframe_workbook
+from app.services.export import logframe_document, logframe_workbook
 
 router = APIRouter(prefix="/orgs/{org_id}/projects", tags=["projets"])
 
@@ -51,6 +54,10 @@ Planner = Annotated[
     Membership,
     Depends(require_membership(Role.ADMIN, Role.PROJECT_MANAGER, Role.MEAL_OFFICER)),
 ]
+DOCUMENT_TYPES = {
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "pdf": "application/pdf",
+}
 FinanceEditor = Annotated[
     Membership, Depends(require_membership(Role.ADMIN, Role.PROJECT_MANAGER, Role.FINANCE))
 ]
@@ -167,6 +174,24 @@ async def export_project(
         content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{project_id}/export.{fmt}", response_class=Response)
+async def export_project_document(
+    org_id: UUID, project_id: UUID, fmt: str, _: AnyMember, session: SessionDep
+) -> Response:
+    if fmt not in DOCUMENT_TYPES:
+        raise svc.not_found("Format")
+    project = await svc.get_project(session, org_id, project_id)
+    document = await logframe_document(session, project)
+    content = await asyncio.to_thread(to_docx if fmt == "docx" else to_pdf, document)
+    return Response(
+        content,
+        media_type=DOCUMENT_TYPES[fmt],
+        headers={
+            "Content-Disposition": f'attachment; filename="cadre-logique-{project.code}.{fmt}"'
+        },
     )
 
 
@@ -335,6 +360,40 @@ async def list_budget_lines(
     return [svc.budget_line_out(line, spent.get(line.id)) for line in lines]
 
 
+@router.put("/{project_id}/exchange-rates", response_model=ProjectOut)
+async def set_exchange_rates(
+    org_id: UUID,
+    project_id: UUID,
+    body: list[ExchangeRate],
+    member: FinanceEditor,
+    session: SessionDep,
+) -> Project:
+    project = await svc.get_project(session, org_id, project_id)
+    if any(r.currency == project.currency for r in body):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"{project.currency} est déjà la devise du projet",
+        )
+    keys = [(r.currency, r.valid_from) for r in body]
+    if len(set(keys)) != len(keys):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Deux taux pour la même devise et la même date"
+        )
+    rates = sorted(body, key=lambda r: (r.currency, r.valid_from))
+    project.exchange_rates = [r.model_dump(mode="json") for r in rates]
+    _log(
+        session,
+        member,
+        "budget.exchange_rates_updated",
+        "project",
+        project.id,
+        {"rates": project.exchange_rates},
+    )
+    await session.commit()
+    await session.refresh(project)
+    return project
+
+
 @router.get("/{project_id}/budget/summary", response_model=BudgetSummary)
 async def get_budget_summary(
     org_id: UUID, project_id: UUID, _: AnyMember, session: SessionDep
@@ -438,7 +497,11 @@ async def create_expense(
 ) -> Expense:
     project = await svc.get_project(session, org_id, project_id)
     line = await _get_line(session, project, line_id)
-    expense = Expense(organization_id=org_id, budget_line_id=line.id, **body.model_dump())
+    fields = body.model_dump(exclude={"amount", "currency", "exchange_rate"})
+    money = svc.convert_expense(
+        project, body.amount, body.currency, body.exchange_rate, body.spent_on
+    )
+    expense = Expense(organization_id=org_id, budget_line_id=line.id, **fields, **money)
     session.add(expense)
     await session.flush()
     _log(
@@ -447,7 +510,7 @@ async def create_expense(
         "budget.expense_recorded",
         "expense",
         expense.id,
-        {"line": line.label, "amount": str(body.amount)},
+        {"line": line.label, "amount": str(expense.amount)},
     )
     await session.commit()
     return expense

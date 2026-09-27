@@ -64,6 +64,8 @@ class Project(IdMixin, TimestampMixin, Base):
     )
     zones: Mapped[list[str]] = mapped_column(JSONB, default=list)
     target_groups: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    # Taux de change vers la devise du projet : [{currency, rate, valid_from}].
+    exchange_rates: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
 
 
 class LogframeNode(IdMixin, TimestampMixin, Base):
@@ -130,6 +132,10 @@ class Expense(IdMixin, TimestampMixin, Base):
     spent_on: Mapped[date]
     reference: Mapped[str] = mapped_column(String(100), default="")
     description: Mapped[str] = mapped_column(Text, default="")
+    # Dépense payée dans une autre devise : `amount` est converti dans la devise du projet.
+    currency: Mapped[str] = mapped_column(String(3), default="")
+    original_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    exchange_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     # Dépense réelle rattachée à une exécution d'activité (étape 5), sinon nulle.
     execution_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("activity_executions.id", ondelete="SET NULL"), index=True
@@ -163,6 +169,8 @@ class Indicator(IdMixin, TimestampMixin, Base):
     source_of_verification: Mapped[str] = mapped_column(Text, default="")
     collection_method: Mapped[str] = mapped_column(Text, default="")
     frequency: Mapped[str] = mapped_column(String(40), default="")
+    # Cibles intermédiaires : [{period_start, period_end, target}].
+    period_targets: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
     owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     values: Mapped[list["IndicatorValue"]] = relationship(
