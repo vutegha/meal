@@ -75,8 +75,8 @@ def disable_statements(table: str) -> list[str]:
     ]
 
 
-def all_statements() -> list[str]:
+def all_statements(tables: tuple[str, ...] = TENANT_TABLES) -> list[str]:
     statements = role_statements()
-    for table in TENANT_TABLES:
+    for table in tables:
         statements += enable_statements(table)
     return statements
