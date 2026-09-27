@@ -15,6 +15,7 @@ docker compose up --build
 ```
 
 L'application est servie sur https://localhost (API sous `/api/v1`, documentation sous `/api/docs`).
+Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed`.
 
 ## Développement local
 
@@ -25,6 +26,7 @@ Prérequis : Python 3.11+ avec [uv](https://docs.astral.sh/uv/), Node 22, Postgr
 cd backend
 uv sync
 uv run alembic upgrade head
+uv run python -m app.scripts.seed           # données de démonstration (affiche le mot de passe)
 uv run uvicorn app.main:app --reload       # http://localhost:8000/api/docs
 
 # Worker

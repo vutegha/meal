@@ -13,17 +13,18 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 1.8 Frontend : connexion, inscription, tableau de bord, gestion des membres, i18n français
 - [x] 1.9 Docker Compose (Postgres + pgvector, Redis, MinIO, API, worker, Caddy)
 - [x] 1.10 CI GitHub Actions : lint, typage, tests, build
-- [ ] 1.11 Données de démonstration (reportées à l'étape 2, quand il y aura des projets)
+- [x] 1.11 Données de démonstration (livrées avec l'étape 2)
 
 ## Étape 2 : cadre logique manuel
-- 2.1 Projets (CRUD, statut, devise, zones, groupes cibles)
-- 2.2 Arbre du cadre logique (objectifs → résultats → activités → sous-activités)
-- 2.3 Lignes budgétaires, taux de change, prévu/engagé/dépensé
-- 2.4 Indicateurs, cibles, valeurs, calcul du taux d'atteinte
-- 2.5 Export XLSX/PDF du cadre logique
-- 2.6 Row Level Security PostgreSQL sur les tables métier
-- 2.7 Client API TypeScript généré depuis l'OpenAPI ; composants shadcn/ui
-- 2.8 Données de démonstration
+- [x] 2.1 Projets (CRUD, statut, devise, zones, groupes cibles)
+- [x] 2.2 Arbre du cadre logique (objectifs → résultats → activités → sous-activités)
+- [x] 2.3 Lignes budgétaires, dépenses, synthèse prévu/dépensé par activité
+- [x] 2.4 Indicateurs, valeurs périodiques désagrégées, calcul du taux d'atteinte
+- [x] 2.5 Export XLSX du cadre logique, du budget et des indicateurs ; contrôles de cohérence
+- [x] 2.8 Données de démonstration (`uv run python -m app.scripts.seed`)
+- [ ] 2.6 Row Level Security PostgreSQL sur les tables métier (PR dédiée, avec un rôle applicatif non propriétaire)
+- [ ] 2.7 Client API TypeScript généré depuis l'OpenAPI ; composants shadcn/ui
+- [ ] 2.9 Cibles par période, multi-devises et taux de change, export PDF
 
 ## Étape 3 : import et extraction IA
 - 3.1 Upload vers S3, extraction du texte (PyMuPDF, python-docx, openpyxl, OCR)

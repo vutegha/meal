@@ -24,14 +24,55 @@ const me = {
   ],
 };
 
+const project = {
+  id: "p1",
+  code: "RES-01",
+  title: "Résilience des ménages",
+  description: "",
+  donor: "UE",
+  start_date: null,
+  end_date: null,
+  currency: "USD",
+  language: "fr",
+  status: "active",
+  zones: [],
+  target_groups: [],
+  created_at: "2026-09-27T10:00:00Z",
+};
+
+const logframe = [
+  {
+    id: "n1",
+    parent_id: null,
+    level: "goal",
+    code: "OG",
+    title: "Réduire la vulnérabilité",
+    description: "",
+    assumptions: "",
+    position: 0,
+    children: [],
+  },
+];
+
+const routes: [RegExp, unknown][] = [
+  [/\/auth\/login$/, { access_token: "a", refresh_token: "r" }],
+  [/\/auth\/me$/, me],
+  [/\/projects$/, [project]],
+  [/\/projects\/p1$/, project],
+  [/\/logframe$/, logframe],
+  [
+    /\/logframe\/check$/,
+    {
+      nodes_without_indicator: logframe,
+      indicators_without_source: [],
+      activities_without_budget: [],
+    },
+  ],
+  [/\/indicators$/, []],
+];
+
 function respond(url: string): Response {
-  const body = url.endsWith("/auth/login")
-    ? { access_token: "a", refresh_token: "r" }
-    : url.endsWith("/auth/me")
-      ? me
-      : url.endsWith("/members")
-        ? [{ id: "m1", role: "admin", user: me, created_at: "2026-09-27T10:00:00Z" }]
-        : [];
+  const body = routes.find(([pattern]) => pattern.test(url))?.[1] ?? [];
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { "Content-Type": "application/json" },
@@ -43,7 +84,7 @@ afterEach(() => {
   tokenStore.set(null);
 });
 
-it("redirige vers la connexion puis ouvre le tableau de bord de l'organisation", async () => {
+it("connecte l'utilisateur puis ouvre le cadre logique d'un projet", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => Promise.resolve(respond(url))),
@@ -62,10 +103,15 @@ it("redirige vers la connexion puis ouvre le tableau de bord de l'organisation",
   await user.type(screen.getByLabelText("Mot de passe"), "motdepasse1");
   await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
-  expect(
-    await screen.findByRole("heading", { name: "Bienvenue dans Solidarité Kivu" }),
-  ).toBeInTheDocument();
-  expect(screen.getByText("Votre rôle : Administrateur")).toBeInTheDocument();
-  expect(await screen.findByText("Membres")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Projets" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/orgs/org-1");
+
+  await user.click(await screen.findByText("Résilience des ménages"));
+  expect(await screen.findByText("Réduire la vulnérabilité")).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/orgs/org-1/projects/p1");
+  expect(screen.getByRole("button", { name: "Cadre logique" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  expect(await screen.findByText("⚠ Sans indicateur")).toBeInTheDocument();
 });

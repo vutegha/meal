@@ -53,7 +53,15 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 
 ## Rôles
 
-`admin`, `project_manager`, `meal_officer`, `field_agent`, `finance`, `viewer`. Les droits fins par module seront définis au fil des étapes ; à l'étape 1 seul `admin` gère l'organisation et ses membres.
+`admin`, `project_manager`, `meal_officer`, `field_agent`, `finance`, `viewer`. Tous les membres lisent les projets. Ensuite :
+
+| Action | Rôles |
+|---|---|
+| Gérer l'organisation et ses membres | admin |
+| Créer, modifier, supprimer un projet | admin, project_manager |
+| Modifier le cadre logique et les indicateurs | admin, project_manager, meal_officer |
+| Modifier le budget et saisir les dépenses | admin, project_manager, finance |
+| Saisir des valeurs d'indicateurs | admin, project_manager, meal_officer, field_agent |
 
 ## Journal d'audit
 
@@ -63,8 +71,8 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 
 | Étape | Contenu | État |
 |---|---|---|
-| 1 | Fondations : monorepo, Compose, auth, organisations, rôles, audit, CI | **en cours (cette PR)** |
-| 2 | Cadre logique manuel, budget, indicateurs | à faire |
+| 1 | Fondations : monorepo, Compose, auth, organisations, rôles, audit, CI | fait |
+| 2 | Cadre logique manuel, budget, indicateurs | fait (sauf RLS, voir roadmap) |
 | 3 | Import de documents et extraction IA | à faire |
 | 4 | TdR | à faire |
 | 5 | Exécution, collecte PWA hors ligne | à faire |

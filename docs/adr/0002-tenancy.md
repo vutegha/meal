@@ -8,7 +8,7 @@ Plusieurs organisations partagent la même base. Une fuite de données entre org
 
 ## Décision
 1. **Dès l'étape 1**, isolation applicative : toutes les routes métier sont sous `/api/v1/orgs/{org_id}/…` et passent par la dépendance `require_membership`, qui renvoie 404 si l'utilisateur n'est pas membre. Chaque requête SQL métier filtre sur `organization_id`.
-2. **À l'étape 2**, avec les premières tables métier (projets, cadre logique…), ajout d'une défense en profondeur par Row Level Security PostgreSQL : l'API positionne `SET LOCAL app.current_org` dans chaque transaction et des politiques RLS filtrent sur `organization_id`.
+2. **Dans une PR dédiée après l'étape 2**, ajout d'une défense en profondeur par Row Level Security PostgreSQL. Toutes les tables métier portent déjà `organization_id`. Il faut un rôle applicatif non propriétaire des tables, car le propriétaire et les superutilisateurs contournent la RLS. L'API positionne `SET LOCAL app.current_org` dans chaque transaction et des politiques RLS filtrent sur `organization_id`.
 3. Des tests automatisés vérifient qu'un membre d'une organisation ne peut ni lire ni modifier les données d'une autre.
 
 ## Conséquences

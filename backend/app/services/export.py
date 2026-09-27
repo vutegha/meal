@@ -111,9 +111,7 @@ async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
         budget.append(
             [
                 line.donor_line_code,
-                codes.get(line.activity_id, "Coûts de support")
-                if line.activity_id
-                else "Coûts de support",
+                codes[line.activity_id] if line.activity_id else "Coûts de support",
                 line.label,
                 line.category,
                 float(line.quantity),

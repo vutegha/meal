@@ -10,8 +10,11 @@ import {
 
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
-import { OrgDashboard } from "@/features/orgs/OrgDashboard";
+import { MembersPage } from "@/features/orgs/MembersPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
+import { ProjectPage } from "@/features/projects/ProjectPage";
+import { ProjectsPage } from "@/features/projects/ProjectsPage";
+import { PROJECT_TABS, type ProjectTab } from "@/features/projects/tabs";
 import { meQuery } from "@/lib/queries";
 import { tokenStore } from "@/lib/tokens";
 
@@ -71,14 +74,29 @@ const orgRoute = createRoute({
 const orgIndexRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/",
-  component: OrgDashboard,
+  component: ProjectsPage,
+});
+
+const membersRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/members",
+  component: MembersPage,
+});
+
+const projectRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/projects/$projectId",
+  validateSearch: (search: Record<string, unknown>): { tab: ProjectTab } => ({
+    tab: PROJECT_TABS.includes(search.tab as ProjectTab) ? (search.tab as ProjectTab) : "logframe",
+  }),
+  component: ProjectPage,
 });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
-  orgRoute.addChildren([orgIndexRoute]),
+  orgRoute.addChildren([orgIndexRoute, membersRoute, projectRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

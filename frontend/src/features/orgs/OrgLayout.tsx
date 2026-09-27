@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -58,6 +58,23 @@ export function OrgLayout() {
               </option>
             ))}
           </select>
+          <nav className="flex gap-1 text-sm">
+            <Link
+              to="/orgs/$orgId"
+              params={{ orgId }}
+              activeOptions={{ exact: false, includeSearch: false }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.projects")}
+            </Link>
+            <Link
+              to="/orgs/$orgId/members"
+              params={{ orgId }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.members")}
+            </Link>
+          </nav>
           <Button variant="ghost" onClick={() => setCreating((v) => !v)}>
             + {t("orgs.newOrganization")}
           </Button>

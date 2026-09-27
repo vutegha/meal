@@ -4,6 +4,13 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui";
 import { auditQuery } from "@/lib/queries";
 
+function detail(data: Record<string, unknown>): string | undefined {
+  const value = ["email", "code", "title", "label", "name", "indicator"]
+    .map((key) => data[key])
+    .find((v) => typeof v === "string" && v);
+  return value as string | undefined;
+}
+
 export function AuditPanel({ orgId }: { orgId: string }) {
   const { t, i18n } = useTranslation();
   const audit = useQuery(auditQuery(orgId));
@@ -24,9 +31,7 @@ export function AuditPanel({ orgId }: { orgId: string }) {
                 {format.format(new Date(entry.created_at))}
               </time>
               <span>{t(`audit.${entry.action}`, { defaultValue: entry.action })}</span>
-              {typeof entry.data.email === "string" && (
-                <span className="text-slate-500">{entry.data.email}</span>
-              )}
+              {detail(entry.data) && <span className="text-slate-500">{detail(entry.data)}</span>}
             </li>
           ))}
         </ul>
