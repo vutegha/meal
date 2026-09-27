@@ -38,10 +38,12 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [ ] 3.9 Suivi de l'usage IA dans l'interface d'administration (l'API `GET /orgs/{id}/ai/usage` existe)
 
 ## Étape 4 : TdR
-- 4.1 Modèles DOCX par organisation
-- 4.2 Génération IA d'un TdR par activité
-- 4.3 Éditeur TipTap, versions, circuit de validation
-- 4.4 Export DOCX (docxtpl) et PDF (WeasyPrint)
+- [x] 4.1 Modèle de sections des TdR (12 sections, dont redevabilité et protection)
+- [x] 4.2 Rédaction IA d'un TdR par activité : cadre logique, indicateurs, passages des documents, consignes ; budget calculé depuis le budget du projet
+- [x] 4.3 Édition par section, versions, circuit de validation (soumission, approbation, renvoi commenté, réouverture)
+- [x] 4.4 Export Word (python-docx) et PDF (PyMuPDF, sans dépendance système)
+- [ ] 4.5 Modèles de sections et de mise en page propres à chaque organisation
+- [ ] 4.6 Éditeur riche (TipTap) à la place du Markdown simple
 
 ## Étape 5 : exécution et collecte
 - 5.1 Exécution d'activité, participants désagrégés, dépenses réelles

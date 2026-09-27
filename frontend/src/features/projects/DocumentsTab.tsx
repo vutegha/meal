@@ -10,6 +10,7 @@ import { documentsQuery, proposalsQuery } from "@/lib/queries";
 
 import { ProposalReview } from "./ProposalReview";
 import { useInvalidateProject } from "./useInvalidateProject";
+import { useJob } from "./useJob";
 
 const ACCEPT = ".pdf,.docx,.xlsx,.txt,.md";
 
@@ -144,7 +145,6 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
   const input = useRef<HTMLInputElement>(null);
   const documents = useQuery(documentsQuery(orgId, projectId));
   const proposals = useQuery(proposalsQuery(orgId, projectId));
-  const [jobId, setJobId] = useState<string | null>(null);
 
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
@@ -158,30 +158,14 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
     if (files.length) upload.mutate(files);
   };
 
+  const job = useJob(orgId, () =>
+    queryClient.invalidateQueries({ queryKey: proposalsQuery(orgId, projectId).queryKey }),
+  );
   const extract = useMutation({
     mutationFn: () => aiApi.extract(orgId, projectId),
-    onSuccess: (job) => setJobId(job.id),
+    onSuccess: job.start,
   });
-  const job = useQuery({
-    queryKey: ["orgs", orgId, "jobs", jobId],
-    queryFn: async () => {
-      const result = await aiApi.job(orgId, jobId!);
-      if (result.status === "succeeded") {
-        await queryClient.invalidateQueries({
-          queryKey: proposalsQuery(orgId, projectId).queryKey,
-        });
-      }
-      return result;
-    },
-    enabled: jobId !== null,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === "succeeded" || status === "failed" ? false : 2000;
-    },
-  });
-  const jobStatus = job.data?.status;
-  const running =
-    extract.isPending || (jobId !== null && jobStatus !== "failed" && jobStatus !== "succeeded");
+  const running = extract.isPending || job.running;
 
   const pending = proposals.data?.find((p) => p.status === "pending");
   const history = proposals.data?.filter((p) => p.status !== "pending") ?? [];
@@ -251,7 +235,7 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
           </div>
         )}
         <ErrorText error={extract.error} />
-        {jobStatus === "failed" && <ErrorText error={job.data?.error} />}
+        <ErrorText error={job.error} />
         {pending ? (
           <ProposalReview
             key={pending.id}

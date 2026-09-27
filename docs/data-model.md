@@ -28,18 +28,19 @@ Toutes les clés primaires sont des UUID. Les horodatages sont en UTC (`timestam
 
 | Entité | Champs principaux |
 |---|---|
-| `source_documents` | id, project_id, filename, mime_type, storage_key, sha256, page_count, status |
-| `document_chunks` | id, document_id, page, position, text, embedding (`vector`) |
-| `ai_proposals` | id, project_id, kind (`logframe`, `budget`, `indicator`), payload (jsonb), citations (jsonb), status (`pending`, `accepted`, `edited`, `rejected`), reviewed_by, reviewed_at |
-| `ai_calls` | id, organization_id, purpose, model, input_tokens, output_tokens, cost, duration_ms, status, created_at |
-| `jobs` | id, organization_id, kind, status, progress, result (jsonb), error |
+| `source_documents` | id, project_id, filename, kind, storage_key, sha256 (unique par projet), size_bytes, page_count, text_chars, status (`uploaded`, `extracted`, `failed`), error |
+| `document_pages` | id, document_id, number, text, search (`tsvector` français calculé, index GIN) |
+| `ai_proposals` | id, project_id, job_id, kind (`logframe`), payload (jsonb : éléments proposés, citations, vérification), status (`pending`, `applied`, `rejected`), reviewed_by, reviewed_at |
+| `ai_calls` | id, organization_id, project_id, purpose, prompt_version, model, jetons (entrée, sortie, cache), cost_usd, duration_ms, status, error |
+| `jobs` | id, organization_id, project_id, kind, params (jsonb), status (`queued`, `running`, `succeeded`, `failed`), result (jsonb), error |
 
 ## TdR, exécution, rapports (étapes 4 à 6)
 
 | Entité | Champs principaux |
 |---|---|
-| `document_templates` | id, organization_id, kind (`tor`, `activity_report`, `periodic_report`), storage_key, structure (jsonb) |
-| `terms_of_reference` | id, activity_id, version, status (`draft`, `in_review`, `approved`), content (jsonb TipTap), generated_by_ai, approved_by, approved_at |
+| `terms_of_reference` | id, project_id, activity_id (unique), title, status (`draft`, `submitted`, `approved`), sections (jsonb : clé, titre, contenu Markdown), missing_information, version, review_comment, submitted_by/at, approved_by/at |
+| `tor_versions` | id, tor_id, version, title, sections, note, created_by |
+| `document_templates` (à venir) | id, organization_id, kind (`tor`, `activity_report`, `periodic_report`), structure (jsonb) |
 | `activity_executions` | id, activity_id, start_date, end_date, location, geo (jsonb), participants (jsonb désagrégé), notes, status |
 | `evidence_files` | id, execution_id, kind (`report`, `minutes`, `attendance`, `photo`, `audio`, `video`, `data`, `other`), storage_key, mime_type, exif (jsonb), consent_given, faces_blurred, caption, uploaded_by, client_uuid (idempotence hors ligne) |
 | `narrative_reports` | id, execution_id, version, status, content (jsonb), citations (jsonb), missing_info (jsonb), approved_by |

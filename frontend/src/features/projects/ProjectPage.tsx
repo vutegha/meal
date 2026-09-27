@@ -11,6 +11,7 @@ import { DocumentsTab } from "./DocumentsTab";
 import { IndicatorsTab } from "./IndicatorsTab";
 import { LogframeTab } from "./LogframeTab";
 import { StatusBadge } from "./StatusBadge";
+import { TorTab } from "./TorTab";
 import { PROJECT_TABS } from "./tabs";
 
 export function ProjectPage() {
@@ -87,6 +88,7 @@ export function ProjectPage() {
       {tab === "logframe" && <LogframeTab orgId={orgId} projectId={projectId} />}
       {tab === "budget" && <BudgetTab orgId={orgId} project={p} />}
       {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
+      {tab === "tor" && <TorTab orgId={orgId} project={p} />}
       {tab === "documents" && <DocumentsTab orgId={orgId} project={p} />}
     </>
   );

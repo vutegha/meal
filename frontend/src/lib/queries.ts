@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { aiApi, api, projectsApi } from "./api";
+import { aiApi, api, projectsApi, torApi } from "./api";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
 
@@ -61,4 +61,22 @@ export const proposalsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "proposals"],
     queryFn: () => aiApi.proposals(orgId, projectId),
+  });
+
+export const torsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "tors"],
+    queryFn: () => torApi.list(orgId, projectId),
+  });
+
+export const torQuery = (orgId: string, projectId: string, torId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "tors", torId],
+    queryFn: () => torApi.get(orgId, projectId, torId),
+  });
+
+export const torVersionsQuery = (orgId: string, projectId: string, torId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "tors", torId, "versions"],
+    queryFn: () => torApi.versions(orgId, projectId, torId),
   });

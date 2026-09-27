@@ -458,3 +458,78 @@ export const aiApi = {
       method: "POST",
     }),
 };
+
+// --- Termes de référence (étape 4) --------------------------------------------
+
+export type TorStatus = "draft" | "submitted" | "approved";
+
+export interface TorSection {
+  key: string;
+  title: string;
+  content: string;
+}
+
+export interface TorSummary {
+  id: string;
+  activity_id: string;
+  title: string;
+  status: TorStatus;
+  version: number;
+  updated_at: string;
+}
+
+export interface Tor extends TorSummary {
+  project_id: string;
+  sections: TorSection[];
+  missing_information: string[];
+  review_comment: string;
+  submitted_at: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
+export interface TorVersion {
+  id: string;
+  version: number;
+  title: string;
+  note: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export const torApi = {
+  list: (orgId: string, projectId: string) =>
+    request<TorSummary[]>(`${project(orgId, projectId)}/tors`),
+  get: (orgId: string, projectId: string, torId: string) =>
+    request<Tor>(`${project(orgId, projectId)}/tors/${torId}`),
+  create: (orgId: string, projectId: string, activityId: string) =>
+    request<Tor>(`${project(orgId, projectId)}/activities/${activityId}/tor`, { method: "POST" }),
+  generate: (orgId: string, projectId: string, activityId: string, instructions: string) =>
+    request<Job>(
+      `${project(orgId, projectId)}/activities/${activityId}/tor/generate`,
+      json("POST", { instructions }),
+    ),
+  update: (
+    orgId: string,
+    projectId: string,
+    torId: string,
+    body: { title: string; sections: TorSection[] },
+  ) => request<Tor>(`${project(orgId, projectId)}/tors/${torId}`, json("PUT", body)),
+  transition: (
+    orgId: string,
+    projectId: string,
+    torId: string,
+    action: "submit" | "approve" | "return" | "reopen",
+    comment = "",
+  ) =>
+    request<Tor>(
+      `${project(orgId, projectId)}/tors/${torId}/${action}`,
+      action === "approve" || action === "return" ? json("POST", { comment }) : { method: "POST" },
+    ),
+  remove: (orgId: string, projectId: string, torId: string) =>
+    request<void>(`${project(orgId, projectId)}/tors/${torId}`, { method: "DELETE" }),
+  versions: (orgId: string, projectId: string, torId: string) =>
+    request<TorVersion[]>(`${project(orgId, projectId)}/tors/${torId}/versions`),
+  exportPath: (orgId: string, projectId: string, torId: string, format: "docx" | "pdf") =>
+    `${project(orgId, projectId)}/tors/${torId}/export.${format}`,
+};
