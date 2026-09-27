@@ -40,7 +40,7 @@ export const en: Messages = {
     audit: "Audit log",
     noAudit: "No activity recorded.",
   },
-  nav: { projects: "Projects", members: "Members and audit" },
+  nav: { projects: "Projects", lessons: "Lessons learned", members: "Members and audit" },
   projects: {
     title: "Projects",
     empty: "No project yet.",
@@ -427,6 +427,13 @@ export const en: Messages = {
     confirmDelete: "Delete this lesson?",
     fromReport: "Add to lessons learned",
     fromReportTag: "from an activity report",
+    orgIntro:
+      "Lessons from every project in the organization, so the same mistakes are not repeated from one project to the next.",
+    allProjects: "All projects",
+    project: "Project",
+    openProject: "Open in project",
+    count_one: "{{count}} lesson",
+    count_other: "{{count}} lessons",
   },
   offline: { badge: "Offline" },
   audit: {

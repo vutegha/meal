@@ -74,6 +74,13 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   // Rapport narratif rédigé par l'IA, validé et exporté
   await page.getByRole("button", { name: /Rédiger le rapport avec l'IA/ }).click();
   await expect(page.getByText("Sources citées")).toBeVisible();
+  // Leçon tirée du rapport, retrouvée dans les leçons de toute l'organisation
+  await page.getByRole("button", { name: /Ajouter aux leçons apprises/ }).click();
+  await page.getByLabel("Leçon", { exact: true }).fill("Vérifier la taille des salles");
+  const lesson = page.locator("form").filter({ has: page.getByLabel("Étiquettes") });
+  await lesson.getByLabel("Étiquettes").fill("logistique");
+  await lesson.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(lesson).toBeHidden();
   await page.getByRole("button", { name: "Soumettre pour validation" }).click();
   await page.getByRole("button", { name: "Approuver" }).first().click();
   await page.getByRole("button", { name: "Approuver" }).last().click();
@@ -81,6 +88,10 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   const report = page.waitForEvent("download");
   await page.getByRole("button", { name: "⬇ PDF" }).click();
   expect((await report).suggestedFilename()).toMatch(/\.pdf$/);
+
+  await page.getByRole("link", { name: "Leçons apprises" }).click();
+  await expect(page.getByText("Vérifier la taille des salles")).toBeVisible();
+  await page.getByRole("link", { name: "E2E-01" }).click();
 
   // Tableau de bord : l'activité réalisée et les 36 personnes atteintes
   await page.getByRole("button", { name: "Tableau de bord" }).click();

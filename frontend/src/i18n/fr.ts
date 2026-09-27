@@ -39,7 +39,7 @@ export const fr = {
     audit: "Journal d'audit",
     noAudit: "Aucune activité enregistrée.",
   },
-  nav: { projects: "Projets", members: "Membres et audit" },
+  nav: { projects: "Projets", lessons: "Leçons apprises", members: "Membres et audit" },
   projects: {
     title: "Projets",
     empty: "Aucun projet pour l'instant.",
@@ -435,6 +435,13 @@ export const fr = {
     confirmDelete: "Supprimer cette leçon ?",
     fromReport: "Ajouter aux leçons apprises",
     fromReportTag: "issue d'un rapport d'activité",
+    orgIntro:
+      "Les leçons de tous les projets de l'organisation, pour ne pas répéter les mêmes erreurs d'un projet à l'autre.",
+    allProjects: "Tous les projets",
+    project: "Projet",
+    openProject: "Voir dans le projet",
+    count_one: "{{count}} leçon",
+    count_other: "{{count}} leçons",
   },
   offline: { badge: "Hors ligne" },
   audit: {

@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useDeferredValue, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,17 @@ import { permissions } from "@/lib/permissions";
 import { lessonsQuery, logframeQuery } from "@/lib/queries";
 
 import { useInvalidateProject } from "./useInvalidateProject";
+
+function useInvalidateLessons(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+  const invalidateProject = useInvalidateProject(orgId, projectId);
+  // Les leçons se consultent aussi à l'échelle de l'organisation.
+  return () =>
+    Promise.all([
+      invalidateProject(),
+      queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "lessons"] }),
+    ]);
+}
 
 export function LessonForm({
   orgId,
@@ -26,7 +37,7 @@ export function LessonForm({
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const invalidate = useInvalidateProject(orgId, projectId);
+  const invalidate = useInvalidateLessons(orgId, projectId);
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const activities = flattenTree(logframe.data ?? []).filter(
     (n) => n.level === "activity" || n.level === "sub_activity",
@@ -127,7 +138,7 @@ function LessonItem({
   const { t, i18n } = useTranslation();
   const { role } = useCurrentOrg();
   const canPlan = permissions.plan(role);
-  const invalidate = useInvalidateProject(orgId, projectId);
+  const invalidate = useInvalidateLessons(orgId, projectId);
   const [editing, setEditing] = useState(false);
   const remove = useMutation({
     mutationFn: () => accountabilityApi.deleteLesson(orgId, projectId, lesson.id),
