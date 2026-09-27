@@ -21,6 +21,7 @@ from app.models.project import (
     Project,
     ProjectStatus,
 )
+from app.models.tor import TermsOfReference, TorStatus, TorVersion
 
 __all__ = [
     "AiCall",
@@ -31,6 +32,9 @@ __all__ = [
     "JobStatus",
     "ProposalStatus",
     "SourceDocument",
+    "TermsOfReference",
+    "TorStatus",
+    "TorVersion",
     "PARENT_LEVEL",
     "Aggregation",
     "AuditLog",

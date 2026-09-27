@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ai, auth, organizations, projects
+from app.api import ai, auth, organizations, projects, tor
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -25,6 +25,7 @@ api.include_router(auth.router)
 api.include_router(organizations.router)
 api.include_router(projects.router)
 api.include_router(ai.router)
+api.include_router(tor.router)
 app.include_router(api)
 
 

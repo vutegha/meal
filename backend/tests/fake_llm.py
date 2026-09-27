@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.llm.client import LLMError, LLMResult
 from app.schemas.ai import LogframeExtraction
+from app.schemas.tor import TorDraft
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -148,6 +149,25 @@ EXTRACTION = LogframeExtraction.model_validate(
 )
 
 
+TOR_DRAFT = TorDraft.model_validate(
+    {
+        "title": "TdR : formation des membres des AVEC",
+        "sections": [
+            {"key": "contexte", "content": "Les ménages ciblés ont un revenu moyen de 38 USD."},
+            {
+                "key": "objectifs",
+                "content": "- Renforcer la gestion de l'épargne\n- Former 600 membres",
+            },
+            {"key": "budget", "content": "Ce texte doit être ignoré : le budget vient du projet."},
+            {"key": "lieu_calendrier", "content": "[À compléter : dates de la formation]"},
+        ],
+        "missing_information": ["Dates de la formation", "Lieu exact"],
+    }
+)
+
+FIXTURES: dict[type[BaseModel], BaseModel] = {LogframeExtraction: EXTRACTION, TorDraft: TOR_DRAFT}
+
+
 class FakeLLM:
     def __init__(self, error: str | None = None) -> None:
         self.error = error
@@ -167,7 +187,7 @@ class FakeLLM:
         if self.error:
             raise LLMError(self.error)
         return LLMResult(
-            output=output_type.model_validate(EXTRACTION.model_dump()),
+            output=output_type.model_validate(FIXTURES[output_type].model_dump()),
             model=model,
             input_tokens=12_000,
             output_tokens=3_000,

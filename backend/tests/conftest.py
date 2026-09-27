@@ -28,6 +28,7 @@ async def database() -> AsyncIterator[None]:
             "document_status",
             "job_status",
             "proposal_status",
+            "tor_status",
         ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.run_sync(Base.metadata.create_all)
