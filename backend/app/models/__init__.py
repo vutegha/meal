@@ -1,3 +1,13 @@
+from app.models.accountability import (
+    FeedbackCategory,
+    FeedbackChannel,
+    FeedbackEntry,
+    FeedbackStatus,
+    Lesson,
+    PeriodicKind,
+    PeriodicReport,
+    PeriodicReportVersion,
+)
 from app.models.ai import (
     AiCall,
     AiProposal,
@@ -31,6 +41,14 @@ from app.models.report import NarrativeReport, ReportStatus, ReportVersion
 from app.models.tor import TermsOfReference, TorStatus, TorVersion
 
 __all__ = [
+    "FeedbackCategory",
+    "FeedbackChannel",
+    "FeedbackEntry",
+    "FeedbackStatus",
+    "Lesson",
+    "PeriodicKind",
+    "PeriodicReport",
+    "PeriodicReportVersion",
     "NarrativeReport",
     "ReportStatus",
     "ReportVersion",

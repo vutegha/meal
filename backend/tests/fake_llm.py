@@ -3,6 +3,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.llm.client import LLMError, LLMResult
+from app.schemas.accountability import PeriodicDraft
 from app.schemas.ai import LogframeExtraction
 from app.schemas.report import ReportDraft
 from app.schemas.tor import TorDraft
@@ -189,7 +190,20 @@ REPORT_DRAFT = ReportDraft.model_validate(
     }
 )
 
+PERIODIC_DRAFT = PeriodicDraft.model_validate(
+    {
+        "title": "Rapport trimestriel T1 2026",
+        "sections": [
+            {"key": "resume", "content": "Trois AVEC formées ce trimestre [S1]."},
+            {"key": "redevabilite", "content": "Un retour reçu et traité [S2] [S7]."},
+            {"key": "budget", "content": "Ce texte doit être ignoré."},
+        ],
+        "missing_information": ["Évolution du contexte sécuritaire"],
+    }
+)
+
 FIXTURES: dict[type[BaseModel], BaseModel] = {
+    PeriodicDraft: PERIODIC_DRAFT,
     LogframeExtraction: EXTRACTION,
     TorDraft: TOR_DRAFT,
     ReportDraft: REPORT_DRAFT,

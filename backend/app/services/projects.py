@@ -15,6 +15,7 @@ from app.models import (
     BudgetLine,
     Expense,
     Indicator,
+    IndicatorValue,
     LogframeNode,
     NodeLevel,
     Project,
@@ -156,26 +157,31 @@ async def budget_summary(session: AsyncSession, project: Project) -> BudgetSumma
 # --- Indicateurs -----------------------------------------------------------
 
 
-def indicator_out(indicator: Indicator) -> IndicatorOut:
-    """Calcule la valeur atteinte à partir des valeurs totales (sans désagrégation).
+def achievement(
+    indicator: Indicator, values: Sequence[IndicatorValue]
+) -> tuple[Decimal | None, float | None]:
+    """Valeur atteinte et taux d'atteinte à partir des valeurs totales (sans désagrégation).
 
     - agrégation `sum` : somme des valeurs, taux = atteint / cible ;
     - agrégation `latest` : dernière valeur, taux = (atteint - référence) / (cible - référence).
     """
-    totals = [v for v in indicator.values if not v.disaggregation]
-    achieved: Decimal | None = None
-    achievement: float | None = None
-    if totals:
-        if indicator.aggregation == Aggregation.SUM:
-            achieved = sum((v.value for v in totals), Decimal(0))
-            achievement = rate(achieved, indicator.target) if indicator.target else None
-        else:
-            achieved = max(totals, key=lambda v: (v.period_end, v.created_at)).value
-            if indicator.target is not None:
-                base = indicator.baseline or Decimal(0)
-                achievement = rate(achieved - base, indicator.target - base)
+    totals = [v for v in values if not v.disaggregation]
+    if not totals:
+        return None, None
+    if indicator.aggregation == Aggregation.SUM:
+        achieved = sum((v.value for v in totals), Decimal(0))
+        return achieved, rate(achieved, indicator.target) if indicator.target else None
+    achieved = max(totals, key=lambda v: (v.period_end, v.created_at)).value
+    if indicator.target is None:
+        return achieved, None
+    base = indicator.baseline or Decimal(0)
+    return achieved, rate(achieved - base, indicator.target - base)
+
+
+def indicator_out(indicator: Indicator) -> IndicatorOut:
+    achieved, achievement_rate = achievement(indicator, indicator.values)
     return IndicatorOut.model_validate(indicator).model_copy(
-        update={"achieved": achieved, "achievement_rate": achievement}
+        update={"achieved": achieved, "achievement_rate": achievement_rate}
     )
 
 
