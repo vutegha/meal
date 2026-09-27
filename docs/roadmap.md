@@ -64,5 +64,5 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 7.2 Registre des plaintes et retours : référence, canal, type, délai de réponse (14 jours, 3 pour les cas sensibles), attribution, réponse, statistiques ; cas sensibles (fraude, exploitation et abus sexuels, sécurité) visibles des seuls responsables et personnes concernées ; contact masqué
 - [x] 7.3 Registre des leçons apprises : recherche, étiquettes, lien avec l'activité et le rapport d'origine ; API de consultation à l'échelle de l'organisation
 - [x] 7.4 Écran des leçons de toute l'organisation : recherche, étiquettes, filtre par projet, lien vers le projet
-- [ ] 7.5 Classification IA des retours (modèle léger) et saisie hors ligne des retours
+- [x] 7.5 Classification IA des retours (modèle léger, seul le texte est envoyé ; catégorie sensible forcée confidentielle et urgente) et saisie hors ligne des retours par la file d'envoi
 - [ ] 7.6 Modèles de rapport propres à chaque bailleur

@@ -93,6 +93,27 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await expect(page.getByText("Vérifier la taille des salles")).toBeVisible();
   await page.getByRole("link", { name: "E2E-01" }).click();
 
+  // Plaintes et retours : classement proposé par l'IA, puis saisie sans réseau
+  await page.getByRole("button", { name: "Plaintes et retours", exact: true }).click();
+  await page.getByRole("button", { name: "+ Enregistrer un retour" }).click();
+  await page
+    .getByLabel("Ce qui a été dit")
+    .fill("Le relais demande de l'argent pour inscrire les familles sur la liste.");
+  await page.getByRole("button", { name: /Suggérer le type avec l'IA/ }).click();
+  await expect(page.getByLabel("Type")).toHaveValue("fraud");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(page.getByText("Retour enregistré.")).toBeVisible();
+
+  await page.context().setOffline(true);
+  await page.getByRole("button", { name: "+ Enregistrer un retour" }).click();
+  await page.getByLabel("Ce qui a été dit").fill("Les séances commencent trop tard.");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(page.getByText("1 retour en attente d'envoi.")).toBeVisible();
+  await page.context().setOffline(false);
+  await page.evaluate("window.dispatchEvent(new Event('online'))");
+  await expect(page.getByText("1 retour en attente d'envoi.")).toBeHidden();
+  await expect(page.getByText("Les séances commencent trop tard.")).toBeVisible();
+
   // Tableau de bord : l'activité réalisée et les 36 personnes atteintes
   await page.getByRole("button", { name: "Tableau de bord" }).click();
   await expect(page.getByText("Suivi par activité")).toBeVisible();

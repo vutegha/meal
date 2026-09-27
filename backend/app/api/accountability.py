@@ -9,6 +9,9 @@ from sqlalchemy import Select, func, or_, select
 
 from app.api.deps import AnyMember, SessionDep
 from app.api.projects import Collector, Planner, ProjectAdmin, _flush, _log
+from app.core.config import get_settings
+from app.llm.client import LLMError
+from app.llm.prompts import feedback_classification as classify_prompt
 from app.models import (
     FeedbackCategory,
     FeedbackEntry,
@@ -19,9 +22,11 @@ from app.models import (
     Project,
 )
 from app.schemas.accountability import (
+    FeedbackClassifyIn,
     FeedbackIn,
     FeedbackOut,
     FeedbackStats,
+    FeedbackSuggestion,
     FeedbackUpdate,
     LessonIn,
     LessonOut,
@@ -29,6 +34,7 @@ from app.schemas.accountability import (
 )
 from app.services import feedback as fb
 from app.services import projects as svc
+from app.services.ai import call_structured
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["redevabilité"])
 PROJECT = "/projects/{project_id}"
@@ -141,6 +147,38 @@ async def create_feedback(
     await session.commit()
     await session.refresh(entry)
     return fb.out(member, entry)
+
+
+@router.post(f"{PROJECT}/feedback/classify", response_model=FeedbackSuggestion)
+async def classify_feedback(
+    org_id: UUID, project_id: UUID, body: FeedbackClassifyIn, member: Collector, session: SessionDep
+) -> FeedbackSuggestion:
+    """Propose un type, la sensibilité et l'urgence d'un retour avant son enregistrement.
+
+    Seul le texte du retour est envoyé au modèle, jamais le contact de la personne.
+    """
+    project = await svc.get_project(session, org_id, project_id)
+    try:
+        result = await call_structured(
+            session,
+            organization_id=org_id,
+            project_id=project.id,
+            purpose="feedback_classification",
+            prompt_version=classify_prompt.VERSION,
+            model=get_settings().llm_model_light,
+            system=classify_prompt.SYSTEM,
+            content=classify_prompt.build_content(body.description, body.channel),
+            output_type=FeedbackSuggestion,
+            effort=None,
+        )
+    except LLMError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    suggestion = result.output
+    # Une catégorie sensible l'est toujours, quoi qu'en dise le modèle.
+    if suggestion.category in fb.SENSITIVE_CATEGORIES:
+        suggestion.sensitive = True
+        suggestion.urgency = "high"
+    return suggestion
 
 
 @router.patch(f"{PROJECT}/feedback/{{feedback_id}}", response_model=FeedbackOut)

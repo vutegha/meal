@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import type { ExecutionInput } from "./api";
-import { newId, outbox, queueExecution, syncOutbox } from "./outbox";
+import { newId, outbox, queueExecution, queueFeedback, syncOutbox } from "./outbox";
 import { tokenStore } from "./tokens";
 
 const body = (): ExecutionInput => ({
@@ -28,6 +28,7 @@ beforeEach(async () => {
   tokenStore.set({ access_token: "a", refresh_token: "r" });
   await outbox.executions.clear();
   await outbox.evidence.clear();
+  await outbox.feedback.clear();
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -66,4 +67,31 @@ it("marks refused entries instead of retrying them forever", async () => {
   const [entry] = await outbox.executions.toArray();
   expect(entry.error).toBe("Seule une activité peut être exécutée");
   expect(await syncOutbox()).toEqual({ sent: 0, rejected: 0, offline: false });
+});
+
+it("sends feedback recorded offline once the network is back", async () => {
+  const feedback = {
+    received_on: "2026-03-17",
+    channel: "community_meeting" as const,
+    category: "complaint" as const,
+    description: "Les séances commencent trop tard.",
+    location: "Kiwanja",
+    activity_id: null,
+    anonymous: true,
+    contact: "",
+    client_uuid: newId(),
+  };
+  await queueFeedback("o", "p", feedback);
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+  expect(await syncOutbox()).toEqual({ sent: 0, rejected: 0, offline: true });
+  expect(await outbox.feedback.count()).toBe(1);
+
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(new Response(JSON.stringify({ id: "f-1" }), { status: 201 }));
+  fetch.mockClear();
+  expect(await syncOutbox()).toEqual({ sent: 1, rejected: 0, offline: false });
+  expect(fetch.mock.calls[0][0]).toBe("/api/v1/orgs/o/projects/p/feedback");
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string).client_uuid).toBe(feedback.client_uuid);
+  expect(await outbox.feedback.count()).toBe(0);
 });

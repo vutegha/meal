@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -22,6 +23,21 @@ class FeedbackIn(BaseModel):
     anonymous: bool = False
     contact: str = Field(default="", max_length=300)
     client_uuid: UUID | None = None
+
+
+class FeedbackClassifyIn(BaseModel):
+    description: str = Field(min_length=3, max_length=10_000)
+    channel: FeedbackChannel | None = None
+
+
+class FeedbackSuggestion(BaseModel):
+    """Classement proposé par le modèle léger ; la personne qui saisit le valide."""
+
+    category: FeedbackCategory
+    sensitive: bool
+    urgency: Literal["low", "normal", "high"]
+    summary: str
+    justification: str
 
 
 class FeedbackUpdate(BaseModel):

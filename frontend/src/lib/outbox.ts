@@ -1,7 +1,14 @@
 import Dexie, { liveQuery, type Table } from "dexie";
 import { useEffect, useState } from "react";
 
-import { ApiError, type EvidenceInput, type ExecutionInput, executionsApi } from "./api";
+import {
+  accountabilityApi,
+  ApiError,
+  type EvidenceInput,
+  type ExecutionInput,
+  executionsApi,
+  type FeedbackIn,
+} from "./api";
 
 /**
  * File d'envoi hors ligne. Toute saisie terrain y est d'abord enregistrée, puis envoyée dès que
@@ -35,9 +42,19 @@ export interface PendingEvidence {
   error?: string;
 }
 
+export interface PendingFeedback {
+  client_uuid: string;
+  orgId: string;
+  projectId: string;
+  body: FeedbackIn;
+  createdAt: number;
+  error?: string;
+}
+
 class OutboxDb extends Dexie {
   executions!: Table<PendingExecution, string>;
   evidence!: Table<PendingEvidence, string>;
+  feedback!: Table<PendingFeedback, string>;
 
   constructor() {
     super("wemeal-outbox");
@@ -45,6 +62,8 @@ class OutboxDb extends Dexie {
       executions: "client_uuid, projectId",
       evidence: "client_uuid, projectId, execution_client_uuid, execution_id",
     });
+    // Plaintes et retours recueillis sans réseau (réunion communautaire, visite de terrain).
+    this.version(2).stores({ feedback: "client_uuid, projectId" });
   }
 }
 
@@ -120,6 +139,16 @@ export async function queueEvidence(
   );
 }
 
+export async function queueFeedback(orgId: string, projectId: string, body: FeedbackIn) {
+  await outbox.feedback.put({
+    client_uuid: body.client_uuid,
+    orgId,
+    projectId,
+    body,
+    createdAt: Date.now(),
+  });
+}
+
 /** Erreur définitive (données refusées) : inutile de réessayer telle quelle. */
 const isRejected = (error: unknown) =>
   error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401;
@@ -156,6 +185,18 @@ async function runSync(): Promise<SyncResult> {
 
   const byAge = <T extends { createdAt: number }>(items: T[]) =>
     items.sort((a, b) => a.createdAt - b.createdAt);
+
+  for (const item of byAge(await outbox.feedback.toArray())) {
+    if (item.error) continue;
+    const ok = await attempt(
+      async () => {
+        await accountabilityApi.addFeedback(item.orgId, item.projectId, item.body);
+        await outbox.feedback.delete(item.client_uuid);
+      },
+      (message) => outbox.feedback.update(item.client_uuid, { error: message }),
+    );
+    if (!ok) return result;
+  }
 
   for (const item of byAge(await outbox.executions.toArray())) {
     if (item.error) continue;
@@ -205,8 +246,10 @@ export function syncOutbox(): Promise<SyncResult> {
   return running;
 }
 
-export async function discard(table: "executions" | "evidence", clientUuid: string) {
-  if (table === "executions") {
+export async function discard(table: "executions" | "evidence" | "feedback", clientUuid: string) {
+  if (table === "feedback") {
+    await outbox.feedback.delete(clientUuid);
+  } else if (table === "executions") {
     await outbox.transaction("rw", outbox.executions, outbox.evidence, async () => {
       await outbox.evidence.where("execution_client_uuid").equals(clientUuid).delete();
       await outbox.executions.delete(clientUuid);
@@ -219,15 +262,21 @@ export async function discard(table: "executions" | "evidence", clientUuid: stri
 export interface Pending {
   executions: PendingExecution[];
   evidence: PendingEvidence[];
+  feedback: PendingFeedback[];
 }
 
 /** Éléments en attente pour un projet, mis à jour en direct. */
 export function usePending(projectId: string): Pending {
-  const [pending, setPending] = useState<Pending>({ executions: [], evidence: [] });
+  const [pending, setPending] = useState<Pending>({
+    executions: [],
+    evidence: [],
+    feedback: [],
+  });
   useEffect(() => {
     const subscription = liveQuery(async () => ({
       executions: await outbox.executions.where("projectId").equals(projectId).toArray(),
       evidence: await outbox.evidence.where("projectId").equals(projectId).toArray(),
+      feedback: await outbox.feedback.where("projectId").equals(projectId).toArray(),
     })).subscribe({ next: setPending, error: () => undefined });
     return () => subscription.unsubscribe();
   }, [projectId]);

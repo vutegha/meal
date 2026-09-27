@@ -43,7 +43,7 @@ async def call_structured(
     system: str,
     content: list[dict[str, Any]],
     output_type: type[T],
-    effort: Effort = "high",
+    effort: Effort | None = "high",
 ) -> LLMResult[T]:
     settings = get_settings()
     cap = Decimal(str(settings.ai_monthly_budget_usd))

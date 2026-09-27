@@ -38,7 +38,7 @@ class LLMClient(Protocol):
         system: str,
         content: list[dict[str, Any]],
         output_type: type[T],
-        effort: Effort = "high",
+        effort: Effort | None = "high",
         max_tokens: int = 64000,
     ) -> LLMResult[T]: ...
 
@@ -55,7 +55,7 @@ class AnthropicClient:
         system: str,
         content: list[dict[str, Any]],
         output_type: type[T],
-        effort: Effort = "high",
+        effort: Effort | None = "high",
         max_tokens: int = 64000,
     ) -> LLMResult[T]:
         started = time.monotonic()
@@ -67,7 +67,8 @@ class AnthropicClient:
                 system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": content}],  # type: ignore[typeddict-item]
                 output_format=output_type,
-                output_config={"effort": effort},
+                # Les modèles légers n'acceptent pas le réglage d'effort.
+                output_config={"effort": effort} if effort else anthropic.omit,
             ) as stream:
                 message = await stream.get_final_message()
         except anthropic.AuthenticationError as exc:

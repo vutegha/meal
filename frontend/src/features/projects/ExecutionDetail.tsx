@@ -256,12 +256,14 @@ export function ExecutionDetailView({
     onSuccess: refresh,
   });
   const sendFiles = useMutation({
+    // Les fichiers vont d'abord dans la file locale : l'envoi doit démarrer sans réseau.
+    networkMode: "always",
     mutationFn: async () => {
       await queueEvidence(orgId, project.id, executionId, files);
       setFiles([]);
       const result = navigator.onLine ? await syncOutbox() : { offline: true };
       setQueued(result.offline);
-      await refresh();
+      if (!result.offline) await refresh();
     },
   });
 

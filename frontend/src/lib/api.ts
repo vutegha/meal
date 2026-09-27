@@ -911,12 +911,22 @@ export interface FeedbackIn {
   received_on: string;
   channel: FeedbackChannel;
   category: FeedbackCategory;
+  // Absent : déduit de la catégorie par l'API.
+  sensitive?: boolean | null;
   description: string;
   location: string;
   activity_id: string | null;
   anonymous: boolean;
   contact: string;
   client_uuid: string;
+}
+
+export interface FeedbackSuggestion {
+  category: FeedbackCategory;
+  sensitive: boolean;
+  urgency: "low" | "normal" | "high";
+  summary: string;
+  justification: string;
 }
 
 export interface FeedbackStats {
@@ -955,6 +965,15 @@ export const accountabilityApi = {
     request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
   feedbackStats: (orgId: string, projectId: string) =>
     request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
+  classifyFeedback: (
+    orgId: string,
+    projectId: string,
+    body: { description: string; channel: FeedbackChannel },
+  ) =>
+    request<FeedbackSuggestion>(
+      `${project(orgId, projectId)}/feedback/classify`,
+      json("POST", body),
+    ),
   addFeedback: (orgId: string, projectId: string, body: FeedbackIn) =>
     request<FeedbackEntry>(`${project(orgId, projectId)}/feedback`, json("POST", body)),
   updateFeedback: (

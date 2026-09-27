@@ -3,7 +3,8 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.llm.client import LLMError, LLMResult
-from app.schemas.accountability import PeriodicDraft
+from app.models import FeedbackCategory
+from app.schemas.accountability import FeedbackSuggestion, PeriodicDraft
 from app.schemas.ai import LogframeExtraction
 from app.schemas.report import ReportDraft
 from app.schemas.tor import TorDraft
@@ -202,7 +203,17 @@ PERIODIC_DRAFT = PeriodicDraft.model_validate(
     }
 )
 
+# Le modèle sous-estime volontairement la sensibilité : l'API doit la corriger.
+FEEDBACK_SUGGESTION = FeedbackSuggestion(
+    category=FeedbackCategory.FRAUD,
+    sensitive=False,
+    urgency="normal",
+    summary="Un relais communautaire exigerait de l'argent pour l'inscription sur la liste.",
+    justification="Paiement exigé en échange de l'aide : fraude.",
+)
+
 FIXTURES: dict[type[BaseModel], BaseModel] = {
+    FeedbackSuggestion: FEEDBACK_SUGGESTION,
     PeriodicDraft: PERIODIC_DRAFT,
     LogframeExtraction: EXTRACTION,
     TorDraft: TOR_DRAFT,
@@ -222,7 +233,7 @@ class FakeLLM:
         system: str,
         content: list[dict[str, Any]],
         output_type: type[T],
-        effort: str = "high",
+        effort: str | None = "high",
         max_tokens: int = 64000,
     ) -> LLMResult[T]:
         self.calls.append({"model": model, "system": system, "content": content})
