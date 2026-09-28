@@ -4,10 +4,13 @@ x-backend-env: &backend-env
   DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
-  STORAGE_BACKEND: s3
+  # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
+  # (docker compose --profile s3 up) pour les stocker dans MinIO.
+  STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+  STORAGE_LOCAL_PATH: /data/files
   S3_ENDPOINT: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-meal}
-  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Définir MINIO_ROOT_PASSWORD dans .env}
+  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-50}
   VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
@@ -30,16 +33,19 @@ services:
     volumes: [redis-data:/data]
 
   minio:
-    image: minio/minio:latest
+    # MinIO ne publie plus d'image sur Docker Hub : indiquer une image disponible dans MINIO_IMAGE.
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    profiles: [s3]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-meal}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Définir MINIO_ROOT_PASSWORD dans .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
     volumes: [minio-data:/data]
 
   api:
     build: ./backend
     environment: *backend-env
+    volumes: [files:/data/files]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
@@ -48,6 +54,7 @@ services:
     build: ./backend
     command: arq app.workers.settings.WorkerSettings
     environment: *backend-env
+    volumes: [files:/data/files]
     depends_on: [api, redis]
 
   web:
@@ -59,6 +66,7 @@ services:
     depends_on: [api]
 
 volumes:
+  files:
   db-data:
   redis-data:
   minio-data:
