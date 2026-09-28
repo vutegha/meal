@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -13,11 +13,13 @@ import {
   type FeedbackEntry,
   type FeedbackIn,
   type FeedbackStatus,
+  type FeedbackSuggestion,
   SENSITIVE_CATEGORIES,
 } from "@/lib/api";
 import { flattenTree, formatRate } from "@/lib/format";
-import { newId } from "@/lib/outbox";
+import { discard, newId, queueFeedback, syncOutbox, usePending } from "@/lib/outbox";
 import { permissions } from "@/lib/permissions";
+import { useOnline } from "@/lib/useOnline";
 import { feedbackQuery, feedbackStatsQuery, logframeQuery, membersQuery } from "@/lib/queries";
 
 import { useInvalidateProject } from "./useInvalidateProject";
@@ -38,10 +40,11 @@ function FeedbackForm({
 }: {
   orgId: string;
   projectId: string;
-  onDone: (saved: boolean) => void;
+  onDone: (result: "sent" | "queued" | null) => void;
 }) {
   const { t } = useTranslation();
-  const invalidate = useInvalidateProject(orgId, projectId);
+  const queryClient = useQueryClient();
+  const online = useOnline();
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const activities = flattenTree(logframe.data ?? []).filter(
     (n) => n.level === "activity" || n.level === "sub_activity",
@@ -57,12 +60,31 @@ function FeedbackForm({
     contact: "",
     client_uuid: newId(),
   }));
+  const [suggestion, setSuggestion] = useState<FeedbackSuggestion | null>(null);
   const set = (patch: Partial<FeedbackIn>) => setEntry({ ...entry, ...patch });
+  // Toujours par la file d'envoi : sans réseau, le retour part dès que la connexion revient.
   const save = useMutation({
-    mutationFn: () => accountabilityApi.addFeedback(orgId, projectId, entry),
-    onSuccess: async () => {
-      await invalidate();
-      onDone(true);
+    // La saisie va d'abord dans la file locale : elle doit fonctionner sans réseau.
+    networkMode: "always",
+    mutationFn: async () => {
+      await queueFeedback(orgId, projectId, entry);
+      return navigator.onLine ? syncOutbox() : { offline: true };
+    },
+    onSuccess: (result) => {
+      // Sans attendre : hors ligne, React Query met les rechargements en pause.
+      void queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "projects", projectId] });
+      onDone(result.offline ? "queued" : "sent");
+    },
+  });
+  const classify = useMutation({
+    mutationFn: () =>
+      accountabilityApi.classifyFeedback(orgId, projectId, {
+        description: entry.description,
+        channel: entry.channel,
+      }),
+    onSuccess: (result) => {
+      setSuggestion(result);
+      set({ category: result.category, sensitive: result.sensitive });
     },
   });
   const submit = (event: FormEvent) => {
@@ -95,7 +117,7 @@ function FeedbackForm({
         <Select
           label={t("feedback.category")}
           value={entry.category}
-          onChange={(e) => set({ category: e.target.value as FeedbackCategory })}
+          onChange={(e) => set({ category: e.target.value as FeedbackCategory, sensitive: null })}
         >
           {FEEDBACK_CATEGORIES.map((category) => (
             <option key={category} value={category}>
@@ -120,6 +142,38 @@ function FeedbackForm({
           onChange={(e) => set({ description: e.target.value })}
         />
       </label>
+      {online && (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => classify.mutate()}
+            disabled={classify.isPending || entry.description.trim().length < 3}
+          >
+            ✨ {classify.isPending ? t("feedback.classifying") : t("feedback.classify")}
+          </Button>
+          <ErrorText error={classify.error} />
+          {suggestion && (
+            <div
+              role="status"
+              className="rounded-md border border-brand-100 bg-brand-50/50 p-3 text-sm"
+            >
+              <p className="font-medium text-brand-900">
+                {t(`feedback.categories.${suggestion.category}`)}
+                {suggestion.sensitive && ` · 🔒 ${t("feedback.sensitive")}`}
+                {" · "}
+                <span className={suggestion.urgency === "high" ? "text-red-700" : ""}>
+                  {t(`feedback.urgency.${suggestion.urgency}`)}
+                </span>
+              </p>
+              <p className="text-slate-700">{suggestion.summary}</p>
+              <p className="text-xs text-slate-500">
+                {suggestion.justification} {t("feedback.suggestionHint")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
           label={t("execution.location")}
@@ -164,7 +218,7 @@ function FeedbackForm({
         <Button type="submit" disabled={save.isPending}>
           {t("feedback.record")}
         </Button>
-        <Button type="button" variant="ghost" onClick={() => onDone(false)}>
+        <Button type="button" variant="ghost" onClick={() => onDone(null)}>
           {t("common.cancel")}
         </Button>
       </div>
@@ -359,7 +413,20 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const members = useQuery(membersQuery(orgId));
   const [adding, setAdding] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<"sent" | "queued" | null>(null);
+  const online = useOnline();
+  const pending = usePending(projectId).feedback;
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
+  const syncNow = async () => {
+    setSyncing(true);
+    try {
+      await syncOutbox();
+      await queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "projects", projectId] });
+    } finally {
+      setSyncing(false);
+    }
+  };
   const [status, setStatus] = useState<FeedbackStatus | "open" | "">("open");
   const nodes = new Map(flattenTree(logframe.data ?? []).map((n) => [n.id, n]));
   const people = new Map(
@@ -427,17 +494,52 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
         </div>
         {saved && !adding && (
           <p role="status" className="mb-3 text-sm text-brand-800">
-            {t("feedback.saved")}
+            {saved === "sent" ? t("feedback.saved") : t("feedback.queued")}
           </p>
+        )}
+        {pending.length > 0 && (
+          <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="flex-1 text-amber-800">
+                ⏳ {t("feedback.waiting", { count: pending.length })}
+                {!online && ` ${t("execution.waitingOffline")}`}
+              </p>
+              {online && (
+                <Button variant="ghost" onClick={syncNow} disabled={syncing}>
+                  {t("execution.syncNow")}
+                </Button>
+              )}
+            </div>
+            <ul className="mt-1 space-y-1">
+              {pending.map((p) => (
+                <li key={p.client_uuid} className="flex flex-wrap gap-2">
+                  <span className="min-w-0 flex-1 truncate">
+                    {t(`feedback.categories.${p.body.category}`)} · {p.body.description}
+                  </span>
+                  {p.error && (
+                    <>
+                      <span className="text-red-700">{p.error}</span>
+                      <button
+                        className="text-red-700 underline"
+                        onClick={() => discard("feedback", p.client_uuid)}
+                      >
+                        {t("execution.discard")}
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {adding && (
           <div className="mb-4 rounded-md border border-slate-200 p-4">
             <FeedbackForm
               orgId={orgId}
               projectId={projectId}
-              onDone={(ok) => {
+              onDone={(result) => {
                 setAdding(false);
-                setSaved(ok);
+                setSaved(result);
               }}
             />
           </div>

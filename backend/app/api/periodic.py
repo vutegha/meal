@@ -17,7 +17,7 @@ from app.schemas.ai import JobOut
 from app.schemas.tor import TorReview, TorUpdate, TorVersionOut
 from app.services import periodic as periodic_svc
 from app.services import projects as svc
-from app.services import workflow
+from app.services import templates, workflow
 from app.services.jobs import enqueue
 from app.services.tor import TO_COMPLETE
 
@@ -51,6 +51,9 @@ async def create_periodic(
     computed = await periodic_svc.computed_sections(
         session, project, body.period_start, body.period_end
     )
+    plan = await templates.resolve(
+        session, project, "periodic", periodic_svc.PERIODIC_SECTIONS, body.template_id
+    )
     report = PeriodicReport(
         organization_id=org_id,
         project_id=project.id,
@@ -59,10 +62,8 @@ async def create_periodic(
         period_end=body.period_end,
         instructions=body.instructions,
         title=periodic_svc.default_title(body.kind, body.period_start, body.period_end),
-        sections=[
-            {"key": key, "title": title, "content": computed.get(key, TO_COMPLETE)}
-            for key, title in periodic_svc.PERIODIC_SECTIONS
-        ],
+        sections=templates.assemble(plan, computed, TO_COMPLETE),
+        template_id=plan.template_id,
         created_by=member.user_id,
     )
     session.add(report)
@@ -225,6 +226,10 @@ async def export_periodic(
     project = await svc.get_project(session, org_id, project_id)
     report = await periodic_svc.get_periodic(session, project, report_id)
     document = periodic_svc.render_document(project, report)
+    document.layout = (
+        await templates.layout_for(session, project, "periodic", report.template_id)
+        or document.layout
+    )
     content = await asyncio.to_thread(to_docx if fmt == "docx" else to_pdf, document)
     ascii_title = unicodedata.normalize("NFKD", report.title).encode("ascii", "ignore").decode()
     slug = re.sub(r"[^A-Za-z0-9]+", "-", ascii_title).strip("-")[:60] or "Rapport"

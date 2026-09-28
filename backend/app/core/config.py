@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_name: str = "We MEAL"
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://meal:meal@localhost:5432/meal"
+    # Rôle non propriétaire endossé par l'API pour que la Row Level Security s'applique.
+    # Vide : pas de changement de rôle (déconseillé hors développement).
+    db_app_role: str = "meal_app"
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = "change-me-in-production"
     access_token_minutes: int = 15
@@ -23,6 +26,8 @@ class Settings(BaseSettings):
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
     max_upload_mb: int = 25
+    # Enregistrements audio et vidéo déposés comme preuves.
+    max_media_mb: int = 200
 
     # Tâches longues : exécutées dans la requête (développement, tests) ou par le worker ARQ
     jobs_inline: bool = False
@@ -32,8 +37,16 @@ class Settings(BaseSettings):
     llm_model_extraction: str = "claude-opus-5-5"
     llm_model_drafting: str = "claude-sonnet-5"
     llm_model_light: str = "claude-haiku-4-5"
+    # Lecture des pages scannées (images) : un modèle capable de lire l'écriture manuscrite.
+    llm_model_ocr: str = "claude-sonnet-5"
+    ocr_max_pages: int = 40
     # Plafond mensuel des dépenses IA par organisation, en USD (0 = illimité)
     ai_monthly_budget_usd: float = 50.0
+    # Recherche sémantique : embeddings Voyage AI (multilingues). Sans clé, plein texte seul.
+    voyage_api_key: str | None = None
+    embeddings_model: str = "voyage-3.5"
+    # Pages vectorisées au plus par recherche (les suivantes le seront aux recherches d'après).
+    embeddings_batch_pages: int = 256
     # Taille maximale du texte envoyé en une fois (au-delà : erreur explicite, pas de troncature)
     llm_max_document_chars: int = 2_000_000
 

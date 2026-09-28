@@ -74,6 +74,9 @@ class EvidenceOut(BaseModel):
     consent_given: bool
     has_thumbnail: bool
     page_count: int
+    # Visages détectés sur la photo ; floutés sur la vignette sauf décision contraire.
+    faces: int = 0
+    blur_faces: bool = True
     created_at: datetime
 
 
@@ -81,6 +84,7 @@ class EvidenceUpdate(BaseModel):
     kind: EvidenceKind | None = None
     caption: str | None = Field(default=None, max_length=2000)
     consent_given: bool | None = None
+    blur_faces: bool | None = None
 
 
 class ExecutionExpenseIn(BaseModel):
@@ -89,6 +93,8 @@ class ExecutionExpenseIn(BaseModel):
     spent_on: date
     reference: str = Field(default="", max_length=100)
     description: str = Field(default="", max_length=2000)
+    currency: str = Field(default="", pattern="^([A-Z]{3})?$")
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
 
 
 class ExecutionExpenseOut(BaseModel):
@@ -100,6 +106,9 @@ class ExecutionExpenseOut(BaseModel):
     spent_on: date
     reference: str
     description: str
+    currency: str = ""
+    original_amount: Decimal | None = None
+    exchange_rate: Decimal | None = None
 
 
 class ExecutionOut(BaseModel):

@@ -40,6 +40,15 @@ class Figure:
 
 
 @dataclass
+class Layout:
+    """Mise en page d'un modèle de l'organisation : en-tête, pied de page et couleur des titres."""
+
+    header: str = ""
+    footer: str = ""
+    color: str = "#0f5b52"
+
+
+@dataclass
 class RenderedDocument:
     title: str
     subtitle: str
@@ -47,6 +56,7 @@ class RenderedDocument:
     sections: list[Section]
     figures: list[Figure] = field(default_factory=list)
     figures_title: str = "Photos"
+    layout: Layout = field(default_factory=Layout)
 
 
 _BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
@@ -108,6 +118,29 @@ def _runs(paragraph: object, text: str) -> None:
             paragraph.add_run(part).bold = index % 2 == 1  # type: ignore[attr-defined]
 
 
+def _apply_layout(word: object, layout: Layout) -> None:
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Pt, RGBColor
+
+    color = RGBColor.from_string(layout.color.lstrip("#").upper())
+    for name in ("Title", "Heading 1", "Heading 2"):
+        word.styles[name].font.color.rgb = color  # type: ignore[attr-defined]
+    section = word.sections[0]  # type: ignore[attr-defined]
+    if layout.header:
+        header = section.header.paragraphs[0]
+        header.text = layout.header
+        header.runs[0].font.size = Pt(8)
+    footer = section.footer.paragraphs[0]
+    footer.text = f"{layout.footer}    " if layout.footer else ""
+    footer.add_run("Page ")
+    page = OxmlElement("w:fldSimple")
+    page.set(qn("w:instr"), "PAGE")
+    footer._p.append(page)
+    for run in footer.runs:
+        run.font.size = Pt(8)
+
+
 def to_docx(document: RenderedDocument) -> bytes:
     import docx
     from docx.shared import Pt
@@ -117,6 +150,7 @@ def to_docx(document: RenderedDocument) -> bytes:
     style.font.name = "Calibri"
     style.font.size = Pt(11)
 
+    _apply_layout(word, document.layout)
     word.add_heading(document.title, level=0)
     if document.subtitle:
         word.add_paragraph(document.subtitle).italic = True  # type: ignore[attr-defined]
@@ -229,7 +263,8 @@ def to_pdf(document: RenderedDocument) -> bytes:
     archive = pymupdf.Archive()
     for index, figure in enumerate(document.figures):
         archive.add(figure.data, f"figure-{index}")
-    story = pymupdf.Story(html=to_html(document), user_css=_CSS, archive=archive)
+    css = _CSS.replace("#0f5b52", document.layout.color)
+    story = pymupdf.Story(html=to_html(document), user_css=css, archive=archive)
     buffer = BytesIO()
     writer = pymupdf.DocumentWriter(buffer)
     page = pymupdf.paper_rect("a4")
@@ -241,4 +276,28 @@ def to_pdf(document: RenderedDocument) -> bytes:
         story.draw(device)
         writer.end_page()
     writer.close()
-    return buffer.getvalue()
+    return _stamp(buffer.getvalue(), document.layout)
+
+
+def _stamp(data: bytes, layout: Layout) -> bytes:
+    """En-tête, pied de page et numéro de page sur chaque page."""
+    import pymupdf
+
+    pdf = pymupdf.open(stream=data, filetype="pdf")
+    grey = (0.4, 0.4, 0.4)
+    for number in range(1, pdf.page_count + 1):
+        page = pdf[number - 1]
+        width, height = page.rect.width, page.rect.height
+        if layout.header:
+            page.insert_textbox(
+                pymupdf.Rect(56, 22, width - 56, 48), layout.header, fontsize=8, color=grey
+            )
+        footer = f"{layout.footer}    " if layout.footer else ""
+        page.insert_textbox(
+            pymupdf.Rect(56, height - 40, width - 56, height - 16),
+            f"{footer}Page {number} / {pdf.page_count}",
+            fontsize=8,
+            color=grey,
+            align=pymupdf.TEXT_ALIGN_RIGHT,
+        )
+    return bytes(pdf.tobytes(garbage=3, deflate=True))

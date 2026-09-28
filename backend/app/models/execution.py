@@ -27,6 +27,8 @@ class EvidenceKind(enum.StrEnum):
     MINUTES = "minutes"
     ATTENDANCE = "attendance"
     PHOTO = "photo"
+    AUDIO = "audio"
+    VIDEO = "video"
     OTHER = "other"
 
 

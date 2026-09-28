@@ -8,7 +8,7 @@ import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import { lastPeriod } from "@/lib/accountability";
 import { PERIODIC_KINDS, type PeriodicKind, periodicApi, type Project } from "@/lib/api";
 import { permissions } from "@/lib/permissions";
-import { periodicListQuery, periodicQuery } from "@/lib/queries";
+import { periodicListQuery, periodicQuery, templatesQuery } from "@/lib/queries";
 
 import { DocumentEditor } from "./DocumentEditor";
 import { TorBadge } from "./TorTab";
@@ -36,6 +36,9 @@ function NewPeriodic({
   const [[start, end], setPeriod] = useState(() => lastPeriod("quarterly", project));
   const [instructions, setInstructions] = useState("");
   const [withAi, setWithAi] = useState(true);
+  const [templateId, setTemplateId] = useState("");
+  const templates = useQuery(templatesQuery(orgId));
+  const choices = (templates.data ?? []).filter((tpl) => tpl.kind === "periodic");
   const create = useMutation({
     mutationFn: async () => {
       const report = await periodicApi.create(orgId, project.id, {
@@ -43,6 +46,7 @@ function NewPeriodic({
         period_start: start,
         period_end: end,
         instructions,
+        template_id: templateId || null,
       });
       if (withAi) tracker.start(await periodicApi.generate(orgId, project.id, report.id));
       return report;
@@ -93,6 +97,21 @@ function NewPeriodic({
           onChange={(e) => setPeriod([start, e.target.value])}
         />
       </div>
+      {choices.length > 0 && (
+        <Select
+          label={t("templates.choose")}
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+        >
+          <option value="">{t("templates.automatic")}</option>
+          {choices.map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>
+              {tpl.name}
+              {tpl.donor && ` · ${tpl.donor}`}
+            </option>
+          ))}
+        </Select>
+      )}
       <label className="block text-sm font-medium text-slate-700">
         {t("tor.instructions")}
         <textarea

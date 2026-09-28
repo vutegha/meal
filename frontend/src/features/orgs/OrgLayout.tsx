@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +16,9 @@ export function OrgLayout() {
   const queryClient = useQueryClient();
   const { orgId } = useParams({ from: "/orgs/$orgId" });
   const online = useOnline();
+  // « Projets » reste actif sur la liste et sur chaque projet.
+  const path = useRouterState({ select: (state) => state.location.pathname });
+  const onProjects = !/\/(lessons|templates|members)\/?$/.test(path);
   useOutboxSync();
   const { data: me } = useSuspenseQuery(meQuery);
   const [creating, setCreating] = useState(false);
@@ -76,10 +79,26 @@ export function OrgLayout() {
             <Link
               to="/orgs/$orgId"
               params={{ orgId }}
-              activeOptions={{ exact: false, includeSearch: false }}
-              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+              activeOptions={{ exact: true, includeSearch: false }}
+              className={`rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 ${
+                onProjects ? "font-semibold text-brand-800" : ""
+              }`}
             >
               {t("nav.projects")}
+            </Link>
+            <Link
+              to="/orgs/$orgId/lessons"
+              params={{ orgId }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.lessons")}
+            </Link>
+            <Link
+              to="/orgs/$orgId/templates"
+              params={{ orgId }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.templates")}
             </Link>
             <Link
               to="/orgs/$orgId/members"

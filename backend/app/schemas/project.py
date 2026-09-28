@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models import Aggregation, NodeLevel, ProjectStatus
 
@@ -18,6 +18,14 @@ def _check_dates(start: date | None, end: date | None) -> None:
 
 
 # --- Projets ---------------------------------------------------------------
+
+
+class ExchangeRate(BaseModel):
+    """1 unité de `currency` vaut `rate` unités de la devise du projet, à partir de `valid_from`."""
+
+    currency: str = Field(pattern="^[A-Z]{3}$")
+    rate: Decimal = Field(gt=0, max_digits=18, decimal_places=6)
+    valid_from: date
 
 
 class ProjectIn(BaseModel):
@@ -66,6 +74,7 @@ class ProjectOut(ORMModel):
     status: ProjectStatus
     zones: list[str]
     target_groups: list[str]
+    exchange_rates: list[ExchangeRate] = []
     created_at: datetime
 
 
@@ -148,19 +157,27 @@ class BudgetLineOut(ORMModel):
 
 
 class ExpenseIn(BaseModel):
+    # Montant dans `currency` (devise du projet si vide).
     amount: Decimal = Field(gt=0)
     spent_on: date
     reference: str = Field(default="", max_length=100)
     description: str = ""
+    currency: str = Field(default="", pattern="^([A-Z]{3})?$")
+    # Taux appliqué ; à défaut, celui du projet en vigueur à la date de la dépense.
+    exchange_rate: Decimal | None = Field(default=None, gt=0)
 
 
 class ExpenseOut(ORMModel):
     id: UUID
     budget_line_id: UUID
+    # Montant dans la devise du projet.
     amount: Decimal
     spent_on: date
     reference: str
     description: str
+    currency: str = ""
+    original_amount: Decimal | None = None
+    exchange_rate: Decimal | None = None
 
 
 class ActivityBudget(BaseModel):
@@ -184,6 +201,32 @@ class BudgetSummary(BaseModel):
 # --- Indicateurs -----------------------------------------------------------
 
 
+class PeriodTarget(BaseModel):
+    period_start: date
+    period_end: date
+    target: Decimal
+
+    @model_validator(mode="after")
+    def dates(self) -> Self:
+        _check_dates(self.period_start, self.period_end)
+        return self
+
+
+class PeriodProgress(PeriodTarget):
+    achieved: Decimal | None = None
+    achievement_rate: float | None = None
+
+
+def _sorted_targets(targets: list[PeriodTarget] | None) -> list[PeriodTarget] | None:
+    if targets is None:
+        return None
+    targets = sorted(targets, key=lambda t: t.period_start)
+    for previous, current in zip(targets, targets[1:], strict=False):
+        if current.period_start <= previous.period_end:
+            raise ValueError("Les périodes des cibles ne doivent pas se chevaucher")
+    return targets
+
+
 class IndicatorIn(BaseModel):
     node_id: UUID
     code: str = Field(default="", max_length=40)
@@ -198,6 +241,9 @@ class IndicatorIn(BaseModel):
     collection_method: str = ""
     frequency: str = Field(default="", max_length=40)
     owner_id: UUID | None = None
+    period_targets: list[PeriodTarget] = Field(default=[], max_length=60)
+
+    _targets = field_validator("period_targets")(_sorted_targets)
 
 
 class IndicatorUpdate(BaseModel):
@@ -214,6 +260,9 @@ class IndicatorUpdate(BaseModel):
     collection_method: str | None = None
     frequency: str | None = Field(default=None, max_length=40)
     owner_id: UUID | None = None
+    period_targets: list[PeriodTarget] | None = Field(default=None, max_length=60)
+
+    _targets = field_validator("period_targets")(_sorted_targets)
 
 
 class IndicatorOut(ORMModel):
@@ -233,6 +282,8 @@ class IndicatorOut(ORMModel):
     owner_id: UUID | None
     achieved: Decimal | None = None
     achievement_rate: float | None = None
+    # Cibles intermédiaires avec la valeur atteinte sur chaque période.
+    period_targets: list[PeriodProgress] = []
 
 
 class IndicatorValueIn(BaseModel):

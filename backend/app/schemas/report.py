@@ -52,6 +52,7 @@ class ReportSummary(BaseModel):
 
 class ReportOut(ReportSummary):
     project_id: UUID
+    template_id: UUID | None = None
     sections: list[TorSection]
     sources: list[ReportSource]
     missing_information: list[str]

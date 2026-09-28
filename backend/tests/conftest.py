@@ -11,14 +11,20 @@ os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="wemeal-test-files-")
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.core import rls
+from app.core.config import get_settings
 from app.core.db import Base, engine
 from app.main import app
+
+# Propriétaire des tables (sans changement de rôle) : schéma, RLS et nettoyage entre tests.
+owner_engine = create_async_engine(get_settings().database_url)
 
 
 @pytest.fixture(scope="session", autouse=True)
 async def database() -> AsyncIterator[None]:
-    async with engine.begin() as conn:
+    async with owner_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         for enum_type in (
             "role",
@@ -38,16 +44,21 @@ async def database() -> AsyncIterator[None]:
             "feedback_status",
         ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        for statement in rls.all_statements():
+            await conn.execute(text(statement))
+    await engine.dispose()
     yield
     await engine.dispose()
+    await owner_engine.dispose()
 
 
 @pytest.fixture(autouse=True)
 async def clean_tables() -> AsyncIterator[None]:
     yield
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
-    async with engine.begin() as conn:
+    async with owner_engine.begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} CASCADE"))
 
 

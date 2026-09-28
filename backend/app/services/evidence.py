@@ -17,6 +17,34 @@ IMAGE_EXTENSIONS = {
     ".png": "image/png",
     ".webp": "image/webp",
 }
+MEDIA_TYPES = {
+    "audio/mpeg": "audio",
+    "audio/mp4": "audio",
+    "audio/aac": "audio",
+    "audio/ogg": "audio",
+    "audio/webm": "audio",
+    "audio/wav": "audio",
+    "audio/x-wav": "audio",
+    "audio/amr": "audio",
+    "audio/3gpp": "audio",
+    "video/mp4": "video",
+    "video/webm": "video",
+    "video/quicktime": "video",
+    "video/3gpp": "video",
+}
+MEDIA_EXTENSIONS = {
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/ogg",
+    ".wav": "audio/wav",
+    ".amr": "audio/amr",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+    ".3gp": "video/3gpp",
+}
 THUMBNAIL_SIZE = 800
 # Balises EXIF utiles (numéros standard).
 _DATETIME_ORIGINAL = 0x9003
@@ -42,11 +70,22 @@ class UnsupportedFile(Exception):
     pass
 
 
+def _suffix(filename: str) -> str:
+    return "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
 def image_type(filename: str, content_type: str | None) -> str | None:
     if content_type in IMAGE_TYPES:
         return content_type
-    suffix = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    return IMAGE_EXTENSIONS.get(suffix)
+    return IMAGE_EXTENSIONS.get(_suffix(filename))
+
+
+def media_type(filename: str, content_type: str | None) -> str | None:
+    """Type MIME d'un enregistrement audio ou vidéo, ou None."""
+    base = (content_type or "").split(";")[0].strip().lower()
+    if base in MEDIA_TYPES:
+        return base
+    return MEDIA_EXTENSIONS.get(_suffix(filename))
 
 
 def _degrees(value: Any, ref: str) -> Decimal | None:
@@ -63,7 +102,7 @@ def _degrees(value: Any, ref: str) -> Decimal | None:
 def _process_image(
     data: bytes,
 ) -> tuple[bytes, datetime | None, Decimal | None, Decimal | None, dict[str, Any]]:
-    from PIL import Image, ImageOps, UnidentifiedImageError
+    from PIL import Image, UnidentifiedImageError
 
     try:
         image = Image.open(BytesIO(data))
@@ -83,15 +122,43 @@ def _process_image(
     latitude = _degrees(gps.get(2), gps.get(1, "N")) if gps else None
     longitude = _degrees(gps.get(4), gps.get(3, "E")) if gps else None
 
-    # La vignette est redressée et ne garde aucune métadonnée (ni GPS ni appareil).
+    thumbnail, faces = _thumbnail(image, blur=True)
+    extra = {"width": image.width, "height": image.height, "faces": faces, "blur_faces": True}
+    return thumbnail, taken_at, latitude, longitude, extra
+
+
+def _thumbnail(image: Any, blur: bool) -> tuple[bytes, int]:
+    """Vignette WebP redressée, sans aucune métadonnée (ni GPS ni appareil), visages floutés.
+
+    Renvoie aussi le nombre de visages détectés, floutés ou non.
+    """
+    from PIL import ImageOps
+
+    from app.services.faces import blur_faces, detect_faces
+
     thumbnail = ImageOps.exif_transpose(image)
     thumbnail.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE))
     if thumbnail.mode not in ("RGB", "RGBA"):
         thumbnail = thumbnail.convert("RGB")
+    if blur:
+        thumbnail, faces = blur_faces(thumbnail)
+    else:
+        faces = len(detect_faces(thumbnail))
     buffer = BytesIO()
     thumbnail.save(buffer, format="WEBP", quality=80)
-    extra = {"width": image.width, "height": image.height}
-    return buffer.getvalue(), taken_at, latitude, longitude, extra
+    return buffer.getvalue(), faces
+
+
+def render_thumbnail(data: bytes, blur: bool) -> tuple[bytes, int]:
+    """Refait la vignette d'une photo déjà déposée (floutage activé ou retiré)."""
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        image = Image.open(BytesIO(data))
+        image.load()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise UnsupportedFile("Image illisible") from exc
+    return _thumbnail(image, blur)
 
 
 async def process(data: bytes, filename: str, content_type: str | None) -> ProcessedFile:
@@ -110,10 +177,15 @@ async def process(data: bytes, filename: str, content_type: str | None) -> Proce
             longitude=longitude,
             extra=extra,
         )
+    if mime := media_type(filename, content_type):
+        # Enregistrement conservé tel quel : pas de texte, pas de vignette.
+        return ProcessedFile(
+            content_type=mime, sha256=sha256, is_image=False, extra={"media": MEDIA_TYPES[mime]}
+        )
     kind = detect_kind(filename, content_type)
     if kind is None:
         raise UnsupportedFile(
-            "Format non pris en charge : photos (JPEG, PNG, WebP) ou documents "
+            "Format non pris en charge : photos (JPEG, PNG, WebP), audio, vidéo ou documents "
             "(PDF, Word, Excel, texte)"
         )
     processed = ProcessedFile(

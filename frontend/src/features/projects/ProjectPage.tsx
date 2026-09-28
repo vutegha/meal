@@ -11,6 +11,7 @@ import { DashboardTab } from "./DashboardTab";
 import { DocumentsTab } from "./DocumentsTab";
 import { ExecutionTab } from "./ExecutionTab";
 import { FeedbackTab } from "./FeedbackTab";
+import { FormsTab } from "./FormsTab";
 import { IndicatorsTab } from "./IndicatorsTab";
 import { LessonsTab } from "./LessonsTab";
 import { LogframeTab } from "./LogframeTab";
@@ -26,10 +27,12 @@ export function ProjectPage() {
   const { tab } = useSearch({ from: "/orgs/$orgId/projects/$projectId" });
   const project = useQuery(projectQuery(orgId, projectId));
   const exportFile = useMutation({
-    mutationFn: () =>
+    mutationFn: (format: "xlsx" | "pdf" | "docx") =>
       download(
-        projectsApi.exportPath(orgId, projectId),
-        `cadre-logique-${project.data?.code ?? "projet"}.xlsx`,
+        format === "xlsx"
+          ? projectsApi.exportPath(orgId, projectId)
+          : projectsApi.documentPath(orgId, projectId, format),
+        `cadre-logique-${project.data?.code ?? "projet"}.${format}`,
       ),
   });
 
@@ -62,13 +65,29 @@ export function ProjectPage() {
             </p>
           </div>
           <StatusBadge status={p.status} />
-          <Button
-            variant="ghost"
-            onClick={() => exportFile.mutate()}
-            disabled={exportFile.isPending}
-          >
-            ⬇ {t("projects.export")}
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("xlsx")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ {t("projects.export")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("pdf")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ PDF
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => exportFile.mutate("docx")}
+              disabled={exportFile.isPending}
+            >
+              ⬇ Word
+            </Button>
+          </div>
         </div>
         <ErrorText error={exportFile.error} />
       </Card>
@@ -99,6 +118,7 @@ export function ProjectPage() {
       {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
       {tab === "tor" && <TorTab orgId={orgId} project={p} />}
       {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
+      {tab === "forms" && <FormsTab orgId={orgId} projectId={projectId} />}
       {tab === "reports" && <PeriodicTab project={p} />}
       {tab === "feedback" && <FeedbackTab orgId={orgId} projectId={projectId} />}
       {tab === "lessons" && <LessonsTab orgId={orgId} projectId={projectId} />}

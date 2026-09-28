@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
-import { type Indicator, projectsApi } from "@/lib/api";
+import { type Indicator, type PeriodTarget, projectsApi } from "@/lib/api";
 import { flattenTree, formatNumber, formatRate } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { indicatorsQuery, logframeQuery } from "@/lib/queries";
@@ -79,6 +79,145 @@ function ValueForm({
   );
 }
 
+function TargetsForm({
+  orgId,
+  projectId,
+  indicator,
+  onDone,
+}: Props & {
+  indicator: Indicator;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const invalidate = useInvalidateProject(orgId, projectId);
+  const [rows, setRows] = useState<PeriodTarget[]>(() =>
+    indicator.period_targets.map(({ period_start, period_end, target }) => ({
+      period_start,
+      period_end,
+      target,
+    })),
+  );
+  const save = useMutation({
+    mutationFn: () =>
+      projectsApi.updateIndicator(orgId, projectId, indicator.id, { period_targets: rows }),
+    onSuccess: async () => {
+      await invalidate();
+      onDone();
+    },
+  });
+  const update = (index: number, patch: Partial<PeriodTarget>) =>
+    setRows(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    save.mutate();
+  };
+  return (
+    <form
+      onSubmit={submit}
+      className="space-y-2 bg-slate-50 p-3"
+      aria-label={t("indicators.periodTargets")}
+    >
+      <p className="text-xs text-slate-600">
+        {indicator.aggregation === "sum"
+          ? t("indicators.periodTargetsSumHint")
+          : t("indicators.periodTargetsLatestHint")}
+      </p>
+      {rows.map((row, index) => (
+        <div key={index} className="flex flex-wrap items-end gap-2">
+          <Field
+            label={t("indicators.periodStart")}
+            type="date"
+            required
+            value={row.period_start}
+            onChange={(e) => update(index, { period_start: e.target.value })}
+          />
+          <Field
+            label={t("indicators.periodEnd")}
+            type="date"
+            required
+            min={row.period_start}
+            value={row.period_end}
+            onChange={(e) => update(index, { period_end: e.target.value })}
+          />
+          <Field
+            label={`${t("indicators.target")}${indicator.unit ? ` (${indicator.unit})` : ""}`}
+            type="number"
+            step="any"
+            required
+            value={row.target}
+            onChange={(e) => update(index, { target: e.target.value })}
+          />
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setRows(rows.filter((_, i) => i !== index))}
+          >
+            {t("common.remove")}
+          </Button>
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            const last = rows.at(-1);
+            // La période suivante commence le lendemain de la précédente.
+            const next = last?.period_end
+              ? new Date(new Date(last.period_end).getTime() + 86_400_000)
+                  .toISOString()
+                  .slice(0, 10)
+              : "";
+            setRows([...rows, { period_start: next, period_end: "", target: "" }]);
+          }}
+        >
+          + {t("indicators.addPeriod")}
+        </Button>
+        <span className="flex-1" />
+        <Button type="submit" disabled={save.isPending}>
+          {t("common.save")}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          {t("common.cancel")}
+        </Button>
+      </div>
+      <ErrorText error={save.error} />
+    </form>
+  );
+}
+
+function PeriodTable({ indicator }: { indicator: Indicator }) {
+  const { t, i18n } = useTranslation();
+  const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
+  const num = (value: string | null) => formatNumber(value, i18n.language);
+  return (
+    <table className="mt-2 w-full text-left text-xs">
+      <thead className="text-slate-500">
+        <tr>
+          <th className="py-1 pr-3 font-medium">{t("indicators.period")}</th>
+          <th className="py-1 pr-3 text-right font-medium">{t("indicators.target")}</th>
+          <th className="py-1 pr-3 text-right font-medium">{t("indicators.achieved")}</th>
+          <th className="py-1 text-right font-medium">{t("indicators.rate")}</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {indicator.period_targets.map((row) => (
+          <tr key={row.period_start}>
+            <td className="py-1 pr-3">
+              {dates.format(new Date(row.period_start))} – {dates.format(new Date(row.period_end))}
+            </td>
+            <td className="py-1 pr-3 text-right tabular-nums">{num(row.target)}</td>
+            <td className="py-1 pr-3 text-right tabular-nums">{num(row.achieved)}</td>
+            <td className="py-1 text-right tabular-nums">
+              {formatRate(row.achievement_rate, i18n.language)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 const emptyForm = {
   node_id: "",
   code: "",
@@ -100,6 +239,7 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const [form, setForm] = useState(emptyForm);
   const [valueFor, setValueFor] = useState<string | null>(null);
+  const [targetsFor, setTargetsFor] = useState<string | null>(null);
 
   const nodes = flattenTree(logframe.data ?? []);
   const nodeName = new Map(nodes.map((n) => [n.id, `${n.code} ${n.title}`.trim()]));
@@ -173,6 +313,15 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
                     )}
                     {canPlan && (
                       <Button
+                        variant="ghost"
+                        className="!px-2 !py-1 text-xs"
+                        onClick={() => setTargetsFor(indicator.id)}
+                      >
+                        {t("indicators.periodTargets")}
+                      </Button>
+                    )}
+                    {canPlan && (
+                      <Button
                         variant="danger"
                         className="!px-2 !py-1 text-xs"
                         onClick={() => remove.mutate(indicator.id)}
@@ -182,6 +331,19 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
                     )}
                   </div>
                 </div>
+                {indicator.period_targets.length > 0 && targetsFor !== indicator.id && (
+                  <PeriodTable indicator={indicator} />
+                )}
+                {targetsFor === indicator.id && (
+                  <div className="mt-2">
+                    <TargetsForm
+                      orgId={orgId}
+                      projectId={projectId}
+                      indicator={indicator}
+                      onDone={() => setTargetsFor(null)}
+                    />
+                  </div>
+                )}
                 {valueFor === indicator.id && (
                   <div className="mt-2">
                     <ValueForm

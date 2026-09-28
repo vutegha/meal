@@ -1,5 +1,7 @@
-"""Export Excel du cadre logique, du budget et des indicateurs."""
+"""Export Excel, PDF et Word du cadre logique, du budget et des indicateurs."""
 
+from datetime import date
+from decimal import Decimal
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -8,9 +10,12 @@ from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.documents.render import RenderedDocument, Section
 from app.models import BudgetLine, Project
 from app.schemas.project import NodeTree
 from app.services import projects as svc
+from app.services.periodic import day
+from app.services.tor import fmt
 
 LEVEL_LABELS = {
     "goal": "Objectif général",
@@ -168,3 +173,148 @@ async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
+
+
+# --- PDF (et Word) ------------------------------------------------------------------------
+
+
+def _cell(text: str) -> str:
+    """Texte sûr pour une cellule de tableau Markdown."""
+    return " ".join(text.replace("|", "/").split()) or "–"
+
+
+def _table(headers: list[str], rows: list[list[str]]) -> str:
+    lines = ["| " + " | ".join(headers) + " |", "|" + "---|" * len(headers)]
+    lines += ["| " + " | ".join(_cell(c) for c in row) + " |" for row in rows]
+    return "\n".join(lines)
+
+
+def _percent(value: float | None) -> str:
+    return f"{round(value * 100)} %" if value is not None else "–"
+
+
+def _number(value: Decimal | None) -> str:
+    return fmt(value) if value is not None else "–"
+
+
+async def logframe_document(session: AsyncSession, project: Project) -> RenderedDocument:
+    """Cadre logique, indicateurs (avec cibles par période) et budget, en un document."""
+    nodes = await svc.list_nodes(session, project.id)
+    indicators = await svc.list_indicators(session, project.id)
+    by_node: dict[object, list[str]] = {}
+    for indicator in indicators:
+        by_node.setdefault(indicator.node_id, []).append(
+            f"{indicator.code} {indicator.name}".strip()
+        )
+
+    rows: list[list[str]] = []
+
+    def walk(tree: list[NodeTree], depth: int) -> None:
+        for node in tree:
+            rows.append(
+                [
+                    LEVEL_LABELS[node.level.value],
+                    node.code,
+                    "– " * depth + node.title,
+                    " ; ".join(by_node.get(node.id, [])),
+                    node.assumptions,
+                ]
+            )
+            walk(node.children, depth + 1)
+
+    walk(svc.build_tree(nodes), 0)
+    logframe = _table(["Niveau", "Code", "Intitulé", "Indicateurs", "Hypothèses"], rows)
+
+    outs = [svc.indicator_out(i) for i in indicators]
+    parts = [
+        _table(
+            ["Code", "Indicateur", "Référence", "Cible", "Atteint", "Taux"],
+            [
+                [
+                    o.code,
+                    f"{o.name} ({o.unit})" if o.unit else o.name,
+                    _number(o.baseline),
+                    _number(o.target),
+                    _number(o.achieved),
+                    _percent(o.achievement_rate),
+                ]
+                for o in outs
+            ],
+        )
+    ]
+    for o in outs:
+        if o.period_targets:
+            parts.append(f"### Cibles par période : {o.code} {o.name}".rstrip())
+            parts.append(
+                _table(
+                    ["Période", "Cible", "Atteint", "Taux"],
+                    [
+                        [
+                            f"{day(t.period_start)} – {day(t.period_end)}",
+                            _number(t.target),
+                            _number(t.achieved),
+                            _percent(t.achievement_rate),
+                        ]
+                        for t in o.period_targets
+                    ],
+                )
+            )
+
+    summary = await svc.budget_summary(session, project)
+    c = project.currency
+    budget = [
+        _table(
+            ["Activité", f"Prévu ({c})", f"Dépensé ({c})", "Exécution"],
+            [
+                [a.title if not a.code else f"{a.code} {a.title}", fmt(a.planned), fmt(a.spent)]
+                + [_percent(a.execution_rate)]
+                for a in summary.by_activity
+            ]
+            + [
+                ["**Total**", fmt(summary.planned), fmt(summary.spent)]
+                + [_percent(summary.execution_rate)]
+            ],
+        )
+    ]
+    if project.exchange_rates:
+        budget.append("### Taux de change")
+        budget.append(
+            _table(
+                ["Devise", f"Valeur en {c}", "À partir du"],
+                [
+                    [
+                        r["currency"],
+                        fmt(Decimal(str(r["rate"])), 6).rstrip("0").rstrip(","),
+                        day(date.fromisoformat(str(r["valid_from"]))),
+                    ]
+                    for r in project.exchange_rates
+                ],
+            )
+        )
+
+    dates = (
+        f"{day(project.start_date)} – {day(project.end_date)}"
+        if project.start_date and project.end_date
+        else ""
+    )
+    meta = [
+        (label, value)
+        for label, value in (
+            ("Bailleur", project.donor),
+            ("Période", dates),
+            ("Zones", ", ".join(project.zones)),
+            ("Devise", c),
+            ("Édité le", day(date.today())),
+        )
+        if value
+    ]
+    return RenderedDocument(
+        title=f"{project.code} · {project.title}",
+        subtitle="Cadre logique, indicateurs et budget",
+        meta=meta,
+        sections=[
+            Section("Cadre logique", logframe),
+            Section("Indicateurs", "\n\n".join(parts)),
+            Section("Budget", "\n\n".join(budget)),
+        ],
+    )

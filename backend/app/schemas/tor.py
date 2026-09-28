@@ -53,6 +53,7 @@ class TorSummary(BaseModel):
 
 class TorOut(TorSummary):
     project_id: UUID
+    template_id: UUID | None = None
     sections: list[TorSection]
     missing_information: list[str]
     review_comment: str
@@ -75,4 +76,7 @@ class TorVersionOut(BaseModel):
 class GenerateTorIn(BaseModel):
     instructions: str = Field(
         default="", max_length=2000, description="Précisions de l'utilisateur pour la rédaction"
+    )
+    template_id: UUID | None = Field(
+        default=None, description="Modèle à suivre ; sinon celui du bailleur ou de l'organisation"
     )

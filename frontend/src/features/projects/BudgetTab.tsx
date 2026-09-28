@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
-import { type BudgetLine, type Project, projectsApi } from "@/lib/api";
+import { type BudgetLine, type ExchangeRate, type Project, projectsApi } from "@/lib/api";
+import { rateOn } from "@/lib/currency";
 import { flattenTree, formatMoney, formatNumber, formatRate } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { budgetLinesQuery, budgetSummaryQuery, logframeQuery } from "@/lib/queries";
@@ -37,24 +38,35 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "wa
 
 function ExpenseForm({
   orgId,
-  projectId,
+  project,
   line,
   onDone,
 }: {
   orgId: string;
-  projectId: string;
+  project: Project;
   line: BudgetLine;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
+  const projectId = project.id;
   const invalidate = useInvalidateProject(orgId, projectId);
   const [form, setForm] = useState({
     amount: "",
     spent_on: new Date().toISOString().slice(0, 10),
     reference: "",
+    currency: project.currency,
+    exchange_rate: "",
   });
+  const foreign = form.currency !== project.currency;
+  const known = rateOn(project.exchange_rates, form.currency, form.spent_on);
+  const currencies = [project.currency, ...new Set(project.exchange_rates.map((r) => r.currency))];
   const add = useMutation({
-    mutationFn: () => projectsApi.addExpense(orgId, projectId, line.id, form),
+    mutationFn: () =>
+      projectsApi.addExpense(orgId, projectId, line.id, {
+        ...form,
+        currency: foreign ? form.currency : "",
+        exchange_rate: foreign && form.exchange_rate ? form.exchange_rate : null,
+      }),
     onSuccess: async () => {
       await invalidate();
       onDone();
@@ -75,6 +87,29 @@ function ExpenseForm({
         value={form.amount}
         onChange={(e) => setForm({ ...form, amount: e.target.value })}
       />
+      <Select
+        label={t("budget.currency")}
+        value={form.currency}
+        onChange={(e) => setForm({ ...form, currency: e.target.value, exchange_rate: "" })}
+      >
+        {currencies.map((currency) => (
+          <option key={currency} value={currency}>
+            {currency}
+          </option>
+        ))}
+      </Select>
+      {foreign && (
+        <Field
+          label={t("budget.rateFor", { from: form.currency, to: project.currency })}
+          type="number"
+          min="0.000001"
+          step="any"
+          placeholder={known ?? ""}
+          required={!known}
+          value={form.exchange_rate}
+          onChange={(e) => setForm({ ...form, exchange_rate: e.target.value })}
+        />
+      )}
       <Field
         label={t("budget.date")}
         type="date"
@@ -95,6 +130,149 @@ function ExpenseForm({
       </Button>
       <ErrorText error={add.error} />
     </form>
+  );
+}
+
+function ExchangeRates({
+  orgId,
+  project,
+  canEdit,
+}: {
+  orgId: string;
+  project: Project;
+  canEdit: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const invalidate = useInvalidateProject(orgId, project.id);
+  const [rates, setRates] = useState<ExchangeRate[]>(project.exchange_rates);
+  const [editing, setEditing] = useState(false);
+  const save = useMutation({
+    mutationFn: () =>
+      projectsApi.setExchangeRates(
+        orgId,
+        project.id,
+        rates.map((r) => ({ ...r, currency: r.currency.toUpperCase() })),
+      ),
+    onSuccess: async () => {
+      await invalidate();
+      setEditing(false);
+    },
+  });
+  const update = (index: number, patch: Partial<ExchangeRate>) =>
+    setRates(rates.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
+  if (!editing && !project.exchange_rates.length && !canEdit) return null;
+
+  return (
+    <Card title={t("budget.exchangeRates")}>
+      <p className="mb-3 text-sm text-slate-600">
+        {t("budget.exchangeRatesIntro", { currency: project.currency })}
+      </p>
+      {editing ? (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+        >
+          {rates.map((rate, index) => (
+            <div key={index} className="flex flex-wrap items-end gap-2">
+              <Field
+                label={t("budget.currency")}
+                required
+                pattern="[A-Za-z]{3}"
+                maxLength={3}
+                className="w-20 rounded-md border border-slate-300 px-3 py-2 text-sm uppercase"
+                value={rate.currency}
+                onChange={(e) => update(index, { currency: e.target.value })}
+              />
+              <Field
+                label={t("budget.rateValue", { currency: project.currency })}
+                type="number"
+                min="0.000001"
+                step="any"
+                required
+                value={rate.rate}
+                onChange={(e) => update(index, { rate: e.target.value })}
+              />
+              <Field
+                label={t("budget.validFrom")}
+                type="date"
+                required
+                value={rate.valid_from}
+                onChange={(e) => update(index, { valid_from: e.target.value })}
+              />
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => setRates(rates.filter((_, i) => i !== index))}
+              >
+                {t("common.remove")}
+              </Button>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() =>
+                setRates([
+                  ...rates,
+                  { currency: "", rate: "", valid_from: new Date().toISOString().slice(0, 10) },
+                ])
+              }
+            >
+              + {t("budget.addRate")}
+            </Button>
+            <span className="flex-1" />
+            <Button type="submit" disabled={save.isPending}>
+              {t("common.save")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setRates(project.exchange_rates);
+                setEditing(false);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+          </div>
+          <ErrorText error={save.error} />
+        </form>
+      ) : (
+        <>
+          {project.exchange_rates.length > 0 ? (
+            <ul className="space-y-1 text-sm">
+              {project.exchange_rates.map((rate) => (
+                <li key={`${rate.currency}-${rate.valid_from}`}>
+                  1 {rate.currency} = {formatNumber(rate.rate, i18n.language)} {project.currency}{" "}
+                  <span className="text-xs text-slate-500">
+                    {t("budget.since", { date: dates.format(new Date(rate.valid_from)) })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-500">{t("budget.noRates")}</p>
+          )}
+          {canEdit && (
+            <Button
+              variant="ghost"
+              className="mt-2"
+              onClick={() => {
+                setRates(project.exchange_rates);
+                setEditing(true);
+              }}
+            >
+              {t("budget.editRates")}
+            </Button>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
@@ -226,7 +404,7 @@ export function BudgetTab({ orgId, project }: { orgId: string; project: Project 
                     expenseForm={
                       <ExpenseForm
                         orgId={orgId}
-                        projectId={projectId}
+                        project={project}
                         line={line}
                         onDone={() => setExpenseLine(null)}
                       />
@@ -305,6 +483,7 @@ export function BudgetTab({ orgId, project }: { orgId: string; project: Project 
           </form>
         )}
       </Card>
+      <ExchangeRates orgId={orgId} project={project} canEdit={canEdit} />
     </>
   );
 }

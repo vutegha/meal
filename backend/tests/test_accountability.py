@@ -5,8 +5,12 @@ from uuid import uuid4
 from httpx import AsyncClient
 
 from tests.conftest import register
+from tests.fake_llm import FakeLLM
 from tests.test_organizations import add_member, login
 from tests.test_projects import build_logframe, create_project
+from tests.test_tor import fake_llm  # noqa: F401
+
+__all__ = ["fake_llm"]
 
 
 async def setup(client: AsyncClient) -> tuple[dict[str, Any], str, dict[str, Any]]:
@@ -176,3 +180,46 @@ async def test_lessons_register(client: AsyncClient) -> None:
     )
     assert r.status_code == 404
     assert (await client.delete(f"{base}/lessons/{lesson['id']}", headers=h)).status_code == 204
+
+
+async def test_feedback_classification(client: AsyncClient, fake_llm: FakeLLM) -> None:
+    ctx = await register(client, "tri@ong.org", "ONG Tri")
+    project_id = await create_project(client, ctx)
+    base = f"/api/v1/orgs/{ctx['org_id']}/projects/{project_id}/feedback"
+    r = await client.post(
+        f"{base}/classify",
+        json={
+            "description": "Le relais demande 5 000 FC pour inscrire ma famille. Tél 0990000000",
+            "channel": "hotline",
+        },
+        headers=ctx["headers"],
+    )
+    assert r.status_code == 200, r.text
+    suggestion = r.json()
+    # La catégorie sensible impose la confidentialité et l'urgence, même si le modèle l'oublie.
+    assert suggestion["category"] == "fraud"
+    assert suggestion["sensitive"] is True
+    assert suggestion["urgency"] == "high"
+    call = fake_llm.calls[-1]
+    assert "Canal de réception : hotline" in call["content"][0]["text"]
+    assert call["model"] == "claude-haiku-4-5"
+
+    # Un agent de terrain peut demander un classement ; un autre projet ou org, non.
+    other = await register(client, "autre@ong.org", "Autre ONG")
+    r = await client.post(
+        f"{base}/classify", json={"description": "Bonjour"}, headers=other["headers"]
+    )
+    assert r.status_code == 404
+
+
+async def test_feedback_classification_error(client: AsyncClient, fake_llm: FakeLLM) -> None:
+    ctx = await register(client, "err@ong.org", "ONG Err")
+    project_id = await create_project(client, ctx)
+    fake_llm.error = "Service IA injoignable. Vérifiez la connexion réseau."
+    r = await client.post(
+        f"/api/v1/orgs/{ctx['org_id']}/projects/{project_id}/feedback/classify",
+        json={"description": "Merci pour la distribution"},
+        headers=ctx["headers"],
+    )
+    assert r.status_code == 503
+    assert "injoignable" in r.json()["detail"]

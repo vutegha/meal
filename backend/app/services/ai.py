@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.db import SessionLocal
+from app.core.db import SessionLocal, bind_org
 from app.llm.client import Effort, LLMError, LLMResult, get_llm
 from app.llm.pricing import estimate_cost
 from app.models import AiCall
@@ -43,7 +43,7 @@ async def call_structured(
     system: str,
     content: list[dict[str, Any]],
     output_type: type[T],
-    effort: Effort = "high",
+    effort: Effort | None = "high",
 ) -> LLMResult[T]:
     settings = get_settings()
     cap = Decimal(str(settings.ai_monthly_budget_usd))
@@ -65,7 +65,7 @@ async def call_structured(
         )
     except LLMError as exc:
         call.status, call.error = "error", str(exc)
-        await _log(call)
+        await log_call(call)
         raise
     call.status = "ok"
     call.model = result.model or model
@@ -82,12 +82,13 @@ async def call_structured(
         result.cache_read_tokens,
         result.cache_write_tokens,
     )
-    await _log(call)
+    await log_call(call)
     return result
 
 
-async def _log(call: AiCall) -> None:
+async def log_call(call: AiCall) -> None:
     """Enregistre l'appel dans sa propre transaction : il reste tracé même si la suite échoue."""
     async with SessionLocal() as log_session:
+        await bind_org(log_session, call.organization_id)
         log_session.add(call)
         await log_session.commit()

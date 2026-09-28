@@ -11,6 +11,7 @@ import {
   type Participants,
 } from "@/lib/api";
 import { flattenTree } from "@/lib/format";
+import { mediaKind, preparePhoto } from "@/lib/media";
 import { type FileToSend, newId, queueExecution, syncOutbox } from "@/lib/outbox";
 import { logframeQuery } from "@/lib/queries";
 
@@ -21,12 +22,26 @@ const PARTICIPANT_KEYS: (keyof Participants)[] = [
   "boys",
   "with_disability",
 ];
-const ACCEPT = "image/*,.pdf,.docx,.xlsx,.txt,.md";
+const ACCEPT = "image/*,audio/*,video/*,.pdf,.docx,.xlsx,.txt,.md";
 
 const activitiesOf = (nodes: LogframeNode[]) =>
   flattenTree(nodes).filter((n) => n.level === "activity" || n.level === "sub_activity");
 
 /** Fichiers choisis avant envoi, avec leur type, légende et consentement. */
+// Preuves où l'on voit ou entend des personnes : leur consentement est demandé.
+const PEOPLE_KINDS: EvidenceKind[] = ["photo", "audio", "video"];
+
+const formatSize = (bytes: number, locale: string) =>
+  bytes < 1024 * 1024
+    ? new Intl.NumberFormat(locale, { style: "unit", unit: "kilobyte" }).format(
+        Math.max(1, Math.round(bytes / 1024)),
+      )
+    : new Intl.NumberFormat(locale, {
+        style: "unit",
+        unit: "megabyte",
+        maximumFractionDigits: 1,
+      }).format(bytes / 1024 / 1024);
+
 export function FilePicker({
   files,
   onChange,
@@ -34,19 +49,33 @@ export function FilePicker({
   files: FileToSend[];
   onChange: (files: FileToSend[]) => void;
 }) {
-  const { t } = useTranslation();
-  const add = (list: FileList | null) => {
-    const added = Array.from(list ?? []).map((file) => ({
-      file,
-      filename: file.name,
-      meta: {
-        kind: (file.type.startsWith("image/") ? "photo" : "report") as EvidenceKind,
-        caption: "",
-        consent_given: false,
-        client_uuid: newId(),
-      },
-    }));
-    onChange([...files, ...added]);
+  const { t, i18n } = useTranslation();
+  const [preparing, setPreparing] = useState(false);
+  const add = async (list: FileList | null) => {
+    setPreparing(true);
+    try {
+      const added = await Promise.all(
+        Array.from(list ?? []).map(async (file): Promise<FileToSend> => {
+          const kind = mediaKind(file.type, file.name);
+          // Photos réduites sur le téléphone : envoi plus rapide, moins de données mobiles.
+          const photo = kind === "photo" ? await preparePhoto(file) : null;
+          return {
+            file: photo?.blob ?? file,
+            filename: photo?.filename ?? file.name,
+            meta: {
+              kind: kind ?? "report",
+              caption: "",
+              consent_given: false,
+              client_uuid: newId(),
+              ...photo?.meta,
+            },
+          };
+        }),
+      );
+      onChange([...files, ...added]);
+    } finally {
+      setPreparing(false);
+    }
   };
   const update = (index: number, meta: Partial<FileToSend["meta"]>) =>
     onChange(files.map((f, i) => (i === index ? { ...f, meta: { ...f.meta, ...meta } } : f)));
@@ -62,7 +91,33 @@ export function FilePicker({
             capture="environment"
             className="sr-only"
             onChange={(e) => {
-              add(e.target.files);
+              void add(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <label className="cursor-pointer rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+          🎥 {t("execution.takeVideo")}
+          <input
+            type="file"
+            accept="video/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => {
+              void add(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <label className="cursor-pointer rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+          🎙 {t("execution.recordAudio")}
+          <input
+            type="file"
+            accept="audio/*"
+            capture="user"
+            className="sr-only"
+            onChange={(e) => {
+              void add(e.target.files);
               e.target.value = "";
             }}
           />
@@ -75,12 +130,13 @@ export function FilePicker({
             accept={ACCEPT}
             className="sr-only"
             onChange={(e) => {
-              add(e.target.files);
+              void add(e.target.files);
               e.target.value = "";
             }}
           />
         </label>
       </div>
+      {preparing && <p className="text-xs text-slate-500">{t("execution.preparing")}</p>}
       {files.length > 0 && (
         <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
           {files.map((item, index) => (
@@ -88,7 +144,12 @@ export function FilePicker({
               key={item.meta.client_uuid}
               className="flex flex-wrap items-center gap-2 p-2 text-sm"
             >
-              <span className="min-w-0 flex-1 truncate">{item.filename}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {item.filename}{" "}
+                <span className="text-xs text-slate-500">
+                  {formatSize(item.file.size, i18n.language)}
+                </span>
+              </span>
               <select
                 aria-label={t("execution.kind")}
                 className="rounded border border-slate-300 px-1.5 py-1 text-xs"
@@ -108,7 +169,7 @@ export function FilePicker({
                 value={item.meta.caption}
                 onChange={(e) => update(index, { caption: e.target.value })}
               />
-              {item.meta.kind === "photo" && (
+              {PEOPLE_KINDS.includes(item.meta.kind) && (
                 <label className="flex items-center gap-1 text-xs">
                   <input
                     type="checkbox"
@@ -129,7 +190,7 @@ export function FilePicker({
           ))}
         </ul>
       )}
-      {files.some((f) => f.meta.kind === "photo") && (
+      {files.some((f) => PEOPLE_KINDS.includes(f.meta.kind)) && (
         <p className="text-xs text-slate-500">{t("execution.consentHint")}</p>
       )}
     </div>

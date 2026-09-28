@@ -34,8 +34,11 @@ consentement, mécanisme de plainte et de retour, protection contre l'exploitati
 inclusion des femmes et des personnes vulnérables."""
 
 
-def build_content(context: str, sections: list[tuple[str, str]]) -> list[dict[str, Any]]:
-    wanted = "\n".join(f"- {key} : {title}" for key, title in sections)
+def build_content(context: str, sections: list[tuple[str, str, str]]) -> list[dict[str, Any]]:
+    wanted = "\n".join(
+        f"- {key} : {title}" + (f" (consigne de l'organisation : {guidance})" if guidance else "")
+        for key, title, guidance in sections
+    )
     return [
         {"type": "text", "text": context},
         {

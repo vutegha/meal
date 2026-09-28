@@ -23,9 +23,9 @@ import { ExecutionBadge } from "./ExecutionBadge";
 import { ReportPanel } from "./ReportPanel";
 
 /** Image protégée : chargée avec le jeton de l'utilisateur, puis affichée depuis la mémoire. */
-function AuthImage({ path, alt }: { path: string; alt: string }) {
+function AuthImage({ path, alt, version = "" }: { path: string; alt: string; version?: string }) {
   const blob = useQuery({
-    queryKey: ["blob", path],
+    queryKey: ["blob", path, version],
     queryFn: () => fetchBlob(path),
     staleTime: Infinity,
   });
@@ -39,6 +39,53 @@ function AuthImage({ path, alt }: { path: string; alt: string }) {
   }, [blob.data]);
   if (!url) return <div className="aspect-[4/3] w-full animate-pulse rounded bg-slate-100" />;
   return <img src={url} alt={alt} className="aspect-[4/3] w-full rounded object-cover" />;
+}
+
+/** Lecture d'un enregistrement audio ou vidéo, chargé à la demande (fichiers lourds). */
+function MediaPlayer({ path, evidence }: { path: string; evidence: Evidence }) {
+  const { t } = useTranslation();
+  const [load, setLoad] = useState(false);
+  const blob = useQuery({
+    queryKey: ["blob", path],
+    queryFn: () => fetchBlob(path),
+    staleTime: Infinity,
+    enabled: load,
+  });
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!blob.data) return;
+    const objectUrl = URL.createObjectURL(blob.data);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- l'URL dépend d'une ressource externe à libérer
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob.data]);
+  const video = evidence.kind === "video";
+  if (url)
+    return video ? (
+      <video src={url} controls className="aspect-[4/3] w-full rounded bg-black" />
+    ) : (
+      <div className="flex aspect-[4/3] w-full items-center rounded bg-slate-50 p-2">
+        <audio src={url} controls className="w-full" />
+      </div>
+    );
+  return (
+    <button
+      className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded bg-slate-50 p-2 text-center text-xs text-slate-600 hover:bg-slate-100"
+      onClick={() => setLoad(true)}
+      disabled={blob.isFetching}
+    >
+      <span className="text-2xl">{video ? "🎥" : "🎙"}</span>
+      <span>
+        {blob.isFetching
+          ? t("common.loading")
+          : video
+            ? t("execution.play")
+            : t("execution.listen")}
+      </span>
+      <span className="line-clamp-1 break-all text-slate-500">{evidence.filename}</span>
+      <ErrorText error={blob.error} />
+    </button>
+  );
 }
 
 function EvidenceItem({
@@ -64,6 +111,14 @@ function EvidenceItem({
       }),
     onSuccess: onChanged,
   });
+  const toggleBlur = useMutation({
+    mutationFn: () =>
+      executionsApi.updateEvidence(orgId, projectId, evidence.id, {
+        blur_faces: !evidence.blur_faces,
+      }),
+    onSuccess: onChanged,
+  });
+  const { role } = useCurrentOrg();
   const remove = useMutation({
     mutationFn: () => executionsApi.removeEvidence(orgId, projectId, evidence.id),
     onSuccess: onChanged,
@@ -75,8 +130,14 @@ function EvidenceItem({
     <li className="space-y-1 text-sm">
       {evidence.has_thumbnail ? (
         <button className="block w-full" onClick={() => open.mutate()} title={evidence.filename}>
-          <AuthImage path={path("thumbnail")} alt={evidence.caption || evidence.filename} />
+          <AuthImage
+            path={path("thumbnail")}
+            alt={evidence.caption || evidence.filename}
+            version={`${evidence.blur_faces}-${evidence.consent_given}`}
+          />
         </button>
+      ) : evidence.kind === "audio" || evidence.kind === "video" ? (
+        <MediaPlayer path={path("file")} evidence={evidence} />
       ) : (
         <button
           className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded bg-slate-50 p-2 text-center text-xs text-slate-600 hover:bg-slate-100"
@@ -96,7 +157,7 @@ function EvidenceItem({
           ` · 📍 ${Number(evidence.latitude).toFixed(4)}, ${Number(evidence.longitude).toFixed(4)}`}
         {evidence.page_count > 0 && t("documents.pages", { count: evidence.page_count })}
       </p>
-      {evidence.kind === "photo" && (
+      {["photo", "audio", "video"].includes(evidence.kind) && (
         <p className={`text-xs ${evidence.consent_given ? "text-emerald-700" : "text-amber-700"}`}>
           {evidence.consent_given
             ? `✓ ${t("execution.consentOk")}`
@@ -112,6 +173,22 @@ function EvidenceItem({
           )}
         </p>
       )}
+      {evidence.faces > 0 && (
+        <p className="text-xs text-slate-600">
+          {evidence.blur_faces
+            ? t("execution.facesBlurred", { count: evidence.faces })
+            : t("execution.facesVisible", { count: evidence.faces })}
+          {permissions.plan(role) && (evidence.blur_faces ? evidence.consent_given : true) && (
+            <button
+              className="ml-2 text-brand-700 underline"
+              onClick={() => toggleBlur.mutate()}
+              disabled={toggleBlur.isPending}
+            >
+              {evidence.blur_faces ? t("execution.showFaces") : t("execution.blurFaces")}
+            </button>
+          )}
+        </p>
+      )}
       {canCollect && (
         <button
           className="text-xs text-red-700"
@@ -122,7 +199,7 @@ function EvidenceItem({
           {t("logframe.delete")}
         </button>
       )}
-      <ErrorText error={toggleConsent.error ?? remove.error ?? open.error} />
+      <ErrorText error={toggleConsent.error ?? toggleBlur.error ?? remove.error ?? open.error} />
     </li>
   );
 }
@@ -256,12 +333,14 @@ export function ExecutionDetailView({
     onSuccess: refresh,
   });
   const sendFiles = useMutation({
+    // Les fichiers vont d'abord dans la file locale : l'envoi doit démarrer sans réseau.
+    networkMode: "always",
     mutationFn: async () => {
       await queueEvidence(orgId, project.id, executionId, files);
       setFiles([]);
       const result = navigator.onLine ? await syncOutbox() : { offline: true };
       setQueued(result.offline);
-      await refresh();
+      if (!result.offline) await refresh();
     },
   });
 

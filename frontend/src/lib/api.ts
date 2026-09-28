@@ -96,6 +96,26 @@ async function errorMessage(response: Response): Promise<string> {
   return response.statusText;
 }
 
+/** fetch authentifié pour le client généré : jeton, puis nouvel essai après rafraîchissement. */
+export async function authFetch(input: Request): Promise<Response> {
+  const retry = input.clone();
+  const withToken = (req: Request, token?: string) => {
+    if (token) req.headers.set("Authorization", `Bearer ${token}`);
+    return fetch(req);
+  };
+  let response = await withToken(input, tokenStore.get()?.access_token);
+  if (response.status === 401 && tokenStore.get()) {
+    const fresh = await refreshTokens();
+    if (fresh) response = await withToken(retry, fresh.access_token);
+  }
+  return response;
+}
+
+export function detailMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | undefined)?.detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response = await send(path, init, tokenStore.get()?.access_token);
   if (response.status === 401 && tokenStore.get()) {
@@ -160,11 +180,27 @@ export interface Project {
   status: ProjectStatus;
   zones: string[];
   target_groups: string[];
+  exchange_rates: ExchangeRate[];
   created_at: string;
 }
 
+/** 1 unité de `currency` vaut `rate` unités de la devise du projet, à partir de `valid_from`. */
+export interface ExchangeRate {
+  currency: string;
+  rate: string;
+  valid_from: string;
+}
+
 export type ProjectInput = Pick<Project, "code" | "title"> &
-  Partial<Omit<Project, "id" | "created_at">>;
+  Partial<Omit<Project, "id" | "created_at" | "exchange_rates">>;
+
+export interface ExpenseInput {
+  amount: string;
+  spent_on: string;
+  reference: string;
+  currency?: string;
+  exchange_rate?: string | null;
+}
 
 export interface LogframeNode {
   id: string;
@@ -232,6 +268,18 @@ export interface Indicator {
   owner_id: string | null;
   achieved: string | null;
   achievement_rate: number | null;
+  period_targets: PeriodProgress[];
+}
+
+export interface PeriodTarget {
+  period_start: string;
+  period_end: string;
+  target: string;
+}
+
+export interface PeriodProgress extends PeriodTarget {
+  achieved: string | null;
+  achievement_rate: number | null;
 }
 
 /** GET authentifié renvoyant le contenu brut (fichiers, images). */
@@ -293,18 +341,27 @@ export const projectsApi = {
   ) => request<BudgetLine>(`${project(orgId, projectId)}/budget/lines`, json("POST", body)),
   deleteBudgetLine: (orgId: string, projectId: string, lineId: string) =>
     request<void>(`${project(orgId, projectId)}/budget/lines/${lineId}`, { method: "DELETE" }),
-  addExpense: (
-    orgId: string,
-    projectId: string,
-    lineId: string,
-    body: { amount: string; spent_on: string; reference: string },
-  ) =>
+  setExchangeRates: (orgId: string, projectId: string, rates: ExchangeRate[]) =>
+    request<Project>(`${project(orgId, projectId)}/exchange-rates`, json("PUT", rates)),
+  documentPath: (orgId: string, projectId: string, format: "pdf" | "docx") =>
+    `${project(orgId, projectId)}/export.${format}`,
+  addExpense: (orgId: string, projectId: string, lineId: string, body: ExpenseInput) =>
     request<unknown>(
       `${project(orgId, projectId)}/budget/lines/${lineId}/expenses`,
       json("POST", body),
     ),
   indicators: (orgId: string, projectId: string) =>
     request<Indicator[]>(`${project(orgId, projectId)}/indicators`),
+  updateIndicator: (
+    orgId: string,
+    projectId: string,
+    indicatorId: string,
+    body: { period_targets?: PeriodTarget[] },
+  ) =>
+    request<Indicator>(
+      `${project(orgId, projectId)}/indicators/${indicatorId}`,
+      json("PATCH", body),
+    ),
   addIndicator: (
     orgId: string,
     projectId: string,
@@ -341,7 +398,7 @@ export interface SourceDocument {
   filename: string;
   kind: string;
   size_bytes: number;
-  status: "uploaded" | "extracted" | "failed";
+  status: "uploaded" | "ocr" | "extracted" | "failed";
   page_count: number;
   text_chars: number;
   error: string;
@@ -354,6 +411,8 @@ export interface SearchHit {
   page: number;
   snippet: string;
   rank: number;
+  // Trouvée par le sens, sans les mots de la recherche.
+  semantic: boolean;
 }
 
 export interface Job {
@@ -431,7 +490,42 @@ export interface ApplyLogframe {
   budget_lines: ProposedBudgetLine[];
 }
 
+export interface AiUsageRow {
+  key: string;
+  label: string;
+  calls: number;
+  errors: number;
+  cost_usd: string;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface AiCallLog {
+  id: string;
+  created_at: string;
+  purpose: string;
+  model: string;
+  status: string;
+  error: string;
+  cost_usd: string;
+  duration_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  project_code: string | null;
+}
+
+export interface AiUsage {
+  month_cost_usd: string;
+  monthly_budget_usd: string | null;
+  calls_this_month: number;
+  by_purpose: AiUsageRow[];
+  by_project: AiUsageRow[];
+  by_month: AiUsageRow[];
+  recent: AiCallLog[];
+}
+
 export const aiApi = {
+  usage: (orgId: string) => request<AiUsage>(`/orgs/${orgId}/ai/usage`),
   documents: (orgId: string, projectId: string) =>
     request<SourceDocument[]>(`${project(orgId, projectId)}/documents`),
   upload: (orgId: string, projectId: string, file: File) => {
@@ -550,8 +644,17 @@ export interface Participants {
 }
 
 export type ExecutionStatus = "in_progress" | "completed";
-export type EvidenceKind = "report" | "minutes" | "attendance" | "photo" | "other";
-export const EVIDENCE_KINDS: EvidenceKind[] = ["photo", "report", "minutes", "attendance", "other"];
+export type EvidenceKind =
+  "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+export const EVIDENCE_KINDS: EvidenceKind[] = [
+  "photo",
+  "audio",
+  "video",
+  "report",
+  "minutes",
+  "attendance",
+  "other",
+];
 
 export interface ExecutionInput {
   activity_id: string;
@@ -592,6 +695,8 @@ export interface Evidence {
   consent_given: boolean;
   has_thumbnail: boolean;
   page_count: number;
+  faces: number;
+  blur_faces: boolean;
   created_at: string;
 }
 
@@ -615,6 +720,10 @@ export interface EvidenceInput {
   caption: string;
   consent_given: boolean;
   client_uuid: string;
+  // Lus sur le téléphone avant compression (la photo envoyée n'a plus d'EXIF).
+  taken_at?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const executionsApi = {
@@ -652,6 +761,11 @@ export const executionsApi = {
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
     body.append("client_uuid", meta.client_uuid);
+    if (meta.taken_at) body.append("taken_at", meta.taken_at);
+    if (meta.latitude !== undefined && meta.longitude !== undefined) {
+      body.append("latitude", String(meta.latitude));
+      body.append("longitude", String(meta.longitude));
+    }
     return request<Evidence>(`${project(orgId, projectId)}/executions/${executionId}/evidence`, {
       method: "POST",
       body,
@@ -661,7 +775,9 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Omit<EvidenceInput, "client_uuid">>,
+    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given">> & {
+      blur_faces?: boolean;
+    },
   ) =>
     request<Evidence>(`${project(orgId, projectId)}/evidence/${evidenceId}`, json("PATCH", body)),
   removeEvidence: (orgId: string, projectId: string, evidenceId: string) =>
@@ -676,7 +792,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     executionId: string,
-    body: { budget_line_id: string; amount: string; spent_on: string; reference: string },
+    body: ExpenseInput & { budget_line_id: string },
   ) =>
     request<ExecutionExpense>(
       `${project(orgId, projectId)}/executions/${executionId}/expenses`,
@@ -810,7 +926,13 @@ export const periodicApi = {
   create: (
     orgId: string,
     projectId: string,
-    body: { kind: PeriodicKind; period_start: string; period_end: string; instructions: string },
+    body: {
+      kind: PeriodicKind;
+      period_start: string;
+      period_end: string;
+      instructions: string;
+      template_id?: string | null;
+    },
   ) => request<Periodic>(periodicPath(orgId, projectId), json("POST", body)),
   generate: (orgId: string, projectId: string, reportId: string) =>
     request<Job>(`${periodicPath(orgId, projectId, reportId)}/generate`, { method: "POST" }),
@@ -911,12 +1033,22 @@ export interface FeedbackIn {
   received_on: string;
   channel: FeedbackChannel;
   category: FeedbackCategory;
+  // Absent : déduit de la catégorie par l'API.
+  sensitive?: boolean | null;
   description: string;
   location: string;
   activity_id: string | null;
   anonymous: boolean;
   contact: string;
   client_uuid: string;
+}
+
+export interface FeedbackSuggestion {
+  category: FeedbackCategory;
+  sensitive: boolean;
+  urgency: "low" | "normal" | "high";
+  summary: string;
+  justification: string;
 }
 
 export interface FeedbackStats {
@@ -955,6 +1087,15 @@ export const accountabilityApi = {
     request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
   feedbackStats: (orgId: string, projectId: string) =>
     request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
+  classifyFeedback: (
+    orgId: string,
+    projectId: string,
+    body: { description: string; channel: FeedbackChannel },
+  ) =>
+    request<FeedbackSuggestion>(
+      `${project(orgId, projectId)}/feedback/classify`,
+      json("POST", body),
+    ),
   addFeedback: (orgId: string, projectId: string, body: FeedbackIn) =>
     request<FeedbackEntry>(`${project(orgId, projectId)}/feedback`, json("POST", body)),
   updateFeedback: (
@@ -988,3 +1129,127 @@ export const accountabilityApi = {
   deleteLesson: (orgId: string, projectId: string, lessonId: string) =>
     request<void>(`${project(orgId, projectId)}/lessons/${lessonId}`, { method: "DELETE" }),
 };
+
+// --- Modèles de documents ---------------------------------------------------------------
+
+export const TEMPLATE_KINDS = ["tor", "report", "periodic"] as const;
+export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+
+export interface TemplateSection {
+  key: string;
+  title: string;
+  guidance: string;
+}
+
+export interface TemplateLayout {
+  header: string;
+  footer: string;
+  color: string;
+}
+
+export interface DocumentTemplate {
+  id: string;
+  kind: TemplateKind;
+  name: string;
+  donor: string;
+  is_default: boolean;
+  sections: TemplateSection[];
+  layout: TemplateLayout;
+  created_at: string;
+}
+
+export type TemplateIn = Omit<DocumentTemplate, "id" | "created_at">;
+
+export interface BuiltinSection {
+  key: string;
+  title: string;
+  computed: boolean;
+}
+
+export type BuiltinTemplates = Record<TemplateKind, BuiltinSection[]>;
+
+export const templatesApi = {
+  list: (orgId: string) => request<DocumentTemplate[]>(`/orgs/${orgId}/templates`),
+  builtin: (orgId: string) => request<BuiltinTemplates>(`/orgs/${orgId}/templates/builtin`),
+  create: (orgId: string, body: TemplateIn) =>
+    request<DocumentTemplate>(`/orgs/${orgId}/templates`, json("POST", body)),
+  update: (orgId: string, id: string, body: Partial<TemplateIn>) =>
+    request<DocumentTemplate>(`/orgs/${orgId}/templates/${id}`, json("PATCH", body)),
+  remove: (orgId: string, id: string) =>
+    request<void>(`/orgs/${orgId}/templates/${id}`, { method: "DELETE" }),
+};
+
+// --- Formulaires de collecte -------------------------------------------------------------
+
+export const FIELD_TYPES = [
+  "text",
+  "number",
+  "integer",
+  "select",
+  "multiselect",
+  "yesno",
+  "date",
+] as const;
+export type FieldType = (typeof FIELD_TYPES)[number];
+export type FormStatus = "draft" | "published" | "closed";
+export type AnswerValue = string | number | boolean | string[];
+
+export interface FormField {
+  key: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
+  options: string[];
+  hint: string;
+}
+
+export interface CollectionForm {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: FormStatus;
+  fields: FormField[];
+  activity_id: string | null;
+  created_at: string;
+  submissions: number;
+}
+
+export type FormInput = Pick<CollectionForm, "title" | "description" | "activity_id" | "fields">;
+
+export interface SubmissionInput {
+  answers: Record<string, AnswerValue>;
+  location: string;
+  latitude: number | null;
+  longitude: number | null;
+  collected_at: string;
+  client_uuid: string;
+}
+
+export interface Submission extends Omit<SubmissionInput, "client_uuid"> {
+  id: string;
+  form_id: string;
+  submitted_by: string | null;
+  submitter_name: string;
+}
+
+export interface FieldSummary {
+  key: string;
+  label: string;
+  type: FieldType;
+  answered: number;
+  counts: Record<string, number>;
+  total: number | null;
+  mean: number | null;
+  min: number | null;
+  max: number | null;
+  samples: string[];
+}
+
+export interface FormSummary {
+  submissions: number;
+  fields: FieldSummary[];
+}
+
+export const formExportPath = (orgId: string, projectId: string, formId: string) =>
+  `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;

@@ -11,6 +11,8 @@ import {
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { MembersPage } from "@/features/orgs/MembersPage";
+import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
+import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
@@ -83,6 +85,18 @@ const membersRoute = createRoute({
   component: MembersPage,
 });
 
+const lessonsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/lessons",
+  component: OrgLessonsPage,
+});
+
+const templatesRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/templates",
+  component: TemplatesPage,
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/projects/$projectId",
@@ -93,11 +107,13 @@ const projectRoute = createRoute({
     tor?: string;
     execution?: string;
     periodic?: string;
+    form?: string;
   } => ({
     tab: PROJECT_TABS.includes(search.tab as ProjectTab) ? (search.tab as ProjectTab) : "dashboard",
     tor: typeof search.tor === "string" ? search.tor : undefined,
     execution: typeof search.execution === "string" ? search.execution : undefined,
     periodic: typeof search.periodic === "string" ? search.periodic : undefined,
+    form: typeof search.form === "string" ? search.form : undefined,
   }),
   component: ProjectPage,
 });
@@ -106,7 +122,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
-  orgRoute.addChildren([orgIndexRoute, membersRoute, projectRoute]),
+  orgRoute.addChildren([orgIndexRoute, lessonsRoute, templatesRoute, membersRoute, projectRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

@@ -2,7 +2,9 @@
 
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import date
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -24,8 +26,11 @@ from app.schemas.project import (
     ActivityBudget,
     BudgetLineOut,
     BudgetSummary,
+    ExchangeRate,
     IndicatorOut,
     NodeTree,
+    PeriodProgress,
+    PeriodTarget,
 )
 
 ACTIVITY_LEVELS = (NodeLevel.ACTIVITY, NodeLevel.SUB_ACTIVITY)
@@ -158,31 +163,102 @@ async def budget_summary(session: AsyncSession, project: Project) -> BudgetSumma
 
 
 def achievement(
-    indicator: Indicator, values: Sequence[IndicatorValue]
+    indicator: Indicator, values: Sequence[IndicatorValue], target: Decimal | None = None
 ) -> tuple[Decimal | None, float | None]:
     """Valeur atteinte et taux d'atteinte à partir des valeurs totales (sans désagrégation).
 
     - agrégation `sum` : somme des valeurs, taux = atteint / cible ;
     - agrégation `latest` : dernière valeur, taux = (atteint - référence) / (cible - référence).
+
+    `target` remplace la cible finale (cible d'une période).
     """
+    target = indicator.target if target is None else target
     totals = [v for v in values if not v.disaggregation]
     if not totals:
         return None, None
     if indicator.aggregation == Aggregation.SUM:
         achieved = sum((v.value for v in totals), Decimal(0))
-        return achieved, rate(achieved, indicator.target) if indicator.target else None
+        return achieved, rate(achieved, target) if target else None
     achieved = max(totals, key=lambda v: (v.period_end, v.created_at)).value
-    if indicator.target is None:
+    if target is None:
         return achieved, None
     base = indicator.baseline or Decimal(0)
-    return achieved, rate(achieved - base, indicator.target - base)
+    return achieved, rate(achieved - base, target - base)
+
+
+def period_progress(indicator: Indicator, values: Sequence[IndicatorValue]) -> list[PeriodProgress]:
+    """Valeur atteinte sur chaque période cible (valeurs saisies entièrement dans la période).
+
+    La cible d'une période s'entend comme l'agrégation : somme de la période (`sum`) ou niveau
+    à atteindre en fin de période (`latest`).
+    """
+    progress = []
+    for raw in indicator.period_targets or []:
+        target = PeriodTarget.model_validate(raw)
+        inside = [
+            v
+            for v in values
+            if target.period_start <= v.period_start and v.period_end <= target.period_end
+        ]
+        achieved, achievement_rate = achievement(indicator, inside, target.target)
+        progress.append(
+            PeriodProgress(
+                **target.model_dump(), achieved=achieved, achievement_rate=achievement_rate
+            )
+        )
+    return progress
 
 
 def indicator_out(indicator: Indicator) -> IndicatorOut:
     achieved, achievement_rate = achievement(indicator, indicator.values)
-    return IndicatorOut.model_validate(indicator).model_copy(
-        update={"achieved": achieved, "achievement_rate": achievement_rate}
+    return IndicatorOut.model_validate(
+        {
+            **{
+                k: getattr(indicator, k)
+                for k in IndicatorOut.model_fields
+                if k not in ("achieved", "achievement_rate", "period_targets")
+            },
+            "achieved": achieved,
+            "achievement_rate": achievement_rate,
+            "period_targets": period_progress(indicator, indicator.values),
+        }
     )
+
+
+# --- Devises ---------------------------------------------------------------
+
+
+def exchange_rate(project: Project, currency: str, on: date) -> Decimal | None:
+    """Taux du projet en vigueur à une date : le plus récent dont `valid_from` la précède."""
+    rates = [ExchangeRate.model_validate(r) for r in project.exchange_rates or []]
+    valid = [r for r in rates if r.currency == currency and r.valid_from <= on]
+    return max(valid, key=lambda r: r.valid_from).rate if valid else None
+
+
+def convert_expense(
+    project: Project, amount: Decimal, currency: str, rate: Decimal | None, spent_on: date
+) -> dict[str, Any]:
+    """Champs d'une dépense : montant converti dans la devise du projet et trace de l'origine."""
+    if not currency or currency == project.currency:
+        return {
+            "amount": amount.quantize(Decimal("0.01")),
+            "currency": "",
+            "original_amount": None,
+            "exchange_rate": None,
+        }
+    rate = rate or exchange_rate(project, currency, spent_on)
+    if rate is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"Taux de change {currency} → {project.currency} manquant au "
+            f"{spent_on:%d/%m/%Y} : ajoutez-le au budget du projet ou saisissez-le.",
+        )
+    return {
+        "amount": (amount * rate).quantize(Decimal("0.01")),
+        "currency": currency,
+        "original_amount": amount,
+        "exchange_rate": rate,
+    }
 
 
 async def list_indicators(session: AsyncSession, project_id: UUID) -> Sequence[Indicator]:

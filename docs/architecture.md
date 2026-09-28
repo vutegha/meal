@@ -40,9 +40,14 @@ Ce document décrit l'architecture cible de l'application et l'état actuel de s
 | `documents/` | extraction, découpage, indexation, génération DOCX/PDF (étapes 3 et 4) |
 | `workers/` | configuration et tâches ARQ |
 
+## Client API et composants du frontend
+- Le schéma OpenAPI de l'API est écrit dans `frontend/openapi.json` (`uv run python -m app.scripts.openapi ../frontend/openapi.json`), puis les types TypeScript sont générés dans `src/lib/schema.gen.ts` (`npm run api:generate`). La CI échoue si l'un des deux n'est pas à jour.
+- `src/lib/client.ts` expose le client typé (`openapi-fetch`) : chemins, paramètres et corps vérifiés par TypeScript, jeton et rafraîchissement gérés. Les nouveaux modules l'utilisent (formulaires de collecte : `src/lib/formsApi.ts`) ; les anciens appels passent encore par `request()`, et `src/lib/contract.ts` vérifie à la compilation que leurs types restent conformes au schéma généré.
+- Les primitives d'interface suivent les conventions shadcn/ui (`components.json`, `cn`, variantes `cva`) dans `src/components/ui/` ; `src/components/ui.tsx` assemble les champs de formulaire de l'application à partir d'elles.
+
 ## Multi-tenant
 
-Toutes les ressources métier appartiennent à une organisation et sont exposées sous `/api/v1/orgs/{org_id}/…`. La dépendance `require_membership` (dans `api/deps.py`) vérifie que l'utilisateur authentifié est membre de l'organisation et, si demandé, qu'il a l'un des rôles autorisés. Une requête sur une organisation dont l'utilisateur n'est pas membre renvoie **404** (on ne révèle pas son existence). Voir [ADR 0002](adr/0002-tenancy.md) pour l'ajout de la Row Level Security PostgreSQL.
+Toutes les ressources métier appartiennent à une organisation et sont exposées sous `/api/v1/orgs/{org_id}/…`. La dépendance `require_membership` (dans `api/deps.py`) vérifie que l'utilisateur authentifié est membre de l'organisation et, si demandé, qu'il a l'un des rôles autorisés. Une requête sur une organisation dont l'utilisateur n'est pas membre renvoie **404** (on ne révèle pas son existence). En défense en profondeur, la Row Level Security PostgreSQL filtre chaque table métier sur l'organisation de la requête : voir [ADR 0002](adr/0002-tenancy.md).
 
 ## Authentification
 
@@ -103,7 +108,7 @@ Chaque écriture passe par `services/audit.py::record` dans la même transaction
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Fondations : monorepo, Compose, auth, organisations, rôles, audit, CI | fait |
-| 2 | Cadre logique manuel, budget, indicateurs | fait (sauf RLS, voir roadmap) |
+| 2 | Cadre logique manuel, budget, indicateurs | fait |
 | 3 | Import de documents et extraction IA | fait (sauf OCR, voir roadmap) |
 | 4 | TdR | fait (sauf modèles par organisation, voir roadmap) |
 | 5 | Exécution, collecte PWA hors ligne | fait (sauf floutage automatique, voir roadmap) |

@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Computed,
     DateTime,
@@ -19,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, IdMixin, TimestampMixin
+from app.llm.embeddings import DIMENSIONS
 
 
 def _enum(cls: type[enum.Enum], name: str) -> Enum:
@@ -27,6 +29,8 @@ def _enum(cls: type[enum.Enum], name: str) -> Enum:
 
 class DocumentStatus(enum.StrEnum):
     UPLOADED = "uploaded"
+    # Pages scannées en cours de reconnaissance de caractères (voir services/ocr.py).
+    OCR = "ocr"
     EXTRACTED = "extracted"
     FAILED = "failed"
 
@@ -80,6 +84,12 @@ class DocumentPage(IdMixin, Base):
     __table_args__ = (
         UniqueConstraint("document_id", "number"),
         Index("ix_document_pages_search", "search", postgresql_using="gin"),
+        Index(
+            "ix_document_pages_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
     organization_id: Mapped[UUID] = mapped_column(
@@ -93,6 +103,8 @@ class DocumentPage(IdMixin, Base):
     search: Mapped[str] = mapped_column(
         TSVECTOR, Computed("to_tsvector('french', text)", persisted=True)
     )
+    # Embedding de la page (recherche sémantique), calculé à la première recherche.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(DIMENSIONS), nullable=True)
 
     document: Mapped[SourceDocument] = relationship(back_populates="pages")
 

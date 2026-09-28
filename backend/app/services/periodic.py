@@ -33,7 +33,7 @@ from app.models import (
 from app.schemas.accountability import PeriodicDraft
 from app.schemas.execution import Participants
 from app.schemas.project import NodeTree
-from app.services import audit
+from app.services import audit, templates
 from app.services import feedback as fb
 from app.services import projects as svc
 from app.services.ai import call_structured
@@ -423,7 +423,9 @@ async def run_periodic_generation(session: AsyncSession, job: Job) -> dict[str, 
     computed = await computed_sections(session, project, start, end)
     sources, blocks = await build_sources(session, project, start, end)
     context = await build_context(session, project, report, computed, blocks)
-    wanted = [(k, t) for k, t in PERIODIC_SECTIONS if k not in COMPUTED]
+    plan = await templates.resolve(
+        session, project, "periodic", PERIODIC_SECTIONS, report.template_id
+    )
     result = await call_structured(
         session,
         organization_id=project.organization_id,
@@ -432,21 +434,17 @@ async def run_periodic_generation(session: AsyncSession, job: Job) -> dict[str, 
         prompt_version=prompt.VERSION,
         model=get_settings().llm_model_drafting,
         system=prompt.SYSTEM,
-        content=prompt.build_content(context, wanted, report.instructions),
+        content=prompt.build_content(
+            context, templates.wanted(plan, COMPUTED), report.instructions
+        ),
         output_type=PeriodicDraft,
         effort="medium",
     )
     draft = result.output
     known = {s["ref"] for s in sources}
     written = {s.key: check_refs(s.content.strip(), known) for s in draft.sections}
-    report.sections = [
-        {
-            "key": key,
-            "title": title,
-            "content": computed.get(key) or written.get(key) or TO_COMPLETE,
-        }
-        for key, title in PERIODIC_SECTIONS
-    ]
+    report.sections = templates.assemble(plan, {**written, **computed}, TO_COMPLETE)
+    report.template_id = plan.template_id
     report.sources = sources
     report.missing_information = draft.missing_information
     if draft.title.strip():

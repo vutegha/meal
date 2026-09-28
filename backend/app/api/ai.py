@@ -1,5 +1,6 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
@@ -15,11 +16,14 @@ from app.models import (
     DocumentPage,
     DocumentStatus,
     Job,
+    Project,
     ProposalStatus,
     SourceDocument,
 )
 from app.schemas.ai import (
+    AiCallOut,
     AiUsage,
+    AiUsageRow,
     ApplyLogframeIn,
     DocumentOut,
     JobOut,
@@ -27,8 +31,9 @@ from app.schemas.ai import (
     SearchHit,
 )
 from app.services import projects as svc
+from app.services import search
 from app.services.ai import month_cost, month_start
-from app.services.documents import ingest
+from app.services.documents import ingest, pending_ocr
 from app.services.jobs import enqueue
 from app.services.proposals import apply_logframe
 
@@ -77,7 +82,10 @@ async def upload_document(
         document.id,
         {"name": document.filename},
     )
+    ocr = await pending_ocr(session, document)
     await session.commit()
+    if ocr is not None:
+        await enqueue(ocr)
     await session.refresh(document)
     return document
 
@@ -116,26 +124,42 @@ async def search_documents(
     q: str = Query(min_length=2, max_length=200),
 ) -> list[SearchHit]:
     project = await svc.get_project(session, org_id, project_id)
-    query = func.websearch_to_tsquery(literal_column("'french'"), q)
-    rank = func.ts_rank(DocumentPage.search, query)
+    hits = await search.search_pages(session, project, q, limit=20)
+    # Embeddings calculés pendant la recherche : conservés pour les suivantes.
+    await session.commit()
+    if not hits:
+        return []
     snippet = func.ts_headline(
         literal_column("'french'"),
         DocumentPage.text,
-        query,
+        search.text_query(q),
         "StartSel=«, StopSel=», MaxWords=30, MinWords=10",
     )
-    rows = await session.execute(
-        select(
-            DocumentPage.document_id, SourceDocument.filename, DocumentPage.number, snippet, rank
+    rows = {
+        page_id: (document_id, filename, number, text)
+        for page_id, document_id, filename, number, text in await session.execute(
+            select(
+                DocumentPage.id,
+                DocumentPage.document_id,
+                SourceDocument.filename,
+                DocumentPage.number,
+                snippet,
+            )
+            .join(SourceDocument)
+            .where(DocumentPage.id.in_([h.page_id for h in hits]))
         )
-        .join(SourceDocument)
-        .where(SourceDocument.project_id == project.id, DocumentPage.search.op("@@")(query))
-        .order_by(rank.desc())
-        .limit(20)
-    )
+    }
     return [
-        SearchHit(document_id=d, filename=f, page=p, snippet=s, rank=float(r))
-        for d, f, p, s, r in rows
+        SearchHit(
+            document_id=rows[h.page_id][0],
+            filename=rows[h.page_id][1],
+            page=rows[h.page_id][2],
+            snippet=rows[h.page_id][3],
+            rank=h.score,
+            semantic=not h.by_text,
+        )
+        for h in hits
+        if h.page_id in rows
     ]
 
 
@@ -260,14 +284,72 @@ async def reject_proposal(
 
 @router.get("/ai/usage", response_model=AiUsage)
 async def ai_usage(org_id: UUID, _: OrgAdmin, session: SessionDep) -> AiUsage:
-    calls = await session.scalar(
-        select(func.count())
-        .select_from(AiCall)
-        .where(AiCall.organization_id == org_id, AiCall.created_at >= month_start())
+    start = month_start()
+    in_org = AiCall.organization_id == org_id
+    totals = (
+        func.count(),
+        func.count().filter(AiCall.status != "ok"),
+        func.coalesce(func.sum(AiCall.cost_usd), 0),
+        func.coalesce(func.sum(AiCall.input_tokens), 0),
+        func.coalesce(func.sum(AiCall.output_tokens), 0),
     )
+
+    def rows(result: Any, labels: dict[str, str] | None = None) -> list[AiUsageRow]:
+        return [
+            AiUsageRow(
+                key=str(key or ""),
+                label=(labels or {}).get(str(key), ""),
+                calls=calls,
+                errors=errors,
+                cost_usd=cost,
+                input_tokens=tokens_in,
+                output_tokens=tokens_out,
+            )
+            for key, calls, errors, cost, tokens_in, tokens_out in result
+        ]
+
+    by_purpose = await session.execute(
+        select(AiCall.purpose, *totals)
+        .where(in_org, AiCall.created_at >= start)
+        .group_by(AiCall.purpose)
+        .order_by(func.sum(AiCall.cost_usd).desc())
+    )
+    by_project = await session.execute(
+        select(AiCall.project_id, *totals)
+        .where(in_org, AiCall.created_at >= start)
+        .group_by(AiCall.project_id)
+        .order_by(func.sum(AiCall.cost_usd).desc())
+    )
+    projects = {
+        str(p.id): f"{p.code} · {p.title}"
+        for p in await session.scalars(select(Project).where(Project.organization_id == org_id))
+    }
+    month = func.to_char(func.date_trunc("month", AiCall.created_at), "YYYY-MM")
+    first = (start - timedelta(days=150)).replace(day=1)
+    by_month = await session.execute(
+        select(month, *totals)
+        .where(in_org, AiCall.created_at >= first)
+        .group_by(month)
+        .order_by(month)
+    )
+    recent = await session.execute(
+        select(AiCall, Project.code)
+        .outerjoin(Project, Project.id == AiCall.project_id)
+        .where(in_org)
+        .order_by(AiCall.created_at.desc())
+        .limit(25)
+    )
+    purpose_rows = rows(by_purpose)
     cap = Decimal(str(get_settings().ai_monthly_budget_usd))
     return AiUsage(
         month_cost_usd=await month_cost(session, org_id),
         monthly_budget_usd=cap if cap > 0 else None,
-        calls_this_month=calls or 0,
+        calls_this_month=sum(r.calls for r in purpose_rows),
+        by_purpose=purpose_rows,
+        by_project=rows(by_project, projects),
+        by_month=rows(by_month),
+        recent=[
+            AiCallOut.model_validate(call).model_copy(update={"project_code": code})
+            for call, code in recent
+        ],
     )

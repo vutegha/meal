@@ -5,6 +5,7 @@ export const PROJECT_TABS = [
   "indicators",
   "tor",
   "execution",
+  "forms",
   "reports",
   "feedback",
   "lessons",

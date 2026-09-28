@@ -12,7 +12,7 @@ import { ProposalReview } from "./ProposalReview";
 import { useInvalidateProject } from "./useInvalidateProject";
 import { useJob } from "./useJob";
 
-const ACCEPT = ".pdf,.docx,.xlsx,.txt,.md";
+const ACCEPT = ".pdf,.docx,.xlsx,.txt,.md,.jpg,.jpeg,.png";
 
 function formatSize(bytes: number, language: string): string {
   const units = ["o", "Ko", "Mo"];
@@ -61,6 +61,7 @@ function DocumentRow({
   });
   const statusStyle = {
     uploaded: "bg-slate-100 text-slate-700",
+    ocr: "bg-amber-100 text-amber-800",
     extracted: "bg-emerald-100 text-emerald-800",
     failed: "bg-red-100 text-red-800",
   }[document.status];
@@ -84,7 +85,13 @@ function DocumentRow({
           {t("logframe.delete")}
         </button>
       )}
-      {document.error && <p className="w-full text-xs text-red-700">{document.error}</p>}
+      {document.error && (
+        <p
+          className={`w-full text-xs ${document.status === "failed" ? "text-red-700" : "text-amber-800"}`}
+        >
+          {document.error}
+        </p>
+      )}
       <ErrorText error={remove.error} />
     </li>
   );
@@ -121,6 +128,14 @@ function Search({ orgId, projectId }: { orgId: string; projectId: string }) {
               <li key={`${hit.document_id}-${hit.page}`} className="text-sm">
                 <p className="text-xs text-slate-500">
                   {hit.filename} · {t("documents.page", { page: hit.page })}
+                  {hit.semantic && (
+                    <span
+                      className="ml-2 rounded-full bg-brand-50 px-1.5 py-0.5 text-brand-800"
+                      title={t("documents.semanticHint")}
+                    >
+                      ≈ {t("documents.semantic")}
+                    </span>
+                  )}
                 </p>
                 <p className="text-slate-700">
                   … <Snippet text={hit.snippet} /> …

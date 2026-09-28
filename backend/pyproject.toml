@@ -22,6 +22,9 @@ dependencies = [
     "python-multipart>=0.0.32",
     "boto3>=1.43.103",
     "pillow>=12.3.0",
+    "opencv-python-headless>=4.10,<5",
+    "pgvector>=0.4",
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
@@ -43,7 +46,7 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]

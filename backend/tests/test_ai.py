@@ -53,8 +53,10 @@ async def test_upload_search_and_delete(client: AsyncClient) -> None:
 
     dup = await upload(client, ctx, base, "copie.txt", SAMPLE.read_bytes(), "text/plain")
     assert dup.status_code == 409
-    bad = await upload(client, ctx, base, "photo.jpg", b"\xff\xd8", "image/jpeg")
+    bad = await upload(client, ctx, base, "clip.mp4", b"\x00\x00", "video/mp4")
     assert bad.status_code == 415
+    broken = await upload(client, ctx, base, "photo.jpg", b"\xff\xd8", "image/jpeg")
+    assert broken.json()["status"] == "failed" and broken.json()["error"] == "Image illisible"
     empty = await upload(client, ctx, base, "vide.txt", b"   ", "text/plain")
     assert empty.json()["status"] == "failed"
 
@@ -72,7 +74,7 @@ async def test_upload_search_and_delete(client: AsyncClient) -> None:
         d["filename"]
         for d in (await client.get(f"{base}/documents", headers=ctx["headers"])).json()
     ]
-    assert names == ["vide.txt"]
+    assert names == ["photo.jpg", "vide.txt"]
 
 
 async def test_upload_size_limit(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,6 +120,12 @@ async def test_extraction_creates_verified_proposal(client: AsyncClient, fake_ll
     assert usage["calls_this_month"] == 1
     # 12 000 × 4 + 3 000 × 20 + 10 000 × 5 (écriture du cache), par million de jetons.
     assert usage["month_cost_usd"] == "0.158000"
+    [purpose] = usage["by_purpose"]
+    assert purpose["key"] == "logframe_extraction"
+    assert purpose["calls"] == 1 and purpose["errors"] == 0
+    assert usage["by_project"][0]["label"].startswith("P1 · ")
+    assert usage["by_month"][-1]["cost_usd"] == "0.158000"
+    assert usage["recent"][0]["project_code"] == "P1"
 
 
 async def test_apply_selected_items(client: AsyncClient, fake_llm: FakeLLM) -> None:

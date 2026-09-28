@@ -8,8 +8,10 @@ import {
   periodicApi,
   projectsApi,
   reportsApi,
+  templatesApi,
   torApi,
 } from "./api";
+import { formsApi } from "./formsApi";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
 
@@ -64,6 +66,8 @@ export const documentsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "documents"],
     queryFn: () => aiApi.documents(orgId, projectId),
+    // Pages scannées en cours de lecture par le worker : on suit leur avancement.
+    refetchInterval: (query) => (query.state.data?.some((d) => d.status === "ocr") ? 4000 : false),
   });
 
 export const proposalsQuery = (orgId: string, projectId: string) =>
@@ -150,4 +154,47 @@ export const lessonsQuery = (orgId: string, projectId: string | null, q = "", ta
       ? [...projectKey(orgId, projectId), "lessons", { q, tag }]
       : ["orgs", orgId, "lessons", { q, tag }],
     queryFn: () => accountabilityApi.lessons(orgId, projectId, q, tag),
+  });
+
+export const aiUsageQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "ai-usage"],
+    queryFn: () => aiApi.usage(orgId),
+  });
+
+export const templatesQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "templates"],
+    queryFn: () => templatesApi.list(orgId),
+  });
+
+export const builtinTemplatesQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "templates", "builtin"],
+    queryFn: () => templatesApi.builtin(orgId),
+    staleTime: Infinity,
+  });
+
+export const formsQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms"],
+    queryFn: () => formsApi.list(orgId, projectId),
+  });
+
+export const formQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId],
+    queryFn: () => formsApi.get(orgId, projectId, formId),
+  });
+
+export const formSummaryQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId, "summary"],
+    queryFn: () => formsApi.summary(orgId, projectId, formId),
+  });
+
+export const submissionsQuery = (orgId: string, projectId: string, formId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "forms", formId, "submissions"],
+    queryFn: () => formsApi.submissions(orgId, projectId, formId),
   });

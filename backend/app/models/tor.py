@@ -40,6 +40,9 @@ class TermsOfReference(IdMixin, TimestampMixin, Base):
     missing_information: Mapped[list[str]] = mapped_column(JSONB, default=list)
     version: Mapped[int] = mapped_column(default=1)
     review_comment: Mapped[str] = mapped_column(Text, default="")
+    template_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("document_templates.id", ondelete="SET NULL")
+    )
     created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     submitted_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
