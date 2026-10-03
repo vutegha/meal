@@ -10,12 +10,17 @@ Application web pour faciliter les activités MEAL (suivi, évaluation, redevabi
 ## Démarrer avec Docker
 
 ```bash
-cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et MINIO_ROOT_PASSWORD
+cp .env.example .env   # puis renseigner POSTGRES_PASSWORD et SECRET_KEY
 docker compose up --build
 ```
 
+Les fichiers importés sont gardés dans le volume Docker `files`. Pour les stocker dans MinIO
+(compatible S3) : `STORAGE_BACKEND=s3`, `MINIO_ROOT_PASSWORD` et, MinIO ne publiant plus
+d'image sur Docker Hub, une image disponible dans `MINIO_IMAGE`, puis
+`docker compose --profile s3 up --build`.
+
 L'application est servie sur https://localhost (API sous `/api/v1`, documentation sous `/api/docs`).
-Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed`.
+Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed` (le mot de passe du compte `demo@wemeal.org` est affiché).
 
 ## Développement local
 
