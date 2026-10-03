@@ -21,6 +21,10 @@ export const fr = {
     organizationName: "Nom de votre organisation",
     hasAccount: "Déjà inscrit ?",
     passwordHint: "8 caractères minimum",
+    logoutPending_one:
+      "{{count}} saisie n'a pas encore été envoyée. Elle sera supprimée de ce téléphone si vous vous déconnectez. Se déconnecter quand même ?",
+    logoutPending_other:
+      "{{count}} saisies n'ont pas encore été envoyées. Elles seront supprimées de ce téléphone si vous vous déconnectez. Se déconnecter quand même ?",
   },
   orgs: {
     switch: "Organisation",

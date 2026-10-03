@@ -1,23 +1,24 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, ErrorText, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { tokenStore } from "@/lib/tokens";
+import { startSession } from "@/lib/session";
 
 import { AuthLayout } from "./AuthLayout";
 
 export function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const login = useMutation({
     mutationFn: () => api.login(email, password),
     onSuccess: async (tokens) => {
-      tokenStore.set(tokens);
+      await startSession(queryClient, tokens);
       await navigate({ to: "/" });
     },
   });

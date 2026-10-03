@@ -17,7 +17,19 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      testIgnore: /hors-ligne/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Version construite, avec le service worker : réouverture de l'application sans réseau.
+      name: "hors-ligne",
+      testMatch: /hors-ligne/,
+      use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:4173" },
+    },
+  ],
   webServer: [
     {
       command: "uv run alembic upgrade head && uv run python -m tests.e2e_server",
@@ -37,6 +49,12 @@ export default defineConfig({
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+    },
+    {
+      command: "npx vite build && npx vite preview --port 4173 --strictPort",
+      url: "http://localhost:4173",
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
     },
   ],
 });

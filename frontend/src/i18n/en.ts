@@ -23,6 +23,10 @@ export const en: Messages = {
     organizationName: "Your organisation's name",
     hasAccount: "Already registered?",
     passwordHint: "At least 8 characters",
+    logoutPending_one:
+      "{{count}} entry has not been sent yet. It will be deleted from this phone if you sign out. Sign out anyway?",
+    logoutPending_other:
+      "{{count}} entries have not been sent yet. They will be deleted from this phone if you sign out. Sign out anyway?",
   },
   orgs: {
     switch: "Organisation",

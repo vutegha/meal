@@ -69,6 +69,11 @@ async function send(path: string, init: RequestInit, token?: string): Promise<Re
 
 let refreshing: Promise<Tokens | null> | null = null;
 
+/**
+ * Renouvelle le jeton d'accès. Seul un refus du serveur met fin à la session (renvoie null) ;
+ * une coupure réseau ou un serveur indisponible lève une erreur et garde la session, pour que
+ * l'agent sur le terrain reste connecté et réessaie plus tard.
+ */
 async function refreshTokens(): Promise<Tokens | null> {
   const tokens = tokenStore.get();
   if (!tokens) return null;
@@ -76,13 +81,17 @@ async function refreshTokens(): Promise<Tokens | null> {
     method: "POST",
     body: JSON.stringify({ refresh_token: tokens.refresh_token }),
   })
-    .then(async (r) => (r.ok ? ((await r.json()) as Tokens) : null))
-    .catch(() => null)
+    .then(async (r) => {
+      if (r.ok) return (await r.json()) as Tokens;
+      if (r.status >= 500) throw new ApiError(r.status, await errorMessage(r));
+      return null;
+    })
     .finally(() => {
       refreshing = null;
     });
   const fresh = await refreshing;
-  tokenStore.set(fresh);
+  // Une autre requête a pu fermer ou ouvrir une session entre-temps : on ne l'écrase pas.
+  if (tokenStore.get()?.refresh_token === tokens.refresh_token) tokenStore.set(fresh);
   return fresh;
 }
 

@@ -6,7 +6,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
 import { api } from "@/lib/api";
 import { meQuery } from "@/lib/queries";
-import { tokenStore } from "@/lib/tokens";
+import { countPending } from "@/lib/outbox";
+import { endSession } from "@/lib/session";
 import { useOnline } from "@/lib/useOnline";
 import { useOutboxSync } from "@/lib/useOutboxSync";
 
@@ -35,10 +36,10 @@ export function OrgLayout() {
   });
 
   const logout = async () => {
-    tokenStore.set(null);
-    queryClient.clear();
-    // Les réponses d'API gardées pour le mode hors ligne appartiennent à l'utilisateur sortant.
-    if ("caches" in window) await caches.delete("api");
+    // La file d'envoi est effacée avec la session : prévenir s'il reste des saisies non envoyées.
+    const pending = await countPending();
+    if (pending > 0 && !window.confirm(t("auth.logoutPending", { count: pending }))) return;
+    await endSession(queryClient);
     await navigate({ to: "/login" });
   };
 
