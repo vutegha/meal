@@ -17,7 +17,7 @@ import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { PROJECT_TABS, type ProjectTab } from "@/features/projects/tabs";
-import { meQuery } from "@/lib/queries";
+import { loadProfile } from "@/lib/session";
 import { tokenStore } from "@/lib/tokens";
 
 interface RouterContext {
@@ -31,12 +31,10 @@ const requireAuth = () => {
 };
 
 async function loadMe(queryClient: QueryClient) {
-  try {
-    return await queryClient.ensureQueryData(meQuery);
-  } catch {
-    tokenStore.set(null);
-    throw redirect({ to: "/login" });
-  }
+  // Hors ligne, le profil gardé sur l'appareil suffit : l'agent garde accès à sa saisie.
+  const me = await loadProfile(queryClient).catch(() => null);
+  if (!me) throw redirect({ to: "/login" });
+  return me;
 }
 
 const indexRoute = createRoute({

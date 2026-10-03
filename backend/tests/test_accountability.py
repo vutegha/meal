@@ -133,6 +133,40 @@ async def test_sensitive_feedback_is_confidential(client: AsyncClient) -> None:
     assert r.status_code == 422
 
 
+async def test_sensitive_category_cannot_be_made_public(client: AsyncClient) -> None:
+    ctx, base, _ = await setup(client)
+    await add_member(client, ctx, "terrain@example.org", "field_agent")
+    field = await login(client, "terrain@example.org")
+    await add_member(client, ctx, "meal@example.org", "meal_officer")
+    meal = await login(client, "meal@example.org")
+
+    body = {
+        "channel": "hotline",
+        "category": "fraud",
+        "description": "Des bénéficiaires paient pour figurer sur la liste.",
+        "sensitive": False,
+        "client_uuid": str(uuid4()),
+    }
+    r = await client.post(f"{base}/feedback", headers=field, json=body)
+    assert r.status_code == 201, r.text
+    entry = r.json()
+    assert entry["sensitive"] is True
+    assert (await client.get(f"{base}/feedback", headers=meal)).json() == []
+    # Un renvoi du même identifiant par une autre personne ne révèle pas l'entrée.
+    r = await client.post(f"{base}/feedback", headers=meal, json=body)
+    assert r.status_code == 409 and "description" not in r.json()
+
+    # Même le chef de projet ne la rend pas publique tant que la catégorie reste sensible.
+    url = f"{base}/feedback/{entry['id']}"
+    r = await client.patch(url, headers=ctx["headers"], json={"sensitive": False})
+    assert r.status_code == 200 and r.json()["sensitive"] is True
+    # Requalifiée en catégorie ordinaire, elle peut l'être.
+    r = await client.patch(
+        url, headers=ctx["headers"], json={"category": "complaint", "sensitive": False}
+    )
+    assert r.json()["sensitive"] is False
+
+
 async def test_lessons_register(client: AsyncClient) -> None:
     ctx, base, nodes = await setup(client)
     h = ctx["headers"]

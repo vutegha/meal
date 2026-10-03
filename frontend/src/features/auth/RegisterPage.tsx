@@ -1,17 +1,18 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, ErrorText, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { tokenStore } from "@/lib/tokens";
+import { startSession } from "@/lib/session";
 
 import { AuthLayout } from "./AuthLayout";
 
 export function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -24,7 +25,7 @@ export function RegisterPage() {
   const register = useMutation({
     mutationFn: () => api.register(form),
     onSuccess: async (tokens) => {
-      tokenStore.set(tokens);
+      await startSession(queryClient, tokens);
       await navigate({ to: "/" });
     },
   });
