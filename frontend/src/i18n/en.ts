@@ -275,7 +275,10 @@ export const en: Messages = {
     today: "Today",
     saving: "Saving…",
     period: "Planned period",
-    noPeriod: "No period yet: drag across its row in the schedule.",
+    noPeriod: "No period yet: enter its dates below or drag across its row in the schedule.",
+    plannedStart: "Planned start",
+    plannedEnd: "Planned end",
+    saveDates: "Save dates",
     unplan: "Remove from the schedule",
     barLabel:
       "{{code}} {{title}}, {{period}}. Arrows: move by one month; Shift + arrows: change the end.",

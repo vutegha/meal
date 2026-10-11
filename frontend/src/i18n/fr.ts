@@ -277,7 +277,11 @@ export const fr = {
     today: "Aujourd'hui",
     saving: "Enregistrement…",
     period: "Période prévue",
-    noPeriod: "Pas encore de période : glissez sur sa ligne dans le chronogramme.",
+    noPeriod:
+      "Pas encore de période : saisissez ses dates ci-dessous ou glissez sur sa ligne dans le chronogramme.",
+    plannedStart: "Début prévu",
+    plannedEnd: "Fin prévue",
+    saveDates: "Enregistrer les dates",
     unplan: "Retirer du chronogramme",
     barLabel:
       "{{code}} {{title}}, {{period}}. Flèches : déplacer d'un mois ; Maj + flèches : changer la fin.",
