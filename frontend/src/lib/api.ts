@@ -1354,3 +1354,51 @@ export interface FormSummary {
 
 export const formExportPath = (orgId: string, projectId: string, formId: string) =>
   `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;
+
+// --- Tableau de bord de l'organisation ------------------------------------------------
+
+export const BENEFICIARIES = ["women", "men", "girls", "boys", "with_disability"] as const;
+export type Beneficiary = (typeof BENEFICIARIES)[number];
+
+export interface DashboardFilters {
+  year?: string;
+  month?: string;
+  zone?: string;
+  location?: string;
+  project_id?: string;
+  beneficiary?: Beneficiary;
+}
+
+export interface DashboardBreakdown {
+  key: string;
+  label: string;
+  executions: number;
+  people: number;
+}
+
+export interface OrgDashboard {
+  options: {
+    years: number[];
+    zones: string[];
+    locations: string[];
+    projects: { id: string; code: string; title: string }[];
+  };
+  projects: number;
+  active_projects: number;
+  executions: number;
+  completed_executions: number;
+  people: Record<Beneficiary | "total", number>;
+  spending: { currency: string; amount: string }[];
+  by_month: DashboardBreakdown[];
+  by_location: DashboardBreakdown[];
+  by_zone: DashboardBreakdown[];
+  by_project: DashboardBreakdown[];
+}
+
+export const dashboardApi = {
+  org: (orgId: string, filters: DashboardFilters) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+    return request<OrgDashboard>(`/orgs/${orgId}/dashboard${params.size ? `?${params}` : ""}`);
+  },
+};
