@@ -1065,6 +1065,39 @@ export interface FeedbackEntry {
   due_on: string;
   overdue: boolean;
   response_days: number | null;
+  sms_count: number;
+  // Le dernier SMS de l'échange vient de la personne : elle attend une réponse.
+  sms_awaiting_reply: boolean;
+}
+
+export type MessageChannel = "sms" | "whatsapp";
+export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
+
+export interface SmsMessage {
+  id: string;
+  feedback_id: string | null;
+  channel: MessageChannel;
+  direction: "inbound" | "outbound";
+  phone: string;
+  body: string;
+  status: string;
+  provider: string;
+  error: string;
+  sent_by: string | null;
+  created_at: string;
+}
+
+export interface ChannelConfig {
+  channel: MessageChannel;
+  provider: string;
+  simulated: boolean;
+  error: string;
+}
+
+export interface SmsConfig {
+  channels: ChannelConfig[];
+  sender: string;
+  inbound_enabled: boolean;
 }
 
 export interface FeedbackIn {
@@ -1153,6 +1186,31 @@ export const accountabilityApi = {
     ),
   deleteFeedback: (orgId: string, projectId: string, feedbackId: string) =>
     request<void>(`${project(orgId, projectId)}/feedback/${feedbackId}`, { method: "DELETE" }),
+  smsConfig: (orgId: string) => request<SmsConfig>(`/orgs/${orgId}/sms/config`),
+  feedbackSms: (orgId: string, projectId: string, feedbackId: string) =>
+    request<SmsMessage[]>(`${project(orgId, projectId)}/feedback/${feedbackId}/sms`),
+  sendSms: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms`,
+      json("POST", { body, channel }),
+    ),
+  simulateSmsReply: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms/simulate`,
+      json("POST", { body, channel }),
+    ),
   lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

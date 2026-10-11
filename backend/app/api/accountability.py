@@ -5,7 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, or_, select
 
 from app.api.deps import AnyMember, SessionDep
 from app.api.projects import Collector, Planner, ProjectAdmin, _flush, _log
@@ -20,6 +20,8 @@ from app.models import (
     Membership,
     NarrativeReport,
     Project,
+    SmsDirection,
+    SmsMessage,
 )
 from app.schemas.accountability import (
     FeedbackClassifyIn,
@@ -31,8 +33,11 @@ from app.schemas.accountability import (
     LessonIn,
     LessonOut,
     LessonUpdate,
+    SmsOut,
+    SmsSendIn,
+    SmsSimulateIn,
 )
-from app.services import billing
+from app.services import billing, sms
 from app.services import feedback as fb
 from app.services import projects as svc
 from app.services.ai import call_structured
@@ -92,7 +97,17 @@ async def list_feedback(
     rows = await session.scalars(
         query.order_by(FeedbackEntry.received_on.desc(), FeedbackEntry.reference.desc())
     )
-    return [fb.out(member, e) for e in rows if fb.can_see(member, e)]
+    threads = await sms.summaries(session, project.id)
+    result = []
+    for entry in rows:
+        if not fb.can_see(member, entry):
+            continue
+        item = fb.out(member, entry)
+        if fb.can_read_contact(member, entry) and entry.id in threads:
+            count, awaiting = threads[entry.id]
+            item = item.model_copy(update={"sms_count": count, "sms_awaiting_reply": awaiting})
+        result.append(item)
+    return result
 
 
 @router.get(f"{PROJECT}/feedback/stats", response_model=FeedbackStats)
@@ -128,7 +143,6 @@ async def create_feedback(
             response.status_code = status.HTTP_200_OK
             return fb.out(member, existing)
     await _check_activity(session, project, body.activity_id)
-    count = await session.scalar(select(func.count()).where(FeedbackEntry.project_id == project.id))
     data = body.model_dump()
     if data["sensitive"] is None:
         data["sensitive"] = body.category in fb.SENSITIVE_CATEGORIES
@@ -138,7 +152,7 @@ async def create_feedback(
         **data,
         organization_id=org_id,
         project_id=project.id,
-        reference=f"RET-{(count or 0) + 1:04d}",
+        reference=await sms.next_reference(session, project.id),
         created_by=member.user_id,
     )
     session.add(entry)
@@ -248,6 +262,132 @@ async def delete_feedback(
     _log(session, member, "feedback.deleted", "feedback", entry.id, {"reference": entry.reference})
     await session.delete(entry)
     await session.commit()
+
+
+# --- SMS avec la personne à l'origine du retour ------------------------------------------
+
+
+async def _sms_thread(session: SessionDep, entry: FeedbackEntry) -> list[SmsOut]:
+    rows = await session.scalars(
+        select(SmsMessage).where(SmsMessage.feedback_id == entry.id).order_by(SmsMessage.created_at)
+    )
+    return [SmsOut.model_validate(m) for m in rows]
+
+
+@router.get(f"{PROJECT}/feedback/{{feedback_id}}/sms", response_model=list[SmsOut])
+async def list_feedback_sms(
+    org_id: UUID, project_id: UUID, feedback_id: UUID, member: AnyMember, session: SessionDep
+) -> list[SmsOut]:
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_read_contact(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Échanges réservés à qui traite ce retour")
+    return await _sms_thread(session, entry)
+
+
+@router.post(f"{PROJECT}/feedback/{{feedback_id}}/sms", response_model=SmsOut, status_code=201)
+async def send_feedback_sms(
+    org_id: UUID,
+    project_id: UUID,
+    feedback_id: UUID,
+    body: SmsSendIn,
+    member: AnyMember,
+    session: SessionDep,
+) -> SmsOut:
+    """Envoie un SMS ou un message WhatsApp à la personne.
+
+    Un échec du prestataire est enregistré et renvoyé tel quel.
+    """
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_handle(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Vous ne traitez pas ce retour")
+    if entry.anonymous:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Retour anonyme : aucun numéro à contacter"
+        )
+    phone = sms.normalize_phone(body.to or entry.contact)
+    if phone is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Aucun numéro de téléphone valide pour ce retour (ex. +243990000000)",
+        )
+    message = SmsMessage(
+        organization_id=org_id,
+        project_id=project.id,
+        feedback_id=entry.id,
+        channel=body.channel,
+        direction=SmsDirection.OUTBOUND,
+        phone=phone,
+        body=body.body.strip(),
+        status="queued",
+        provider="",
+        sent_by=member.user_id,
+    )
+    try:
+        gateway = sms.get_gateway(channel=body.channel)
+        message.provider = gateway.name
+        result = await gateway.send(phone, message.body)
+        message.status = result.status
+        message.provider_message_id = result.provider_message_id[:100]
+    except sms.SmsError as exc:
+        message.status = "failed"
+        message.error = str(exc)
+    session.add(message)
+    await session.flush()
+    # Écrire à la personne, c'est commencer à traiter son retour.
+    if message.status != "failed" and entry.status == FeedbackStatus.RECEIVED:
+        entry.status = FeedbackStatus.IN_PROGRESS
+    # Ni numéro ni texte dans le journal : données personnelles.
+    _log(
+        session,
+        member,
+        "feedback.sms_sent",
+        "feedback",
+        entry.id,
+        {"reference": entry.reference, "channel": body.channel, "status": message.status},
+    )
+    await session.commit()
+    await session.refresh(message)
+    return SmsOut.model_validate(message)
+
+
+@router.post(
+    f"{PROJECT}/feedback/{{feedback_id}}/sms/simulate", response_model=SmsOut, status_code=201
+)
+async def simulate_feedback_sms(
+    org_id: UUID,
+    project_id: UUID,
+    feedback_id: UUID,
+    body: SmsSimulateIn,
+    member: AnyMember,
+    session: SessionDep,
+) -> SmsOut:
+    """Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp)."""
+    provider = (
+        get_settings().sms_provider if body.channel == "sms" else get_settings().whatsapp_provider
+    )
+    if provider != "simulated":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disponible en mode simulé seulement")
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_handle(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Vous ne traitez pas ce retour")
+    message = SmsMessage(
+        organization_id=org_id,
+        project_id=project.id,
+        feedback_id=entry.id,
+        channel=body.channel,
+        direction=SmsDirection.INBOUND,
+        phone=sms.normalize_phone(entry.contact) or entry.contact[:32],
+        body=body.body.strip(),
+        status="received",
+        provider="simulated",
+    )
+    session.add(message)
+    await session.commit()
+    await session.refresh(message)
+    return SmsOut.model_validate(message)
 
 
 # --- Leçons apprises -----------------------------------------------------------------------

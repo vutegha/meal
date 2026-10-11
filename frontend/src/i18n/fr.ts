@@ -527,6 +527,32 @@ export const fr = {
       days_one: "{{count}} jour en moyenne",
       days_other: "{{count}} jours en moyenne",
     },
+    sms: {
+      open_one: "{{count}} message",
+      open_other: "{{count}} messages",
+      start: "Écrire par SMS ou WhatsApp",
+      awaiting: "Nouveau message",
+      title: "Échange par SMS et WhatsApp avec la personne",
+      empty: "Aucun message pour l'instant.",
+      placeholder: "Votre message…",
+      send: "Envoyer",
+      sending: "Envoi…",
+      chars: "{{count}} / 640 caractères",
+      channel: "Canal d'envoi",
+      channels: { sms: "SMS", whatsapp: "WhatsApp" },
+      to: "Au {{phone}}",
+      noContact:
+        "Aucun numéro enregistré : ajoutez un contact au retour pour écrire par SMS ou WhatsApp.",
+      simulated: {
+        sms: "Mode simulé : aucun SMS ne part réellement. Configurez un prestataire (Twilio ou Africa's Talking) pour envoyer de vrais messages.",
+        whatsapp:
+          "Mode simulé : aucun message WhatsApp ne part réellement. Configurez un prestataire (Twilio ou Meta) pour envoyer de vrais messages.",
+      },
+      simulateReply: "Simuler une réponse de la personne",
+      simulatePrompt: "Texte de la réponse simulée",
+      failed: "Échec de l'envoi",
+      status: { queued: "En file", sent: "Envoyé", failed: "Échec", received: "Reçu" },
+    },
     channels: {
       hotline: "Ligne téléphonique",
       suggestion_box: "Boîte à suggestions",

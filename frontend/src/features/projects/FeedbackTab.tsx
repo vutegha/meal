@@ -14,13 +14,22 @@ import {
   type FeedbackIn,
   type FeedbackStatus,
   type FeedbackSuggestion,
+  MESSAGE_CHANNELS,
+  type MessageChannel,
   SENSITIVE_CATEGORIES,
 } from "@/lib/api";
 import { flattenTree, formatRate } from "@/lib/format";
 import { discard, newId, queueFeedback, syncOutbox, usePending } from "@/lib/outbox";
 import { permissions } from "@/lib/permissions";
 import { useOnline } from "@/lib/useOnline";
-import { feedbackQuery, feedbackStatsQuery, logframeQuery, membersQuery } from "@/lib/queries";
+import {
+  feedbackQuery,
+  feedbackSmsQuery,
+  feedbackStatsQuery,
+  logframeQuery,
+  membersQuery,
+  smsConfigQuery,
+} from "@/lib/queries";
 
 import { useInvalidateProject } from "./useInvalidateProject";
 
@@ -324,6 +333,164 @@ function HandleForm({
   );
 }
 
+function SmsThread({
+  orgId,
+  projectId,
+  entry,
+}: {
+  orgId: string;
+  projectId: string;
+  entry: FeedbackEntry;
+}) {
+  const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
+  const config = useQuery(smsConfigQuery(orgId));
+  const thread = useQuery(feedbackSmsQuery(orgId, projectId, entry.id));
+  const [text, setText] = useState("");
+  // Par défaut, on répond sur le canal du dernier message reçu de la personne.
+  const [picked, setPicked] = useState<MessageChannel | null>(null);
+  const lastInbound = [...(thread.data ?? [])].reverse().find((m) => m.direction === "inbound");
+  const channel = picked ?? lastInbound?.channel ?? "sms";
+  const channelConfig = config.data?.channels.find((c) => c.channel === channel);
+  const times = new Intl.DateTimeFormat(i18n.language, { dateStyle: "short", timeStyle: "short" });
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["orgs", orgId, "projects", projectId, "feedback"],
+    });
+  const send = useMutation({
+    mutationFn: () => accountabilityApi.sendSms(orgId, projectId, entry.id, text.trim(), channel),
+    onSuccess: async (message) => {
+      if (message.status !== "failed") setText("");
+      await refresh();
+    },
+  });
+  const simulate = useMutation({
+    mutationFn: (body: string) =>
+      accountabilityApi.simulateSmsReply(orgId, projectId, entry.id, body, channel),
+    onSuccess: refresh,
+  });
+  const askSimulated = () => {
+    const body = window.prompt(t("feedback.sms.simulatePrompt"));
+    if (body?.trim()) simulate.mutate(body.trim());
+  };
+
+  return (
+    <div className="mt-3 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+      <p className="text-sm font-medium text-slate-800">
+        {t("feedback.sms.title")}
+        {entry.contact && (
+          <span className="ml-2 font-normal text-slate-500">
+            {t("feedback.sms.to", { phone: entry.contact })}
+          </span>
+        )}
+      </p>
+      {channelConfig?.simulated && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+          {t(`feedback.sms.simulated.${channel}`)}
+        </p>
+      )}
+      {channelConfig?.error && <p className="text-xs text-red-700">{channelConfig.error}</p>}
+      <ErrorText error={thread.error} />
+      {thread.data?.length ? (
+        <ul className="space-y-2">
+          {thread.data.map((message) => {
+            const outbound = message.direction === "outbound";
+            return (
+              <li key={message.id} className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                    outbound
+                      ? message.status === "failed"
+                        ? "border border-red-200 bg-red-50 text-red-900"
+                        : "bg-brand-600 text-white"
+                      : "border border-slate-200 bg-white text-slate-800"
+                  }`}
+                >
+                  <p className="break-words whitespace-pre-line">{message.body}</p>
+                  <p
+                    className={`mt-1 text-[11px] ${
+                      outbound && message.status !== "failed" ? "text-white/80" : "text-slate-500"
+                    }`}
+                  >
+                    {t(`feedback.sms.channels.${message.channel}`)} ·{" "}
+                    {times.format(new Date(message.created_at))} ·{" "}
+                    {t(`feedback.sms.status.${message.status}`, { defaultValue: message.status })}
+                  </p>
+                  {message.error && <p className="mt-1 text-xs text-red-700">{message.error}</p>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        !thread.isPending && <p className="text-sm text-slate-500">{t("feedback.sms.empty")}</p>
+      )}
+      {entry.contact ? (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            send.mutate();
+          }}
+        >
+          <textarea
+            aria-label={t("feedback.sms.placeholder")}
+            placeholder={t("feedback.sms.placeholder")}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            rows={2}
+            maxLength={640}
+            required
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <ErrorText error={send.error ?? simulate.error} />
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="radiogroup"
+              aria-label={t("feedback.sms.channel")}
+              className="inline-flex rounded-md border border-slate-300 bg-white p-0.5"
+            >
+              {MESSAGE_CHANNELS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={channel === value}
+                  onClick={() => setPicked(value)}
+                  className={`rounded px-2.5 py-1 text-xs font-medium ${
+                    channel === value ? "bg-brand-600 text-white" : "text-slate-600"
+                  }`}
+                >
+                  {t(`feedback.sms.channels.${value}`)}
+                </button>
+              ))}
+            </div>
+            <Button type="submit" disabled={send.isPending || !text.trim()}>
+              {send.isPending ? t("feedback.sms.sending") : t("feedback.sms.send")}
+            </Button>
+            <span className="text-xs text-slate-500">
+              {t("feedback.sms.chars", { count: text.length })}
+            </span>
+            <span className="flex-1" />
+            {channelConfig?.simulated && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={askSimulated}
+                disabled={simulate.isPending}
+              >
+                {t("feedback.sms.simulateReply")}
+              </Button>
+            )}
+          </div>
+        </form>
+      ) : (
+        <p className="text-sm text-slate-500">{t("feedback.sms.noContact")}</p>
+      )}
+    </div>
+  );
+}
+
 function FeedbackItem({
   entry,
   orgId,
@@ -340,6 +507,7 @@ function FeedbackItem({
   const { t, i18n } = useTranslation();
   const { role, me } = useCurrentOrg();
   const [handling, setHandling] = useState(false);
+  const [texting, setTexting] = useState(false);
   const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
   const manager = permissions.manageProjects(role);
   const canHandle = entry.sensitive
@@ -359,6 +527,11 @@ function FeedbackItem({
           {entry.location && ` · ${entry.location}`}
         </span>
         <span className="flex-1" />
+        {entry.sms_awaiting_reply && (
+          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-800">
+            💬 {t("feedback.sms.awaiting")}
+          </span>
+        )}
         {entry.overdue && (
           <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
             {t("feedback.overdue")}
@@ -384,14 +557,31 @@ function FeedbackItem({
           {entry.response}
         </p>
       )}
-      {canHandle && !handling && (
-        <button
-          className="mt-1 text-xs font-medium text-brand-700 hover:underline"
-          onClick={() => setHandling(true)}
-        >
-          {t("feedback.handle")}
-        </button>
+      {canHandle && (
+        <div className="mt-1 flex gap-4">
+          {!handling && (
+            <button
+              className="text-xs font-medium text-brand-700 hover:underline"
+              onClick={() => setHandling(true)}
+            >
+              {t("feedback.handle")}
+            </button>
+          )}
+          {!entry.anonymous && (
+            <button
+              className="text-xs font-medium text-brand-700 hover:underline"
+              aria-expanded={texting}
+              onClick={() => setTexting(!texting)}
+            >
+              💬{" "}
+              {entry.sms_count
+                ? t("feedback.sms.open", { count: entry.sms_count })
+                : t("feedback.sms.start")}
+            </button>
+          )}
+        </div>
       )}
+      {texting && <SmsThread orgId={orgId} projectId={projectId} entry={entry} />}
       {handling && (
         <HandleForm
           orgId={orgId}

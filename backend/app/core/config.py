@@ -51,6 +51,27 @@ class Settings(BaseSettings):
     # Taille maximale du texte envoyé en une fois (au-delà : erreur explicite, pas de troncature)
     llm_max_document_chars: int = 2_000_000
 
+    # SMS de la redevabilité : "simulated" (aucun envoi réel), "twilio" ou "africastalking".
+    sms_provider: str = "simulated"
+    # Numéro ou identifiant d'expéditeur affiché au destinataire.
+    sms_sender: str = ""
+    # Secret inclus dans l'URL de réception à déclarer chez le prestataire :
+    # /api/v1/sms/inbound/<SMS_WEBHOOK_TOKEN>. Vide : la réception est désactivée.
+    sms_webhook_token: str = ""
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    africastalking_username: str | None = None
+    africastalking_api_key: str | None = None
+    # WhatsApp : "simulated" (aucun envoi réel), "twilio" ou "meta" (WhatsApp Cloud API).
+    # Réception : /api/v1/whatsapp/inbound/<SMS_WEBHOOK_TOKEN> (même secret que les SMS).
+    whatsapp_provider: str = "simulated"
+    # Numéro WhatsApp Twilio, ex. +14155238886 (bac à sable).
+    twilio_whatsapp_sender: str = ""
+    meta_whatsapp_token: str | None = None
+    meta_whatsapp_phone_number_id: str | None = None
+    # Secret de l'application Meta : contrôle de la signature des notifications reçues.
+    meta_app_secret: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

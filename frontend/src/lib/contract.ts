@@ -29,4 +29,7 @@ export type Contract = [
   Check<Same<keyof api.CollectionForm, keyof S["FormOut"]>>,
   Check<Same<keyof api.Evidence, keyof S["EvidenceOut"]>>,
   Check<Same<keyof api.SearchHit, keyof S["SearchHit"]>>,
+  Check<Refines<api.SmsMessage, S["SmsOut"]>>,
+  Check<Same<keyof api.SmsMessage, keyof S["SmsOut"]>>,
+  Check<Refines<api.SmsConfig, S["SmsConfig"]>>,
 ];
