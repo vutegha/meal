@@ -1055,6 +1055,30 @@ export interface FeedbackEntry {
   due_on: string;
   overdue: boolean;
   response_days: number | null;
+  sms_count: number;
+  // Le dernier SMS de l'échange vient de la personne : elle attend une réponse.
+  sms_awaiting_reply: boolean;
+}
+
+export interface SmsMessage {
+  id: string;
+  feedback_id: string | null;
+  direction: "inbound" | "outbound";
+  phone: string;
+  body: string;
+  status: string;
+  provider: string;
+  error: string;
+  sent_by: string | null;
+  created_at: string;
+}
+
+export interface SmsConfig {
+  provider: string;
+  simulated: boolean;
+  sender: string;
+  inbound_enabled: boolean;
+  error: string;
 }
 
 export interface FeedbackIn {
@@ -1143,6 +1167,19 @@ export const accountabilityApi = {
     ),
   deleteFeedback: (orgId: string, projectId: string, feedbackId: string) =>
     request<void>(`${project(orgId, projectId)}/feedback/${feedbackId}`, { method: "DELETE" }),
+  smsConfig: (orgId: string) => request<SmsConfig>(`/orgs/${orgId}/sms/config`),
+  feedbackSms: (orgId: string, projectId: string, feedbackId: string) =>
+    request<SmsMessage[]>(`${project(orgId, projectId)}/feedback/${feedbackId}/sms`),
+  sendSms: (orgId: string, projectId: string, feedbackId: string, body: string) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms`,
+      json("POST", { body }),
+    ),
+  simulateSmsReply: (orgId: string, projectId: string, feedbackId: string, body: string) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms/simulate`,
+      json("POST", { body }),
+    ),
   lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

@@ -695,6 +695,47 @@ export interface paths {
     patch: operations["update_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__patch"];
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Feedback Sms */
+    get: operations["list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get"];
+    put?: never;
+    /**
+     * Send Feedback Sms
+     * @description Envoie un SMS à la personne ; un échec du prestataire est enregistré et renvoyé tel quel.
+     */
+    post: operations["send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Simulate Feedback Sms
+     * @description Mode simulé seulement : fait comme si la personne avait répondu par SMS.
+     */
+    post: operations["simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/projects/{project_id}/forms": {
     parameters: {
       query?: never;
@@ -1419,6 +1460,23 @@ export interface paths {
     };
     /** List Versions */
     get: operations["list_versions_api_v1_orgs__org_id__projects__project_id__tors__tor_id__versions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/sms/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Sms Config */
+    get: operations["sms_config_api_v1_orgs__org_id__sms_config_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2461,6 +2519,16 @@ export interface components {
       response_days: number | null;
       /** Sensitive */
       sensitive: boolean;
+      /**
+       * Sms Awaiting Reply
+       * @default false
+       */
+      sms_awaiting_reply: boolean;
+      /**
+       * Sms Count
+       * @default 0
+       */
+      sms_count: number;
       status: components["schemas"]["FeedbackStatus"];
       /**
        * Updated At
@@ -3677,6 +3745,67 @@ export interface components {
       semantic: boolean;
       /** Snippet */
       snippet: string;
+    };
+    /** SmsConfig */
+    SmsConfig: {
+      /**
+       * Error
+       * @default
+       */
+      error: string;
+      /** Inbound Enabled */
+      inbound_enabled: boolean;
+      /** Provider */
+      provider: string;
+      /** Sender */
+      sender: string;
+      /** Simulated */
+      simulated: boolean;
+    };
+    /**
+     * SmsDirection
+     * @enum {string}
+     */
+    SmsDirection: "inbound" | "outbound";
+    /** SmsOut */
+    SmsOut: {
+      /** Body */
+      body: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      direction: components["schemas"]["SmsDirection"];
+      /** Error */
+      error: string;
+      /** Feedback Id */
+      feedback_id: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Phone */
+      phone: string;
+      /** Provider */
+      provider: string;
+      /** Sent By */
+      sent_by: string | null;
+      /** Status */
+      status: string;
+    };
+    /** SmsSendIn */
+    SmsSendIn: {
+      /** Body */
+      body: string;
+      /** To */
+      to?: string | null;
+    };
+    /** SmsSimulateIn */
+    SmsSimulateIn: {
+      /** Body */
+      body: string;
     };
     /** SubmissionIn */
     SubmissionIn: {
@@ -5848,6 +5977,113 @@ export interface operations {
       };
     };
   };
+  list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSendIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSimulateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_forms_api_v1_orgs__org_id__projects__project_id__forms_get: {
     parameters: {
       query?: never;
@@ -7808,6 +8044,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TorVersionOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  sms_config_api_v1_orgs__org_id__sms_config_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsConfig"];
         };
       };
       /** @description Validation Error */

@@ -24,6 +24,7 @@ TENANT_TABLES = (
     "ai_proposals",
     "budget_lines",
     "feedback_entries",
+    "sms_messages",
     "indicators",
     "indicator_values",
     "terms_of_reference",

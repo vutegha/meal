@@ -11,6 +11,7 @@ from app.api import (
     periodic,
     projects,
     reports,
+    sms,
     templates,
     tor,
 )
@@ -44,6 +45,7 @@ api.include_router(accountability.router)
 api.include_router(periodic.router)
 api.include_router(templates.router)
 api.include_router(forms.router)
+api.include_router(sms.router)
 app.include_router(api)
 
 
