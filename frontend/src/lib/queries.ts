@@ -4,6 +4,8 @@ import {
   accountabilityApi,
   aiApi,
   api,
+  dashboardApi,
+  type DashboardFilters,
   executionsApi,
   periodicApi,
   projectsApi,
@@ -197,4 +199,10 @@ export const submissionsQuery = (orgId: string, projectId: string, formId: strin
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "forms", formId, "submissions"],
     queryFn: () => formsApi.submissions(orgId, projectId, formId),
+  });
+
+export const orgDashboardQuery = (orgId: string, filters: DashboardFilters) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "dashboard", filters],
+    queryFn: () => dashboardApi.org(orgId, filters),
   });

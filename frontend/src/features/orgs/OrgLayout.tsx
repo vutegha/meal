@@ -89,6 +89,13 @@ export function OrgLayout() {
               {t("nav.projects")}
             </Link>
             <Link
+              to="/orgs/$orgId/dashboard"
+              params={{ orgId }}
+              className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"
+            >
+              {t("nav.dashboard")}
+            </Link>
+            <Link
               to="/orgs/$orgId/lessons"
               params={{ orgId }}
               className="rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100 [&.active]:font-semibold [&.active]:text-brand-800"

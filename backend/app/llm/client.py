@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Generic, Literal, Protocol, TypeVar
 
 import anthropic
+from anthropic.types import TextBlockParam
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
@@ -67,7 +68,9 @@ class AnthropicClient:
             # Les modèles légers n'acceptent pas le réglage d'effort.
             "output_config": {"effort": effort} if effort else anthropic.omit,
         }
-        cached_system = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+        cached_system: list[TextBlockParam] = [
+            {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+        ]
         try:
             try:
                 # Streaming : les générations longues ne heurtent pas les délais HTTP.
@@ -81,7 +84,7 @@ class AnthropicClient:
                     raise
                 # Schéma trop riche pour les sorties structurées : on le donne en consigne
                 # et on valide nous-mêmes le JSON renvoyé.
-                fallback_system = [
+                fallback_system: list[TextBlockParam] = [
                     *cached_system,
                     {"type": "text", "text": _json_instructions(output_type)},
                 ]
