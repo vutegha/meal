@@ -142,6 +142,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Org Dashboard */
+    get: operations["org_dashboard_api_v1_orgs__org_id__dashboard_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/jobs/{job_id}": {
     parameters: {
       query?: never;
@@ -1734,6 +1751,26 @@ export interface components {
       /** Taken At */
       taken_at?: string | null;
     };
+    /**
+     * Breakdown
+     * @description Une ligne de ventilation : un mois, un lieu, une zone ou un projet.
+     */
+    Breakdown: {
+      /**
+       * Executions
+       * @default 0
+       */
+      executions: number;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * People
+       * @default 0
+       */
+      people: number;
+    };
     /** BudgetLineIn */
     BudgetLineIn: {
       /** Activity Id */
@@ -1856,6 +1893,29 @@ export interface components {
       report: components["schemas"]["BuiltinSection"][];
       /** Tor */
       tor: components["schemas"]["BuiltinSection"][];
+    };
+    /** DashboardOptions */
+    DashboardOptions: {
+      /** Locations */
+      locations: string[];
+      /** Projects */
+      projects: components["schemas"]["DashboardProject"][];
+      /** Years */
+      years: number[];
+      /** Zones */
+      zones: string[];
+    };
+    /** DashboardProject */
+    DashboardProject: {
+      /** Code */
+      code: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
     };
     /** DocumentOut */
     DocumentOut: {
@@ -3199,6 +3259,29 @@ export interface components {
       /** Title */
       title?: string | null;
     };
+    /** OrgDashboard */
+    OrgDashboard: {
+      /** Active Projects */
+      active_projects: number;
+      /** By Location */
+      by_location: components["schemas"]["Breakdown"][];
+      /** By Month */
+      by_month: components["schemas"]["Breakdown"][];
+      /** By Project */
+      by_project: components["schemas"]["Breakdown"][];
+      /** By Zone */
+      by_zone: components["schemas"]["Breakdown"][];
+      /** Completed Executions */
+      completed_executions: number;
+      /** Executions */
+      executions: number;
+      options: components["schemas"]["DashboardOptions"];
+      people: components["schemas"]["People"];
+      /** Projects */
+      projects: number;
+      /** Spending */
+      spending: components["schemas"]["Spending"][];
+    };
     /** OrganizationIn */
     OrganizationIn: {
       /**
@@ -3252,6 +3335,39 @@ export interface components {
        * @default 0
        */
       men: number;
+      /**
+       * With Disability
+       * @default 0
+       */
+      with_disability: number;
+      /**
+       * Women
+       * @default 0
+       */
+      women: number;
+    };
+    /** People */
+    People: {
+      /**
+       * Boys
+       * @default 0
+       */
+      boys: number;
+      /**
+       * Girls
+       * @default 0
+       */
+      girls: number;
+      /**
+       * Men
+       * @default 0
+       */
+      men: number;
+      /**
+       * Total
+       * @default 0
+       */
+      total: number;
       /**
        * With Disability
        * @default 0
@@ -3677,6 +3793,13 @@ export interface components {
       semantic: boolean;
       /** Snippet */
       snippet: string;
+    };
+    /** Spending */
+    Spending: {
+      /** Amount */
+      amount: string;
+      /** Currency */
+      currency: string;
     };
     /** SubmissionIn */
     SubmissionIn: {
@@ -4284,6 +4407,44 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AuditLogOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  org_dashboard_api_v1_orgs__org_id__dashboard_get: {
+    parameters: {
+      query?: {
+        year?: number | null;
+        month?: number | null;
+        zone?: string;
+        location?: string;
+        project_id?: string | null;
+        beneficiary?: ("women" | "men" | "girls" | "boys" | "with_disability") | null;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrgDashboard"];
         };
       };
       /** @description Validation Error */
