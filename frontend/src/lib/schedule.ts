@@ -104,3 +104,38 @@ export function dragPeriod(
   const reached = Math.max(bounds.first, Math.min(bounds.last, start + delta));
   return [Math.min(start, reached), Math.max(start, reached)];
 }
+
+export interface ScheduleFilter {
+  /** Effet (objectif spécifique) retenu, ou null pour tous. */
+  outcome: string | null;
+  /** Résultats (produits) retenus ; vide pour tous ceux de l'effet. */
+  outputs: string[];
+}
+
+/** Élément du cadre logique de niveau `level` dont dépend `node` (lui-même compris). */
+function ancestor(
+  node: LogframeNode,
+  nodes: Map<string, LogframeNode>,
+  level: LogframeNode["level"],
+): LogframeNode | undefined {
+  let current: LogframeNode | undefined = node;
+  while (current && current.level !== level)
+    current = current.parent_id ? nodes.get(current.parent_id) : undefined;
+  return current;
+}
+
+/** Lignes du diagramme (résultats et leurs activités) restant affichées avec ce filtre. */
+export function scheduleRows(
+  nodes: LogframeNode[],
+  byId: Map<string, LogframeNode>,
+  filter: ScheduleFilter,
+): LogframeNode[] {
+  return nodes.filter((node) => {
+    if (node.level !== "output" && node.level !== "activity" && node.level !== "sub_activity")
+      return false;
+    const output = ancestor(node, byId, "output");
+    if (filter.outputs.length && !(output && filter.outputs.includes(output.id))) return false;
+    if (filter.outcome && ancestor(node, byId, "outcome")?.id !== filter.outcome) return false;
+    return true;
+  });
+}

@@ -249,6 +249,12 @@ export const en: Messages = {
     noDates:
       "The project has no dates: the schedule covers the next twelve months. Set the project dates to adjust it.",
     dragToPlan: "Drag here to plan",
+    filter: "Show",
+    outcome: "Outcome",
+    allOutcomes: "All outcomes",
+    allOutputs: "All outputs",
+    shown: "{{shown}} of {{total}} activities",
+    noMatch: "No activity matches this filter.",
     state: {
       unscheduled: "Not planned",
       planned: "Planned",
