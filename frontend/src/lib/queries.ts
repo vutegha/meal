@@ -150,6 +150,21 @@ export const feedbackStatsQuery = (orgId: string, projectId: string) =>
     queryFn: () => accountabilityApi.feedbackStats(orgId, projectId),
   });
 
+export const smsConfigQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "sms-config"],
+    queryFn: () => accountabilityApi.smsConfig(orgId),
+    staleTime: Infinity,
+  });
+
+export const feedbackSmsQuery = (orgId: string, projectId: string, feedbackId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "feedback", feedbackId, "sms"],
+    queryFn: () => accountabilityApi.feedbackSms(orgId, projectId, feedbackId),
+    // Les réponses arrivent par le prestataire : on relit l'échange tant qu'il est ouvert.
+    refetchInterval: 15_000,
+  });
+
 export const lessonsQuery = (orgId: string, projectId: string | null, q = "", tag = "") =>
   queryOptions({
     queryKey: projectId

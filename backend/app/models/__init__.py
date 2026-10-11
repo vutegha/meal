@@ -7,6 +7,8 @@ from app.models.accountability import (
     PeriodicKind,
     PeriodicReport,
     PeriodicReportVersion,
+    SmsDirection,
+    SmsMessage,
 )
 from app.models.ai import (
     AiCall,
@@ -57,6 +59,8 @@ __all__ = [
     "PeriodicKind",
     "PeriodicReport",
     "PeriodicReportVersion",
+    "SmsDirection",
+    "SmsMessage",
     "NarrativeReport",
     "ReportStatus",
     "ReportVersion",

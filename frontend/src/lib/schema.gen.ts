@@ -142,23 +142,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/orgs/{org_id}/dashboard": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Org Dashboard */
-    get: operations["org_dashboard_api_v1_orgs__org_id__dashboard_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/v1/orgs/{org_id}/jobs/{job_id}": {
     parameters: {
       query?: never;
@@ -710,6 +693,49 @@ export interface paths {
     head?: never;
     /** Update Feedback */
     patch: operations["update_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Feedback Sms */
+    get: operations["list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get"];
+    put?: never;
+    /**
+     * Send Feedback Sms
+     * @description Envoie un SMS ou un message WhatsApp à la personne.
+     *
+     *     Un échec du prestataire est enregistré et renvoyé tel quel.
+     */
+    post: operations["send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Simulate Feedback Sms
+     * @description Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).
+     */
+    post: operations["simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/v1/orgs/{org_id}/projects/{project_id}/forms": {
@@ -1444,6 +1470,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/sms/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Sms Config */
+    get: operations["sms_config_api_v1_orgs__org_id__sms_config_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/templates": {
     parameters: {
       query?: never;
@@ -1751,26 +1794,6 @@ export interface components {
       /** Taken At */
       taken_at?: string | null;
     };
-    /**
-     * Breakdown
-     * @description Une ligne de ventilation : un mois, un lieu, une zone ou un projet.
-     */
-    Breakdown: {
-      /**
-       * Executions
-       * @default 0
-       */
-      executions: number;
-      /** Key */
-      key: string;
-      /** Label */
-      label: string;
-      /**
-       * People
-       * @default 0
-       */
-      people: number;
-    };
     /** BudgetLineIn */
     BudgetLineIn: {
       /** Activity Id */
@@ -1894,28 +1917,22 @@ export interface components {
       /** Tor */
       tor: components["schemas"]["BuiltinSection"][];
     };
-    /** DashboardOptions */
-    DashboardOptions: {
-      /** Locations */
-      locations: string[];
-      /** Projects */
-      projects: components["schemas"]["DashboardProject"][];
-      /** Years */
-      years: number[];
-      /** Zones */
-      zones: string[];
-    };
-    /** DashboardProject */
-    DashboardProject: {
-      /** Code */
-      code: string;
+    /** ChannelConfig */
+    ChannelConfig: {
       /**
-       * Id
-       * Format: uuid
+       * Channel
+       * @enum {string}
        */
-      id: string;
-      /** Title */
-      title: string;
+      channel: "sms" | "whatsapp";
+      /**
+       * Error
+       * @default
+       */
+      error: string;
+      /** Provider */
+      provider: string;
+      /** Simulated */
+      simulated: boolean;
     };
     /** DocumentOut */
     DocumentOut: {
@@ -2521,6 +2538,16 @@ export interface components {
       response_days: number | null;
       /** Sensitive */
       sensitive: boolean;
+      /**
+       * Sms Awaiting Reply
+       * @default false
+       */
+      sms_awaiting_reply: boolean;
+      /**
+       * Sms Count
+       * @default 0
+       */
+      sms_count: number;
       status: components["schemas"]["FeedbackStatus"];
       /**
        * Updated At
@@ -3259,29 +3286,6 @@ export interface components {
       /** Title */
       title?: string | null;
     };
-    /** OrgDashboard */
-    OrgDashboard: {
-      /** Active Projects */
-      active_projects: number;
-      /** By Location */
-      by_location: components["schemas"]["Breakdown"][];
-      /** By Month */
-      by_month: components["schemas"]["Breakdown"][];
-      /** By Project */
-      by_project: components["schemas"]["Breakdown"][];
-      /** By Zone */
-      by_zone: components["schemas"]["Breakdown"][];
-      /** Completed Executions */
-      completed_executions: number;
-      /** Executions */
-      executions: number;
-      options: components["schemas"]["DashboardOptions"];
-      people: components["schemas"]["People"];
-      /** Projects */
-      projects: number;
-      /** Spending */
-      spending: components["schemas"]["Spending"][];
-    };
     /** OrganizationIn */
     OrganizationIn: {
       /**
@@ -3335,39 +3339,6 @@ export interface components {
        * @default 0
        */
       men: number;
-      /**
-       * With Disability
-       * @default 0
-       */
-      with_disability: number;
-      /**
-       * Women
-       * @default 0
-       */
-      women: number;
-    };
-    /** People */
-    People: {
-      /**
-       * Boys
-       * @default 0
-       */
-      boys: number;
-      /**
-       * Girls
-       * @default 0
-       */
-      girls: number;
-      /**
-       * Men
-       * @default 0
-       */
-      men: number;
-      /**
-       * Total
-       * @default 0
-       */
-      total: number;
       /**
        * With Disability
        * @default 0
@@ -3794,12 +3765,76 @@ export interface components {
       /** Snippet */
       snippet: string;
     };
-    /** Spending */
-    Spending: {
-      /** Amount */
-      amount: string;
-      /** Currency */
-      currency: string;
+    /** SmsConfig */
+    SmsConfig: {
+      /** Channels */
+      channels: components["schemas"]["ChannelConfig"][];
+      /** Inbound Enabled */
+      inbound_enabled: boolean;
+      /** Sender */
+      sender: string;
+    };
+    /**
+     * SmsDirection
+     * @enum {string}
+     */
+    SmsDirection: "inbound" | "outbound";
+    /** SmsOut */
+    SmsOut: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      direction: components["schemas"]["SmsDirection"];
+      /** Error */
+      error: string;
+      /** Feedback Id */
+      feedback_id: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Phone */
+      phone: string;
+      /** Provider */
+      provider: string;
+      /** Sent By */
+      sent_by: string | null;
+      /** Status */
+      status: string;
+    };
+    /** SmsSendIn */
+    SmsSendIn: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /** To */
+      to?: string | null;
+    };
+    /** SmsSimulateIn */
+    SmsSimulateIn: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
     };
     /** SubmissionIn */
     SubmissionIn: {
@@ -4407,44 +4442,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AuditLogOut"][];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  org_dashboard_api_v1_orgs__org_id__dashboard_get: {
-    parameters: {
-      query?: {
-        year?: number | null;
-        month?: number | null;
-        zone?: string;
-        location?: string;
-        project_id?: string | null;
-        beneficiary?: ("women" | "men" | "girls" | "boys" | "with_disability") | null;
-      };
-      header?: never;
-      path: {
-        org_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["OrgDashboard"];
         };
       };
       /** @description Validation Error */
@@ -5996,6 +5993,113 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FeedbackOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSendIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSimulateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
         };
       };
       /** @description Validation Error */
@@ -7969,6 +8073,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TorVersionOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  sms_config_api_v1_orgs__org_id__sms_config_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsConfig"];
         };
       };
       /** @description Validation Error */

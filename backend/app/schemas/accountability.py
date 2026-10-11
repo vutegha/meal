@@ -4,7 +4,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models import FeedbackCategory, FeedbackChannel, FeedbackStatus, PeriodicKind
+from app.models import (
+    FeedbackCategory,
+    FeedbackChannel,
+    FeedbackStatus,
+    PeriodicKind,
+    SmsDirection,
+)
 from app.schemas.report import ReportSource
 from app.schemas.tor import DraftSection, TorSection
 
@@ -83,6 +89,9 @@ class FeedbackOut(BaseModel):
     due_on: date
     overdue: bool
     response_days: int | None
+    # Échange par SMS avec la personne : nombre de messages, dernier message venu d'elle.
+    sms_count: int = 0
+    sms_awaiting_reply: bool = False
 
 
 class FeedbackStats(BaseModel):
@@ -96,6 +105,49 @@ class FeedbackStats(BaseModel):
     by_channel: dict[str, int]
     # Entrées sensibles comptées ici mais masquées pour l'utilisateur courant.
     hidden_sensitive: int
+
+
+class SmsSendIn(BaseModel):
+    body: str = Field(min_length=1, max_length=640)
+    channel: Literal["sms", "whatsapp"] = "sms"
+    # Laissé vide : le contact enregistré sur le retour.
+    to: str | None = Field(default=None, max_length=40)
+
+
+class SmsSimulateIn(BaseModel):
+    body: str = Field(min_length=1, max_length=640)
+    channel: Literal["sms", "whatsapp"] = "sms"
+
+
+class SmsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    feedback_id: UUID | None
+    channel: Literal["sms", "whatsapp"]
+    direction: SmsDirection
+    phone: str
+    body: str
+    status: str
+    provider: str
+    error: str
+    sent_by: UUID | None
+    created_at: datetime
+
+
+class ChannelConfig(BaseModel):
+    channel: Literal["sms", "whatsapp"]
+    provider: str
+    # Mode simulé : aucun message ne part réellement.
+    simulated: bool
+    # Problème de configuration à signaler (identifiants manquants, prestataire inconnu).
+    error: str = ""
+
+
+class SmsConfig(BaseModel):
+    channels: list[ChannelConfig]
+    sender: str
+    inbound_enabled: bool
 
 
 # --- Leçons apprises -----------------------------------------------------------------

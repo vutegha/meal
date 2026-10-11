@@ -571,35 +571,6 @@
         "title": "Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post",
         "type": "object"
       },
-      "Breakdown": {
-        "description": "Une ligne de ventilation : un mois, un lieu, une zone ou un projet.",
-        "properties": {
-          "executions": {
-            "default": 0,
-            "title": "Executions",
-            "type": "integer"
-          },
-          "key": {
-            "title": "Key",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "people": {
-            "default": 0,
-            "title": "People",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "key",
-          "label"
-        ],
-        "title": "Breakdown",
-        "type": "object"
-      },
       "BudgetLineIn": {
         "properties": {
           "activity_id": {
@@ -1005,68 +976,36 @@
         "title": "BuiltinTemplates",
         "type": "object"
       },
-      "DashboardOptions": {
+      "ChannelConfig": {
         "properties": {
-          "locations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Locations",
-            "type": "array"
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
           },
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardProject"
-            },
-            "title": "Projects",
-            "type": "array"
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
           },
-          "years": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Years",
-            "type": "array"
+          "provider": {
+            "title": "Provider",
+            "type": "string"
           },
-          "zones": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Zones",
-            "type": "array"
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
           }
         },
         "required": [
-          "years",
-          "zones",
-          "locations",
-          "projects"
+          "channel",
+          "provider",
+          "simulated"
         ],
-        "title": "DashboardOptions",
-        "type": "object"
-      },
-      "DashboardProject": {
-        "properties": {
-          "code": {
-            "title": "Code",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "code",
-          "title"
-        ],
-        "title": "DashboardProject",
+        "title": "ChannelConfig",
         "type": "object"
       },
       "DocumentOut": {
@@ -2622,6 +2561,16 @@
           "sensitive": {
             "title": "Sensitive",
             "type": "boolean"
+          },
+          "sms_awaiting_reply": {
+            "default": false,
+            "title": "Sms Awaiting Reply",
+            "type": "boolean"
+          },
+          "sms_count": {
+            "default": 0,
+            "title": "Sms Count",
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/FeedbackStatus"
@@ -4781,82 +4730,6 @@
         "title": "NodeUpdate",
         "type": "object"
       },
-      "OrgDashboard": {
-        "properties": {
-          "active_projects": {
-            "title": "Active Projects",
-            "type": "integer"
-          },
-          "by_location": {
-            "items": {
-              "$ref": "#/components/schemas/Breakdown"
-            },
-            "title": "By Location",
-            "type": "array"
-          },
-          "by_month": {
-            "items": {
-              "$ref": "#/components/schemas/Breakdown"
-            },
-            "title": "By Month",
-            "type": "array"
-          },
-          "by_project": {
-            "items": {
-              "$ref": "#/components/schemas/Breakdown"
-            },
-            "title": "By Project",
-            "type": "array"
-          },
-          "by_zone": {
-            "items": {
-              "$ref": "#/components/schemas/Breakdown"
-            },
-            "title": "By Zone",
-            "type": "array"
-          },
-          "completed_executions": {
-            "title": "Completed Executions",
-            "type": "integer"
-          },
-          "executions": {
-            "title": "Executions",
-            "type": "integer"
-          },
-          "options": {
-            "$ref": "#/components/schemas/DashboardOptions"
-          },
-          "people": {
-            "$ref": "#/components/schemas/People"
-          },
-          "projects": {
-            "title": "Projects",
-            "type": "integer"
-          },
-          "spending": {
-            "items": {
-              "$ref": "#/components/schemas/Spending"
-            },
-            "title": "Spending",
-            "type": "array"
-          }
-        },
-        "required": [
-          "options",
-          "projects",
-          "active_projects",
-          "executions",
-          "completed_executions",
-          "people",
-          "spending",
-          "by_month",
-          "by_location",
-          "by_zone",
-          "by_project"
-        ],
-        "title": "OrgDashboard",
-        "type": "object"
-      },
       "OrganizationIn": {
         "properties": {
           "default_language": {
@@ -4978,42 +4851,6 @@
           }
         },
         "title": "Participants",
-        "type": "object"
-      },
-      "People": {
-        "properties": {
-          "boys": {
-            "default": 0,
-            "title": "Boys",
-            "type": "integer"
-          },
-          "girls": {
-            "default": 0,
-            "title": "Girls",
-            "type": "integer"
-          },
-          "men": {
-            "default": 0,
-            "title": "Men",
-            "type": "integer"
-          },
-          "total": {
-            "default": 0,
-            "title": "Total",
-            "type": "integer"
-          },
-          "with_disability": {
-            "default": 0,
-            "title": "With Disability",
-            "type": "integer"
-          },
-          "women": {
-            "default": 0,
-            "title": "Women",
-            "type": "integer"
-          }
-        },
-        "title": "People",
         "type": "object"
       },
       "PeriodProgress": {
@@ -6041,23 +5878,182 @@
         "title": "SearchHit",
         "type": "object"
       },
-      "Spending": {
+      "SmsConfig": {
         "properties": {
-          "amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Amount",
-            "type": "string"
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelConfig"
+            },
+            "title": "Channels",
+            "type": "array"
           },
-          "currency": {
-            "title": "Currency",
+          "inbound_enabled": {
+            "title": "Inbound Enabled",
+            "type": "boolean"
+          },
+          "sender": {
+            "title": "Sender",
             "type": "string"
           }
         },
         "required": [
-          "currency",
-          "amount"
+          "channels",
+          "sender",
+          "inbound_enabled"
         ],
-        "title": "Spending",
+        "title": "SmsConfig",
+        "type": "object"
+      },
+      "SmsDirection": {
+        "enum": [
+          "inbound",
+          "outbound"
+        ],
+        "title": "SmsDirection",
+        "type": "string"
+      },
+      "SmsOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SmsDirection"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "feedback_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sent_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent By"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "feedback_id",
+          "channel",
+          "direction",
+          "phone",
+          "body",
+          "status",
+          "provider",
+          "error",
+          "sent_by",
+          "created_at"
+        ],
+        "title": "SmsOut",
+        "type": "object"
+      },
+      "SmsSendIn": {
+        "properties": {
+          "body": {
+            "maxLength": 640,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "SmsSendIn",
+        "type": "object"
+      },
+      "SmsSimulateIn": {
+        "properties": {
+          "body": {
+            "maxLength": 640,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "SmsSimulateIn",
         "type": "object"
       },
       "SubmissionIn": {
@@ -7256,150 +7252,6 @@
         "summary": "List Audit",
         "tags": [
           "organisations"
-        ]
-      }
-    },
-    "/api/v1/orgs/{org_id}/dashboard": {
-      "get": {
-        "operationId": "org_dashboard_api_v1_orgs__org_id__dashboard_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "org_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Org Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "year",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maximum": 2100,
-                  "minimum": 2000,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Year"
-            }
-          },
-          {
-            "in": "query",
-            "name": "month",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maximum": 12,
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Month"
-            }
-          },
-          {
-            "in": "query",
-            "name": "zone",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Zone",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "location",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Location",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "project_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Project Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "beneficiary",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "women",
-                    "men",
-                    "girls",
-                    "boys",
-                    "with_disability"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Beneficiary"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrgDashboard"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Org Dashboard",
-        "tags": [
-          "tableau de bord"
         ]
       }
     },
@@ -10435,6 +10287,234 @@
           }
         ],
         "summary": "Update Feedback",
+        "tags": [
+          "redevabilité"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms": {
+      "get": {
+        "operationId": "list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SmsOut"
+                  },
+                  "title": "Response List Feedback Sms Api V1 Orgs  Org Id  Projects  Project Id  Feedback  Feedback Id  Sms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Feedback Sms",
+        "tags": [
+          "redevabilité"
+        ]
+      },
+      "post": {
+        "description": "Envoie un SMS ou un message WhatsApp à la personne.\n\nUn échec du prestataire est enregistré et renvoyé tel quel.",
+        "operationId": "send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsSendIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Feedback Sms",
+        "tags": [
+          "redevabilité"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
+      "post": {
+        "description": "Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).",
+        "operationId": "simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsSimulateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Simulate Feedback Sms",
         "tags": [
           "redevabilité"
         ]
@@ -14514,6 +14594,54 @@
         "summary": "List Versions",
         "tags": [
           "TdR"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/sms/config": {
+      "get": {
+        "operationId": "sms_config_api_v1_orgs__org_id__sms_config_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sms Config",
+        "tags": [
+          "redevabilité"
         ]
       }
     },

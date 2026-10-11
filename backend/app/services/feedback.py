@@ -34,6 +34,13 @@ def can_handle(member: Membership, entry: FeedbackEntry) -> bool:
     return member.role in (*MANAGERS, Role.MEAL_OFFICER) or member.user_id == entry.assigned_to
 
 
+def can_read_contact(member: Membership, entry: FeedbackEntry) -> bool:
+    """Contact et échanges SMS : responsables, chargé MEAL, personnes impliquées."""
+    return can_see(member, entry) and (
+        member.role in (*MANAGERS, Role.MEAL_OFFICER) or involved(member, entry)
+    )
+
+
 def due_on(entry: FeedbackEntry) -> date:
     days = SENSITIVE_RESPONSE_DAYS if entry.sensitive else RESPONSE_DAYS
     return entry.received_on + timedelta(days=days)
@@ -42,7 +49,7 @@ def due_on(entry: FeedbackEntry) -> date:
 def out(member: Membership, entry: FeedbackEntry, today: date | None = None) -> FeedbackOut:
     today = today or date.today()
     answered = entry.status in ANSWERED
-    show_contact = member.role in (*MANAGERS, Role.MEAL_OFFICER) or involved(member, entry)
+    show_contact = can_read_contact(member, entry)
     data = {k: getattr(entry, k) for k in FeedbackOut.model_fields if hasattr(entry, k)}
     return FeedbackOut.model_validate(
         {
