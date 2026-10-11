@@ -206,6 +206,23 @@ export const fr = {
     finance: "Finance",
     viewer: "Lecteur",
   },
+  rolesMatrix: {
+    title: "Rôles et droits",
+    intro:
+      "Chaque membre a un rôle dans l'organisation. Le serveur refuse toute opération que son rôle ne permet pas, même si l'écran l'affichait.",
+    operation: "Opération",
+    yes: "Autorisé",
+    no: "Non autorisé",
+    operations: {
+      view: "Consulter les projets, rapports et tableaux de bord",
+      record: "Saisir les exécutions, valeurs d'indicateurs et formulaires",
+      plan: "Modifier le cadre logique, les indicateurs, le chronogramme et les TdR",
+      budget: "Modifier le budget et saisir les dépenses",
+      projects: "Créer, modifier et clôturer les projets ; approuver",
+      sensitive: "Voir et traiter les plaintes sensibles",
+      org: "Gérer les membres, leurs rôles et l'organisation",
+    },
+  },
   documents: {
     title: "Documents du projet",
     intro:

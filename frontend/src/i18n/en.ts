@@ -206,6 +206,23 @@ export const en: Messages = {
     finance: "Finance",
     viewer: "Viewer",
   },
+  rolesMatrix: {
+    title: "Roles and permissions",
+    intro:
+      "Each member has a role in the organization. The server refuses any operation their role does not allow, even if the screen showed it.",
+    operation: "Operation",
+    yes: "Allowed",
+    no: "Not allowed",
+    operations: {
+      view: "View projects, reports and dashboards",
+      record: "Record executions, indicator values and forms",
+      plan: "Edit the logframe, indicators, schedule and ToR",
+      budget: "Edit the budget and record expenses",
+      projects: "Create, edit and close projects; approve",
+      sensitive: "See and handle sensitive complaints",
+      org: "Manage members, their roles and the organization",
+    },
+  },
   documents: {
     title: "Project documents",
     intro:
