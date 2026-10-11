@@ -16,6 +16,7 @@ from app.schemas.template import (
     TemplateOut,
     TemplateUpdate,
 )
+from app.services import billing
 from app.services import periodic as periodic_svc
 from app.services import projects as svc
 from app.services import report as report_svc
@@ -85,6 +86,7 @@ def _dump(body: TemplateIn | TemplateUpdate) -> dict[str, Any]:
 async def create_template(
     org_id: UUID, body: TemplateIn, member: Manager, session: SessionDep
 ) -> DocumentTemplate:
+    await billing.require_feature(session, org_id, "templates")
     template = DocumentTemplate(**_dump(body), organization_id=org_id, created_by=member.user_id)
     session.add(template)
     await session.flush()
@@ -99,6 +101,7 @@ async def create_template(
 async def update_template(
     org_id: UUID, template_id: UUID, body: TemplateUpdate, member: Manager, session: SessionDep
 ) -> DocumentTemplate:
+    await billing.require_feature(session, org_id, "templates")
     template = await _get(session, org_id, template_id)
     for field, value in _dump(body).items():
         setattr(template, field, value.strip() if isinstance(value, str) else value)

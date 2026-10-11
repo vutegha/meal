@@ -7,6 +7,7 @@ from app.core.security import create_token, decode_token, hash_password, verify_
 from app.models import Membership, User
 from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenPair
 from app.schemas.organization import MeOut, my_organization
+from app.services import billing
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -22,12 +23,19 @@ def _tokens(user: User) -> TokenPair:
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterIn, session: SessionDep) -> TokenPair:
     email = body.email.lower()
+    plan = body.plan or billing.DEFAULT_PLAN[body.account_type]
+    if billing.get_plan(plan).account_type != body.account_type:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Cette formule ne correspond pas au type de compte",
+        )
     if await session.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Cette adresse e-mail est déjà utilisée")
     user = User(email=email, full_name=body.full_name, password_hash=hash_password(body.password))
     session.add(user)
     await session.flush()
-    await create_organization(session, name=body.organization_name, owner=user)
+    name = body.organization_name or f"Espace de {body.full_name}"[:200]
+    await create_organization(session, name=name, owner=user, plan=plan, cycle=body.cycle)
     await session.commit()
     return _tokens(user)
 

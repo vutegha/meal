@@ -18,7 +18,7 @@ from app.schemas.organization import (
     OrganizationUpdate,
     my_organization,
 )
-from app.services import audit
+from app.services import audit, billing
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/orgs", tags=["organisations"])
@@ -40,9 +40,14 @@ async def create(body: OrganizationIn, user: CurrentUser, session: SessionDep) -
         session, name=body.name, owner=user, default_language=body.default_language
     )
     await session.commit()
-    return MyOrganizationOut.model_validate(
-        {**OrganizationOut.model_validate(org).model_dump(), "role": Role.ADMIN}
+    membership = await session.scalar(
+        select(Membership)
+        .where(Membership.organization_id == org.id, Membership.user_id == user.id)
+        .options(selectinload(Membership.organization))
+        .execution_options(populate_existing=True)
     )
+    assert membership is not None
+    return my_organization(membership)
 
 
 @router.get("/{org_id}", response_model=MyOrganizationOut)
@@ -89,6 +94,7 @@ async def list_members(org_id: UUID, _: AnyMember, session: SessionDep) -> list[
 async def add_member(
     org_id: UUID, body: MemberIn, admin: OrgAdmin, session: SessionDep
 ) -> Membership:
+    await billing.ensure_can_add_member(session, org_id)
     email = body.email.lower()
     user = await session.scalar(select(User).where(User.email == email))
     if user is None:
@@ -201,6 +207,7 @@ async def list_audit(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[AuditLog]:
+    await billing.require_feature(session, org_id, "audit")
     entries = await session.scalars(
         select(AuditLog)
         .where(AuditLog.organization_id == org_id)

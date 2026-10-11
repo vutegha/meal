@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     # Lecture des pages scannées (images) : un modèle capable de lire l'écriture manuscrite.
     llm_model_ocr: str = "claude-sonnet-5"
     ocr_max_pages: int = 40
-    # Plafond mensuel des dépenses IA par organisation, en USD (0 = illimité)
-    ai_monthly_budget_usd: float = 50.0
+    # Plafond mensuel des dépenses IA de chaque formule (services/billing.py). Ce réglage ajoute
+    # un plafond commun à toutes les organisations, en USD (0 = seulement celui de la formule).
+    ai_monthly_budget_usd: float = 0.0
     # Recherche sémantique : embeddings Voyage AI (multilingues). Sans clé, plein texte seul.
     voyage_api_key: str | None = None
     embeddings_model: str = "voyage-3.5"

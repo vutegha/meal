@@ -7,7 +7,6 @@ plein texte : elle ne tombe jamais en panne à cause de la partie sémantique.
 
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -18,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.llm.embeddings import EmbeddingError, Embeddings, Kind, get_embedder
 from app.models import AiCall, DocumentPage, Project, SourceDocument
+from app.services import billing
 from app.services.ai import log_call, month_cost
 
 logger = logging.getLogger(__name__)
@@ -52,8 +52,8 @@ async def _embed(
     embedder = get_embedder()
     if embedder is None:
         return None
-    cap = Decimal(str(get_settings().ai_monthly_budget_usd))
-    if cap > 0 and await month_cost(session, project.organization_id) >= cap:
+    cap = await billing.ai_cap(session, project.organization_id)
+    if cap is not None and await month_cost(session, project.organization_id) >= cap:
         return None
     call = AiCall(
         organization_id=project.organization_id,

@@ -11,6 +11,7 @@ import {
   templatesApi,
   torApi,
 } from "./api";
+import { billingApi } from "./billing";
 import { formsApi } from "./formsApi";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
@@ -197,4 +198,19 @@ export const submissionsQuery = (orgId: string, projectId: string, formId: strin
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "forms", formId, "submissions"],
     queryFn: () => formsApi.submissions(orgId, projectId, formId),
+  });
+
+export const catalogQuery = queryOptions({
+  queryKey: ["billing", "plans"],
+  queryFn: billingApi.catalog,
+  staleTime: Infinity,
+});
+
+export const subscriptionQuery = (orgId: string) =>
+  queryOptions({ queryKey: ["orgs", orgId, "billing"], queryFn: () => billingApi.get(orgId) });
+
+export const paymentsQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "billing", "payments"],
+    queryFn: () => billingApi.payments(orgId),
   });
