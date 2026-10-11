@@ -44,6 +44,7 @@ async def call_structured(
     content: list[dict[str, Any]],
     output_type: type[T],
     effort: Effort | None = "high",
+    max_tokens: int = 64000,
 ) -> LLMResult[T]:
     settings = get_settings()
     cap = Decimal(str(settings.ai_monthly_budget_usd))
@@ -61,7 +62,12 @@ async def call_structured(
     )
     try:
         result = await get_llm().structured(
-            model=model, system=system, content=content, output_type=output_type, effort=effort
+            model=model,
+            system=system,
+            content=content,
+            output_type=output_type,
+            effort=effort,
+            max_tokens=max_tokens,
         )
     except LLMError as exc:
         call.status, call.error = "error", str(exc)
