@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import Membership, Role
+from app.models import AccountType, Membership, Role
+from app.services.billing import account_type_of, features_of
 
 
 class ORMModel(BaseModel):
@@ -31,6 +32,9 @@ class OrganizationOut(ORMModel):
 
 class MyOrganizationOut(OrganizationOut):
     role: Role
+    account_type: AccountType
+    plan: str | None
+    features: list[str]
 
 
 class UserOut(ORMModel):
@@ -73,9 +77,14 @@ class AuditLogOut(ORMModel):
 
 
 def my_organization(membership: Membership) -> MyOrganizationOut:
+    """L'organisation doit être chargée (avec son abonnement, chargé d'office avec elle)."""
+    org = membership.organization
     return MyOrganizationOut.model_validate(
         {
-            **OrganizationOut.model_validate(membership.organization).model_dump(),
+            **OrganizationOut.model_validate(org).model_dump(),
             "role": membership.role,
+            "account_type": account_type_of(org.subscription),
+            "plan": org.subscription.plan if org.subscription else None,
+            "features": features_of(org.subscription),
         }
     )

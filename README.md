@@ -42,7 +42,7 @@ Variables utiles côté API : `DATABASE_URL` (par défaut `postgresql+asyncpg://
 
 ## Fonctions d'IA
 
-À la création d'un projet, les documents joints (proposition, cadre logique, budget, chronogramme) sont analysés d'office : l'API Claude en extrait la fiche du projet, le cadre logique, les indicateurs, le budget et le chronogramme des activités, validés par l'utilisateur avant enregistrement. Renseignez `ANTHROPIC_API_KEY` dans `.env` ; sans clé, le reste de l'application fonctionne et l'extraction renvoie une erreur explicite. Le plafond de dépense mensuel par organisation se règle avec `AI_MONTHLY_BUDGET_USD` (50 USD par défaut).
+À la création d'un projet, les documents joints (proposition, cadre logique, budget, chronogramme) sont analysés d'office : l'API Claude en extrait la fiche du projet, le cadre logique, les indicateurs, le budget et le chronogramme des activités, validés par l'utilisateur avant enregistrement. Renseignez `ANTHROPIC_API_KEY` dans `.env` ; sans clé, le reste de l'application fonctionne et l'extraction renvoie une erreur explicite. Le plafond de dépense mensuel de chaque organisation dépend de sa formule (voir ci-dessous) ; `AI_MONTHLY_BUDGET_USD` ajoute un plafond commun à toutes (0 par défaut : celui de la formule seulement).
 
 Pour mesurer la qualité du prompt d'extraction (appel réel, quelques centimes) :
 

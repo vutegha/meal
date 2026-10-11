@@ -21,6 +21,16 @@ export const fr = {
     organizationName: "Nom de votre organisation",
     hasAccount: "Déjà inscrit ?",
     passwordHint: "8 caractères minimum",
+    accountType: "Type de compte",
+    individual: "Individuel",
+    individualHint: "Pour vous seul : consultant, évaluateur, chargé MEAL indépendant.",
+    organization: "Organisation",
+    organizationHint: "Pour une équipe : membres, rôles, modèles et leçons partagés.",
+    plan: "Formule",
+    cycle: "Facturation",
+    trialNote:
+      "Essai gratuit de {{days}} jours, sans paiement. Vous choisirez ensuite depuis la page Abonnement.",
+    usageNote: "{{count}} crédits IA offerts pour commencer.",
   },
   orgs: {
     switch: "Organisation",
@@ -44,6 +54,7 @@ export const fr = {
     lessons: "Leçons apprises",
     templates: "Modèles",
     members: "Membres et audit",
+    billing: "Abonnement",
   },
   projects: {
     title: "Projets",
@@ -775,6 +786,270 @@ export const fr = {
     "evidence.uploaded": "Preuve déposée",
     "evidence.updated": "Preuve modifiée",
     "evidence.deleted": "Preuve retirée",
+  },
+  site: {
+    nav: {
+      home: "Accueil",
+      features: "Fonctionnalités",
+      pricing: "Tarifs",
+      login: "Se connecter",
+      signup: "Créer un compte",
+      openApp: "Ouvrir mon espace",
+      menu: "Menu",
+    },
+    footer: {
+      tagline:
+        "La plateforme MEAL des ONG et des équipes de terrain : planifier, collecter, rapporter et apprendre.",
+      product: "Produit",
+      account: "Compte",
+      rights: "© {{year}} We MEAL",
+    },
+    home: {
+      eyebrow: "Suivi-évaluation assisté par l'IA",
+      title: "Du document de projet au rapport final, sans ressaisie",
+      subtitle:
+        "We MEAL lit vos propositions, cadres logiques et budgets, prépare les termes de référence de chaque activité, collecte les données sur le terrain même sans connexion et rédige des rapports dont chaque phrase renvoie à sa source.",
+      ctaPrimary: "Commencer gratuitement",
+      ctaSecondary: "Voir les tarifs",
+      trialNote: "{{days}} jours d'essai gratuit, sans carte bancaire.",
+      previewAlt: "Tableau de bord d'un projet dans We MEAL",
+      cycleTitle: "Tout le cycle du projet, au même endroit",
+      cycleIntro:
+        "Chaque étape reprend ce que la précédente a produit : rien n'est saisi deux fois, rien ne se perd entre le bureau et le terrain.",
+      steps: {
+        plan: {
+          title: "Planifier",
+          text: "Déposez la proposition et le budget : l'IA en tire le cadre logique, les indicateurs, le budget et le chronogramme. Vous relisez et validez.",
+        },
+        prepare: {
+          title: "Préparer",
+          text: "Les termes de référence de chaque activité sont rédigés à partir du cadre logique et des documents, puis approuvés par le chef de projet.",
+        },
+        collect: {
+          title: "Collecter",
+          text: "Sur le téléphone, même hors ligne : exécutions, formulaires, listes de présence, photos avec consentement, dépenses réelles.",
+        },
+        report: {
+          title: "Rapporter et apprendre",
+          text: "Rapports narratifs sourcés, tableau de bord, rapports périodiques, plaintes et leçons apprises pour le projet suivant.",
+        },
+      },
+      trustTitle: "L'IA propose, votre équipe décide",
+      trust: {
+        validation: {
+          title: "Validation humaine",
+          text: "Rien n'entre dans le cadre logique ni dans un rapport sans relecture. Chaque élément proposé cite l'extrait du document dont il vient.",
+        },
+        offline: {
+          title: "Pensé pour le terrain",
+          text: "Application installable sur téléphone, saisie sans réseau, envoi automatique au retour de la connexion, sans doublon.",
+        },
+        security: {
+          title: "Données protégées",
+          text: "Chaque espace est cloisonné jusque dans la base de données. Les retours sensibles restent confidentiels et les photos sans consentement ne sortent pas.",
+        },
+      },
+      audienceTitle: "Un compte à votre mesure",
+      individual: {
+        title: "Compte individuel",
+        text: "Pour les consultants, évaluateurs et chargés MEAL indépendants qui suivent quelques projets seuls.",
+      },
+      organization: {
+        title: "Compte organisation",
+        text: "Pour les ONG, consortiums et agences : une équipe avec des rôles, des modèles de documents communs et la mémoire de l'organisation.",
+      },
+      compare: "Comparer les fonctions",
+      finalTitle: "Prêt à essayer sur votre prochain projet ?",
+      finalText:
+        "Créez votre espace en une minute, importez un document de projet et voyez ce que l'IA en tire.",
+    },
+    features: {
+      title: "Fonctionnalités",
+      intro:
+        "We MEAL couvre le suivi, l'évaluation, la redevabilité et l'apprentissage d'un projet, de sa proposition à son rapport final.",
+      groups: {
+        plan: {
+          title: "Planification",
+          items: {
+            extraction:
+              "Extraction par l'IA de la fiche du projet, du cadre logique, des indicateurs, du budget et du chronogramme depuis vos documents (PDF, Word, Excel, scans).",
+            citations:
+              "Chaque élément proposé cite son extrait ; les citations introuvables sont signalées « à vérifier ».",
+            logframe:
+              "Cadre logique hiérarchique, contrôles de cohérence (nœuds sans indicateur, activités sans budget).",
+            indicators:
+              "Indicateurs avec base, cibles par période, désagrégation et sources de vérification.",
+            budget: "Budget par ligne, dépenses en devises étrangères et taux de change.",
+            gantt:
+              "Chronogramme des activités en diagramme de Gantt, déplaçable au clavier et à la souris.",
+          },
+        },
+        execute: {
+          title: "Mise en œuvre",
+          items: {
+            tor: "Termes de référence rédigés par l'IA, éditeur riche, circuit de soumission et d'approbation.",
+            offline:
+              "Application installable, consultation et saisie hors ligne, file d'envoi automatique.",
+            forms: "Formulaires de collecte personnalisés et soumissions depuis le terrain.",
+            evidence:
+              "Preuves : photos (vignettes sans métadonnées, consentement), audio, vidéo, listes de présence.",
+            search: "Recherche plein texte et sémantique dans tous les documents du projet.",
+          },
+        },
+        report: {
+          title: "Rapports et redevabilité",
+          items: {
+            narrative:
+              "Rapport narratif de chaque activité, chaque phrase renvoyant à sa source (saisie, TdR, photo).",
+            dashboard: "Tableau de bord : avancement des indicateurs, budget consommé, activités.",
+            periodic: "Rapports périodiques agrégés (trimestriels, annuels).",
+            feedback:
+              "Registre des plaintes et retours, avec confidentialité des cas sensibles côté serveur.",
+            exports: "Exports PDF, Word et Excel.",
+          },
+        },
+        team: {
+          title: "Travail en équipe",
+          items: {
+            roles:
+              "Membres et rôles : administrateur, chef de projet, chargé MEAL, agent de terrain, finances, lecteur.",
+            templates: "Modèles de documents de l'organisation, et par bailleur.",
+            lessons: "Bibliothèque des leçons apprises de toute l'organisation.",
+            audit: "Journal d'audit de chaque modification.",
+          },
+        },
+      },
+      orgOnly: "Comptes organisation",
+      tableTitle: "Fonctions par type de compte",
+      feature: "Fonction",
+    },
+    pricing: {
+      title: "Des tarifs simples, à la mesure de vos projets",
+      subtitle:
+        "Payez au mois, à l'année, ou seulement quand vous utilisez l'IA. Toutes les formules commencent par un essai gratuit.",
+      accountTypes: { individual: "Individuel", organization: "Organisation" },
+      cycles: { monthly: "Mensuel", annual: "Annuel", usage: "À l'usage" },
+      annualSaving: "2 mois offerts",
+      perMonth: "/ mois",
+      perYear: "/ an",
+      perCredit: "/ crédit",
+      annualEquivalent: "soit {{price}} par mois",
+      usageNote: "Packs de {{packs}} crédits. Un crédit = une génération IA.",
+      welcomeCredits: "{{count}} crédits offerts à l'inscription",
+      trial: "{{days}} jours d'essai gratuit",
+      choose: "Choisir {{plan}}",
+      projects: "{{count}} projets",
+      projectsUnlimited: "Projets illimités",
+      members: "Jusqu'à {{count}} membres",
+      membersOne: "1 utilisateur",
+      membersUnlimited: "Membres illimités",
+      aiBudget: "IA jusqu'à {{amount}} de consommation par mois",
+      allOf: "Tout {{plan}}, plus :",
+      sameAs: "Toutes les fonctions de {{plan}}, avec des limites plus larges.",
+      included: "Inclus",
+      notIncluded: "Non inclus",
+      compareTitle: "Comparer les formules",
+      unlimited: "Illimité",
+      limits: {
+        projects: "Projets",
+        members: "Membres",
+        ai: "Budget IA mensuel",
+      },
+      faqTitle: "Questions fréquentes",
+      faq: {
+        credit: {
+          q: "Qu'est-ce qu'un crédit ?",
+          a: "Un crédit couvre une génération par l'IA : l'analyse des documents d'un projet, la rédaction d'un TdR, d'un rapport d'activité ou d'un rapport périodique. La lecture des scans, la classification des retours et la recherche sont incluses.",
+        },
+        trial: {
+          q: "Que se passe-t-il à la fin de l'essai ?",
+          a: "Vos données restent consultables. Pour créer de nouveaux projets et utiliser l'IA, choisissez une formule depuis la page Abonnement de votre espace.",
+        },
+        switch: {
+          q: "Puis-je passer d'un compte individuel à un compte organisation ?",
+          a: "Oui, à tout moment depuis la page Abonnement : vos projets sont conservés et vous pouvez inviter votre équipe.",
+        },
+        cancel: {
+          q: "Puis-je résilier ?",
+          a: "Oui. La formule reste active jusqu'à la fin de la période payée, puis l'espace passe en lecture seule.",
+        },
+        currency: {
+          q: "Dans quelle devise ?",
+          a: "Les prix sont en dollars américains, hors taxes. Contactez-nous pour un consortium ou un paiement par virement.",
+        },
+      },
+    },
+  },
+  billing: {
+    title: "Abonnement",
+    plans: { solo: "Solo", team: "Équipe", institution: "Institution" },
+    planTaglines: {
+      solo: "Pour suivre seul quelques projets.",
+      team: "Pour une équipe projet ou une petite ONG.",
+      institution: "Pour les organisations multi-projets et les consortiums.",
+    },
+    accountType: { individual: "Compte individuel", organization: "Compte organisation" },
+    features: {
+      projects: "Projets, cadre logique, indicateurs, budget et chronogramme",
+      ai_extraction: "Extraction IA depuis vos documents de projet",
+      tor: "Termes de référence rédigés par l'IA",
+      offline_collection: "Collecte terrain hors ligne et formulaires",
+      reports: "Rapports narratifs sourcés",
+      dashboard: "Tableau de bord du projet",
+      accountability: "Registre des plaintes et retours",
+      periodic_reports: "Rapports périodiques agrégés",
+      exports: "Exports PDF, Word et Excel",
+      team: "Membres et rôles",
+      templates: "Modèles de documents de l'organisation",
+      org_lessons: "Leçons apprises de l'organisation",
+      audit: "Journal d'audit",
+    },
+    status: {
+      trialing: "Essai gratuit",
+      active: "Active",
+      canceled: "Résiliée",
+      expired: "Expirée",
+    },
+    current: "Formule actuelle",
+    cycle: "Facturation",
+    trialEnds: "Essai jusqu'au {{date}}",
+    renews: "Renouvelée le {{date}}",
+    endsOn: "Prend fin le {{date}}",
+    expiredOn: "Expirée : vos données restent consultables, choisissez une formule pour continuer.",
+    credits: "Crédits restants",
+    creditsCount: "{{count}} crédits",
+    usage: "Utilisation",
+    usageProjects: "Projets",
+    usageMembers: "Membres",
+    usageAi: "IA ce mois-ci",
+    change: "Changer de formule",
+    renew: "Renouveler",
+    buyCredits: "Acheter des crédits",
+    pack: "Pack de crédits",
+    packOption: "{{count}} crédits, {{price}}",
+    pay: "Payer {{amount}}",
+    simulated: "Mode démonstration : le paiement est simulé et aucun montant n'est prélevé.",
+    paid: "Paiement reçu (réf. {{reference}}). La formule {{plan}} est active.",
+    cancel: "Résilier le renouvellement",
+    confirmCancel: "La formule restera active jusqu'à la fin de la période en cours. Résilier ?",
+    payments: "Historique des paiements",
+    noPayments: "Aucun paiement pour l'instant.",
+    date: "Date",
+    description: "Libellé",
+    amount: "Montant",
+    reference: "Référence",
+    adminOnly: "Seul un administrateur de l'espace peut changer de formule.",
+    banner: {
+      trial: "Essai gratuit : encore {{count}} jour(s).",
+      expired: "L'abonnement de cet espace a expiré.",
+      noCredits: "Plus de crédits IA disponibles.",
+      action: "Voir l'abonnement",
+    },
+    locked: {
+      title: "Fonction réservée aux comptes organisation",
+      text: "Passez à la formule Équipe ou Institution pour inviter votre équipe, partager des modèles de documents, retrouver les leçons de tous vos projets et suivre le journal d'audit.",
+      action: "Voir les formules",
+    },
   },
 };
 

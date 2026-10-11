@@ -5,6 +5,7 @@ from app.api import (
     accountability,
     ai,
     auth,
+    billing,
     executions,
     forms,
     organizations,
@@ -34,6 +35,7 @@ app.add_middleware(
 
 api = APIRouter(prefix="/api/v1")
 api.include_router(auth.router)
+api.include_router(billing.router)
 api.include_router(organizations.router)
 api.include_router(projects.router)
 api.include_router(ai.router)

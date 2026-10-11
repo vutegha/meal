@@ -44,7 +44,7 @@ from app.schemas.project import (
     ProjectOut,
     ProjectUpdate,
 )
-from app.services import audit
+from app.services import audit, billing
 from app.services import projects as svc
 from app.services.export import logframe_document, logframe_workbook
 
@@ -113,6 +113,7 @@ async def list_projects(org_id: UUID, _: AnyMember, session: SessionDep) -> list
 async def create_project(
     org_id: UUID, body: ProjectIn, member: ProjectAdmin, session: SessionDep
 ) -> Project:
+    await billing.ensure_can_create_project(session, org_id)
     project = Project(organization_id=org_id, **body.model_dump())
     session.add(project)
     await _flush(session, "Un projet porte déjà ce code")
