@@ -955,7 +955,8 @@ export const en: Messages = {
       members: "Up to {{count}} members",
       membersOne: "1 user",
       membersUnlimited: "Unlimited members",
-      aiBudget: "AI usage up to {{amount}} per month",
+      monthlyCredits: "{{count}} AI credits per month",
+      creditsOnDemand: "AI credits as you need them",
       allOf: "Everything in {{plan}}, plus:",
       sameAs: "Every feature in {{plan}}, with higher limits.",
       included: "Included",
@@ -965,7 +966,7 @@ export const en: Messages = {
       limits: {
         projects: "Projects",
         members: "Members",
-        ai: "Monthly AI budget",
+        ai: "AI credits per month",
       },
       faqTitle: "Frequently asked questions",
       faq: {
@@ -1033,7 +1034,7 @@ export const en: Messages = {
     usage: "Usage",
     usageProjects: "Projects",
     usageMembers: "Members",
-    usageAi: "AI this month",
+    usageAi: "AI credits this month",
     change: "Change plan",
     renew: "Renew",
     buyCredits: "Buy credits",

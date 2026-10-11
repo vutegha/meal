@@ -14,7 +14,6 @@ import { permissions } from "@/lib/permissions";
 import { catalogQuery, paymentsQuery, subscriptionQuery } from "@/lib/queries";
 
 import { CycleToggle, PlanCard } from "../site/plans";
-import { AiUsagePanel } from "./AiUsagePanel";
 import { useCurrentOrg } from "./useCurrentOrg";
 
 const STATUS_TONE = {
@@ -47,7 +46,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
   );
 }
 
-function CurrentPlan({ sub, currency }: { sub: Subscription; currency: string }) {
+function CurrentPlan({ sub }: { sub: Subscription }) {
   const { t, i18n } = useTranslation();
   const date = (value: string | null) =>
     value
@@ -88,15 +87,13 @@ function CurrentPlan({ sub, currency }: { sub: Subscription; currency: string })
           used={sub.usage.members}
           limit={sub.limits.members}
         />
-        <div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-600">{t("billing.usageAi")}</span>
-            <span className="font-medium text-slate-900">
-              {formatPrice(sub.usage.ai_month_cost_usd, currency, i18n.language)} /{" "}
-              {formatPrice(sub.limits.ai_monthly_budget_usd, currency, i18n.language)}
-            </span>
-          </div>
-        </div>
+        {sub.cycle !== "usage" && (
+          <Meter
+            label={t("billing.usageAi")}
+            used={sub.usage.credits_used_this_month}
+            limit={sub.limits.monthly_credits}
+          />
+        )}
       </div>
       {sub.cycle === "usage" && (
         <p className="mt-4 text-sm">
@@ -205,7 +202,7 @@ export function BillingPage() {
 
   return (
     <>
-      <CurrentPlan sub={sub} currency={catalog.currency} />
+      <CurrentPlan sub={sub} />
       {message && (
         <p role="status" className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
           {message}
@@ -297,7 +294,6 @@ export function BillingPage() {
       )}
 
       {isAdmin && <Payments orgId={orgId} />}
-      {isAdmin && <AiUsagePanel orgId={orgId} />}
     </>
   );
 }

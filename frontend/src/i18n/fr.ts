@@ -969,7 +969,8 @@ export const fr = {
       members: "Jusqu'à {{count}} membres",
       membersOne: "1 utilisateur",
       membersUnlimited: "Membres illimités",
-      aiBudget: "IA jusqu'à {{amount}} de consommation par mois",
+      monthlyCredits: "{{count}} crédits IA par mois",
+      creditsOnDemand: "Crédits IA selon vos besoins",
       allOf: "Tout {{plan}}, plus :",
       sameAs: "Toutes les fonctions de {{plan}}, avec des limites plus larges.",
       included: "Inclus",
@@ -979,7 +980,7 @@ export const fr = {
       limits: {
         projects: "Projets",
         members: "Membres",
-        ai: "Budget IA mensuel",
+        ai: "Crédits IA par mois",
       },
       faqTitle: "Questions fréquentes",
       faq: {
@@ -1047,7 +1048,7 @@ export const fr = {
     usage: "Utilisation",
     usageProjects: "Projets",
     usageMembers: "Membres",
-    usageAi: "IA ce mois-ci",
+    usageAi: "Crédits IA ce mois-ci",
     change: "Changer de formule",
     renew: "Renouveler",
     buyCredits: "Acheter des crédits",

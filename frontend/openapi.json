@@ -480,10 +480,9 @@
       },
       "BillingUsage": {
         "properties": {
-          "ai_month_cost_usd": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Ai Month Cost Usd",
-            "type": "string"
+          "credits_used_this_month": {
+            "title": "Credits Used This Month",
+            "type": "integer"
           },
           "members": {
             "title": "Members",
@@ -497,7 +496,7 @@
         "required": [
           "projects",
           "members",
-          "ai_month_cost_usd"
+          "credits_used_this_month"
         ],
         "title": "BillingUsage",
         "type": "object"
@@ -5386,11 +5385,6 @@
       },
       "PlanLimits": {
         "properties": {
-          "ai_monthly_budget_usd": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Ai Monthly Budget Usd",
-            "type": "string"
-          },
           "members": {
             "anyOf": [
               {
@@ -5401,6 +5395,10 @@
               }
             ],
             "title": "Members"
+          },
+          "monthly_credits": {
+            "title": "Monthly Credits",
+            "type": "integer"
           },
           "projects": {
             "anyOf": [
@@ -5417,7 +5415,7 @@
         "required": [
           "projects",
           "members",
-          "ai_monthly_budget_usd"
+          "monthly_credits"
         ],
         "title": "PlanLimits",
         "type": "object"

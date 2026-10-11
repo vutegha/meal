@@ -13,7 +13,8 @@ Cycle = Literal["monthly", "annual", "usage"]
 class PlanLimits(BaseModel):
     projects: int | None
     members: int | None
-    ai_monthly_budget_usd: Decimal
+    # Crédits IA compris chaque mois (formules mensuelles et annuelles).
+    monthly_credits: int
 
 
 class PlanPrices(BaseModel):
@@ -41,7 +42,7 @@ class Catalog(BaseModel):
 class BillingUsage(BaseModel):
     projects: int
     members: int
-    ai_month_cost_usd: Decimal
+    credits_used_this_month: int
 
 
 class SubscriptionOut(BaseModel):

@@ -1862,8 +1862,8 @@ export interface components {
     };
     /** BillingUsage */
     BillingUsage: {
-      /** Ai Month Cost Usd */
-      ai_month_cost_usd: string;
+      /** Credits Used This Month */
+      credits_used_this_month: number;
       /** Members */
       members: number;
       /** Projects */
@@ -3670,10 +3670,10 @@ export interface components {
     };
     /** PlanLimits */
     PlanLimits: {
-      /** Ai Monthly Budget Usd */
-      ai_monthly_budget_usd: string;
       /** Members */
       members: number | null;
+      /** Monthly Credits */
+      monthly_credits: number;
       /** Projects */
       projects: number | null;
     };

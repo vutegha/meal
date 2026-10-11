@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal
-from app.models import AccountType, Membership, Payment, Project, Subscription
+from app.models import AccountType, AiCall, Membership, Payment, Project, Subscription
 
 CURRENCY = "USD"
 TRIAL_DAYS = 14
@@ -63,6 +63,9 @@ class Plan:
     credit: Decimal
     max_projects: int | None
     max_members: int | None
+    # Générations IA comprises chaque mois dans les formules mensuelles et annuelles. C'est ce
+    # que voient les clients ; le plafond en dollars, interne, protège des appels très coûteux.
+    monthly_credits: int
     ai_monthly_budget_usd: Decimal
     features: tuple[str, ...]
 
@@ -81,6 +84,7 @@ PLANS: dict[str, Plan] = {
             credit=Decimal("2.00"),
             max_projects=3,
             max_members=1,
+            monthly_credits=20,
             ai_monthly_budget_usd=Decimal("10"),
             features=CORE_FEATURES,
         ),
@@ -92,6 +96,7 @@ PLANS: dict[str, Plan] = {
             credit=Decimal("1.50"),
             max_projects=15,
             max_members=15,
+            monthly_credits=100,
             ai_monthly_budget_usd=Decimal("50"),
             features=CORE_FEATURES + TEAM_FEATURES,
         ),
@@ -103,6 +108,7 @@ PLANS: dict[str, Plan] = {
             credit=Decimal("1.00"),
             max_projects=None,
             max_members=None,
+            monthly_credits=500,
             ai_monthly_budget_usd=Decimal("250"),
             features=CORE_FEATURES + TEAM_FEATURES,
         ),
@@ -246,6 +252,27 @@ async def ai_cap(session: AsyncSession, org_id: UUID) -> Decimal | None:
     return min(caps) if caps else None
 
 
+def _month_start() -> datetime:
+    return datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+async def credits_used_this_month(session: AsyncSession, org_id: UUID) -> int:
+    """Générations IA réussies depuis le début du mois (celles qui consomment un crédit)."""
+    return (
+        await session.scalar(
+            select(func.count())
+            .select_from(AiCall)
+            .where(
+                AiCall.organization_id == org_id,
+                AiCall.status == "ok",
+                AiCall.purpose.in_(CREDIT_PURPOSES),
+                AiCall.created_at >= _month_start(),
+            )
+        )
+        or 0
+    )
+
+
 async def ai_block_reason(session: AsyncSession, org_id: UUID, purpose: str) -> str | None:
     """Pourquoi un appel IA n'est pas permis (abonnement expiré, plus de crédits), sinon None."""
     sub = await session.scalar(select(Subscription).where(Subscription.organization_id == org_id))
@@ -256,8 +283,18 @@ async def ai_block_reason(session: AsyncSession, org_id: UUID, purpose: str) -> 
             "L'abonnement de cet espace a expiré : renouvelez-le depuis la page Abonnement "
             "pour utiliser l'IA."
         )
-    if sub.cycle == "usage" and purpose in CREDIT_PURPOSES and sub.credits <= 0:
-        return "Plus de crédits disponibles : achetez un pack depuis la page Abonnement."
+    if purpose not in CREDIT_PURPOSES:
+        return None
+    if sub.cycle == "usage":
+        if sub.credits <= 0:
+            return "Plus de crédits disponibles : achetez un pack depuis la page Abonnement."
+        return None
+    quota = PLANS[sub.plan].monthly_credits
+    if await credits_used_this_month(session, org_id) >= quota:
+        return (
+            f"Les {quota} crédits IA du mois sont utilisés : ils se renouvellent le 1er du mois, "
+            "ou passez à une formule supérieure depuis la page Abonnement."
+        )
     return None
 
 

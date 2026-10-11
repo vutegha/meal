@@ -13,7 +13,7 @@ const plan = (id: string, type: string, monthly: string, annual: string, feature
   id,
   account_type: type,
   prices: { monthly, annual, credit: "1.50" },
-  limits: { projects: 3, members: type === "individual" ? 1 : 15, ai_monthly_budget_usd: "10" },
+  limits: { projects: 3, members: type === "individual" ? 1 : 15, monthly_credits: 20 },
   features,
 });
 const catalog = {

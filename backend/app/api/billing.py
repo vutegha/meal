@@ -18,7 +18,6 @@ from app.schemas.billing import (
 )
 from app.services import audit
 from app.services import billing as svc
-from app.services.ai import month_cost
 
 router = APIRouter(tags=["abonnements"])
 
@@ -27,7 +26,7 @@ def _limits(plan: svc.Plan) -> PlanLimits:
     return PlanLimits(
         projects=plan.max_projects,
         members=plan.max_members,
-        ai_monthly_budget_usd=plan.ai_monthly_budget_usd,
+        monthly_credits=plan.monthly_credits,
     )
 
 
@@ -69,7 +68,7 @@ async def _out(session: SessionDep, sub: Subscription) -> SubscriptionOut:
         usage=BillingUsage(
             projects=await svc.count_projects(session, org_id),
             members=await svc.count_members(session, org_id),
-            ai_month_cost_usd=await month_cost(session, org_id),
+            credits_used_this_month=await svc.credits_used_this_month(session, org_id),
         ),
     )
 
