@@ -12,6 +12,8 @@ export const ROLES: Role[] = [
   "viewer",
 ];
 
+export type AccountType = "individual" | "organization";
+
 export interface Organization {
   id: string;
   name: string;
@@ -19,6 +21,11 @@ export interface Organization {
   default_language: string;
   created_at: string;
   role: Role;
+  /** Compte individuel ou organisation, d'après la formule de l'espace. */
+  account_type: AccountType;
+  plan: string | null;
+  /** Fonctions ouvertes par la formule (voir lib/billing.ts). */
+  features: string[];
 }
 
 export interface User {
@@ -138,7 +145,10 @@ export const api = {
     email: string;
     full_name: string;
     password: string;
-    organization_name: string;
+    organization_name?: string;
+    account_type?: AccountType;
+    plan?: string;
+    cycle?: "monthly" | "annual" | "usage";
   }) => request<Tokens>("/auth/register", json("POST", body)),
   me: () => request<Me>("/auth/me"),
   createOrganization: (name: string) => request<Organization>("/orgs", json("POST", { name })),
@@ -1055,6 +1065,39 @@ export interface FeedbackEntry {
   due_on: string;
   overdue: boolean;
   response_days: number | null;
+  sms_count: number;
+  // Le dernier SMS de l'échange vient de la personne : elle attend une réponse.
+  sms_awaiting_reply: boolean;
+}
+
+export type MessageChannel = "sms" | "whatsapp";
+export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
+
+export interface SmsMessage {
+  id: string;
+  feedback_id: string | null;
+  channel: MessageChannel;
+  direction: "inbound" | "outbound";
+  phone: string;
+  body: string;
+  status: string;
+  provider: string;
+  error: string;
+  sent_by: string | null;
+  created_at: string;
+}
+
+export interface ChannelConfig {
+  channel: MessageChannel;
+  provider: string;
+  simulated: boolean;
+  error: string;
+}
+
+export interface SmsConfig {
+  channels: ChannelConfig[];
+  sender: string;
+  inbound_enabled: boolean;
 }
 
 export interface FeedbackIn {
@@ -1143,6 +1186,31 @@ export const accountabilityApi = {
     ),
   deleteFeedback: (orgId: string, projectId: string, feedbackId: string) =>
     request<void>(`${project(orgId, projectId)}/feedback/${feedbackId}`, { method: "DELETE" }),
+  smsConfig: (orgId: string) => request<SmsConfig>(`/orgs/${orgId}/sms/config`),
+  feedbackSms: (orgId: string, projectId: string, feedbackId: string) =>
+    request<SmsMessage[]>(`${project(orgId, projectId)}/feedback/${feedbackId}/sms`),
+  sendSms: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms`,
+      json("POST", { body, channel }),
+    ),
+  simulateSmsReply: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms/simulate`,
+      json("POST", { body, channel }),
+    ),
   lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

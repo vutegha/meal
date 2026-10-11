@@ -10,6 +10,8 @@ import {
 
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
+import { BillingPage } from "@/features/orgs/BillingPage";
+import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
 import { TemplatesPage } from "@/features/orgs/TemplatesPage";
@@ -17,6 +19,11 @@ import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { PROJECT_TABS, type ProjectTab } from "@/features/projects/tabs";
+import { FeaturesPage } from "@/features/site/FeaturesPage";
+import { HomePage } from "@/features/site/HomePage";
+import { PricingPage } from "@/features/site/PricingPage";
+import type { AccountType } from "@/lib/api";
+import { type Cycle, CYCLES } from "@/lib/billing";
 import { meQuery } from "@/lib/queries";
 import { tokenStore } from "@/lib/tokens";
 
@@ -39,16 +46,29 @@ async function loadMe(queryClient: QueryClient) {
   }
 }
 
+// Accueil du site public ; une personne connectée va directement à son espace.
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: async ({ context }) => {
-    requireAuth();
+    if (!tokenStore.get()) return;
     const me = await loadMe(context.queryClient);
     const first = me.organizations[0];
     if (first) throw redirect({ to: "/orgs/$orgId", params: { orgId: first.id } });
   },
-  component: () => null,
+  component: HomePage,
+});
+
+const featuresRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/fonctionnalites",
+  component: FeaturesPage,
+});
+
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tarifs",
+  component: PricingPage,
 });
 
 const loginRoute = createRoute({
@@ -60,6 +80,14 @@ const loginRoute = createRoute({
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
+  // Formule choisie sur la page Tarifs.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { type?: AccountType; plan?: string; cycle?: Cycle } => ({
+    type: search.type === "individual" || search.type === "organization" ? search.type : undefined,
+    plan: typeof search.plan === "string" ? search.plan : undefined,
+    cycle: CYCLES.includes(search.cycle as Cycle) ? (search.cycle as Cycle) : undefined,
+  }),
   component: RegisterPage,
 });
 
@@ -82,19 +110,37 @@ const orgIndexRoute = createRoute({
 const membersRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/members",
-  component: MembersPage,
+  component: () => (
+    <FeatureGate feature="team">
+      <MembersPage />
+    </FeatureGate>
+  ),
 });
 
 const lessonsRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/lessons",
-  component: OrgLessonsPage,
+  component: () => (
+    <FeatureGate feature="org_lessons">
+      <OrgLessonsPage />
+    </FeatureGate>
+  ),
 });
 
 const templatesRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/templates",
-  component: TemplatesPage,
+  component: () => (
+    <FeatureGate feature="templates">
+      <TemplatesPage />
+    </FeatureGate>
+  ),
+});
+
+const billingRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/billing",
+  component: BillingPage,
 });
 
 const projectRoute = createRoute({
@@ -123,9 +169,18 @@ const projectRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  featuresRoute,
+  pricingRoute,
   loginRoute,
   registerRoute,
-  orgRoute.addChildren([orgIndexRoute, lessonsRoute, templatesRoute, membersRoute, projectRoute]),
+  orgRoute.addChildren([
+    orgIndexRoute,
+    lessonsRoute,
+    templatesRoute,
+    membersRoute,
+    billingRoute,
+    projectRoute,
+  ]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

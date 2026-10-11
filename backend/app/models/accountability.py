@@ -149,6 +149,44 @@ class FeedbackEntry(IdMixin, TimestampMixin, Base):
     )
 
 
+class SmsDirection(enum.StrEnum):
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+
+
+class SmsMessage(IdMixin, TimestampMixin, Base):
+    """SMS ou message WhatsApp échangé avec la personne à l'origine d'un retour.
+
+    Un SMS reçu qu'aucun projet ne reconnaît reste sans organisation : invisible pour tous
+    (Row Level Security), il n'est conservé que pour l'administrateur de la plateforme.
+    """
+
+    __tablename__ = "sms_messages"
+
+    organization_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    # Supprimer un retour supprime ses SMS : ils contiennent des données personnelles.
+    feedback_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("feedback_entries.id", ondelete="CASCADE"), index=True
+    )
+    # "sms" ou "whatsapp".
+    channel: Mapped[str] = mapped_column(String(20), default="sms")
+    direction: Mapped[SmsDirection] = mapped_column(_enum(SmsDirection, "sms_direction"))
+    # Numéro de la personne (destinataire ou expéditeur), normalisé : « +243990000000 ».
+    phone: Mapped[str] = mapped_column(String(32), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    # queued, sent, failed pour un envoi ; received pour une réception.
+    status: Mapped[str] = mapped_column(String(20))
+    provider: Mapped[str] = mapped_column(String(30))
+    provider_message_id: Mapped[str] = mapped_column(String(100), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    sent_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
 # --- Leçons apprises ----------------------------------------------------------------------
 
 

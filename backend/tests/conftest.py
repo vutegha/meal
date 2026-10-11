@@ -42,6 +42,7 @@ async def database() -> AsyncIterator[None]:
             "feedback_channel",
             "feedback_category",
             "feedback_status",
+            "sms_direction",
         ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

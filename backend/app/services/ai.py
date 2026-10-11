@@ -9,11 +9,11 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.core.db import SessionLocal, bind_org
 from app.llm.client import Effort, LLMError, LLMResult, get_llm
 from app.llm.pricing import estimate_cost
 from app.models import AiCall
+from app.services import billing
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -45,9 +45,11 @@ async def call_structured(
     output_type: type[T],
     effort: Effort | None = "high",
 ) -> LLMResult[T]:
-    settings = get_settings()
-    cap = Decimal(str(settings.ai_monthly_budget_usd))
-    if cap > 0 and await month_cost(session, organization_id) >= cap:
+    blocked = await billing.ai_block_reason(session, organization_id, purpose)
+    if blocked:
+        raise LLMError(blocked)
+    cap = await billing.ai_cap(session, organization_id)
+    if cap is not None and await month_cost(session, organization_id) >= cap:
         raise LLMError(
             f"Le plafond mensuel de dépenses IA de l'organisation ({cap} USD) est atteint."
         )
@@ -83,6 +85,7 @@ async def call_structured(
         result.cache_write_tokens,
     )
     await log_call(call)
+    await billing.spend_credit(organization_id, purpose)
     return result
 
 

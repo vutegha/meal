@@ -23,6 +23,16 @@ export const en: Messages = {
     organizationName: "Your organisation's name",
     hasAccount: "Already registered?",
     passwordHint: "At least 8 characters",
+    accountType: "Account type",
+    individual: "Individual",
+    individualHint: "Just for you: consultant, evaluator, independent MEAL officer.",
+    organization: "Organisation",
+    organizationHint: "For a team: shared members, roles, templates and lessons.",
+    plan: "Plan",
+    cycle: "Billing",
+    trialNote:
+      "{{days}}-day free trial, no payment. You will choose later from the Subscription page.",
+    usageNote: "{{count}} free AI credits to get started.",
   },
   orgs: {
     switch: "Organisation",
@@ -45,6 +55,7 @@ export const en: Messages = {
     lessons: "Lessons learned",
     templates: "Templates",
     members: "Members and audit",
+    billing: "Subscription",
   },
   projects: {
     title: "Projects",
@@ -511,6 +522,32 @@ export const en: Messages = {
       days_one: "{{count}} day on average",
       days_other: "{{count}} days on average",
     },
+    sms: {
+      open_one: "{{count}} message",
+      open_other: "{{count}} messages",
+      start: "Text by SMS or WhatsApp",
+      awaiting: "New message",
+      title: "SMS and WhatsApp conversation with the person",
+      empty: "No messages yet.",
+      placeholder: "Your message…",
+      send: "Send",
+      sending: "Sending…",
+      chars: "{{count}} / 640 characters",
+      channel: "Sending channel",
+      channels: { sms: "SMS", whatsapp: "WhatsApp" },
+      to: "To {{phone}}",
+      noContact:
+        "No phone number recorded: add a contact to the feedback to text by SMS or WhatsApp.",
+      simulated: {
+        sms: "Simulated mode: no SMS is actually sent. Configure a provider (Twilio or Africa's Talking) to send real messages.",
+        whatsapp:
+          "Simulated mode: no WhatsApp message is actually sent. Configure a provider (Twilio or Meta) to send real messages.",
+      },
+      simulateReply: "Simulate a reply from the person",
+      simulatePrompt: "Text of the simulated reply",
+      failed: "Sending failed",
+      status: { queued: "Queued", sent: "Sent", failed: "Failed", received: "Received" },
+    },
     channels: {
       hotline: "Hotline",
       suggestion_box: "Suggestion box",
@@ -770,5 +807,266 @@ export const en: Messages = {
     "evidence.uploaded": "Evidence uploaded",
     "evidence.updated": "Evidence updated",
     "evidence.deleted": "Evidence removed",
+  },
+  site: {
+    nav: {
+      home: "Home",
+      features: "Features",
+      pricing: "Pricing",
+      login: "Sign in",
+      signup: "Create an account",
+      openApp: "Open my workspace",
+      menu: "Menu",
+    },
+    footer: {
+      tagline: "The MEAL platform for NGOs and field teams: plan, collect, report and learn.",
+      product: "Product",
+      account: "Account",
+      rights: "© {{year}} We MEAL",
+    },
+    home: {
+      eyebrow: "AI-assisted monitoring and evaluation",
+      title: "From project document to final report, with no re-typing",
+      subtitle:
+        "We MEAL reads your proposals, logframes and budgets, drafts the terms of reference for each activity, collects field data even offline and writes reports in which every sentence points to its source.",
+      ctaPrimary: "Start for free",
+      ctaSecondary: "See pricing",
+      trialNote: "{{days}}-day free trial, no credit card.",
+      previewAlt: "A project dashboard in We MEAL",
+      cycleTitle: "The whole project cycle, in one place",
+      cycleIntro:
+        "Each step builds on what the previous one produced: nothing is typed twice, nothing gets lost between the office and the field.",
+      steps: {
+        plan: {
+          title: "Plan",
+          text: "Upload the proposal and budget: AI derives the logframe, indicators, budget and timeline. You review and approve.",
+        },
+        prepare: {
+          title: "Prepare",
+          text: "Terms of reference for each activity are drafted from the logframe and documents, then approved by the project manager.",
+        },
+        collect: {
+          title: "Collect",
+          text: "On a phone, even offline: activities, forms, attendance lists, photos with consent, actual expenses.",
+        },
+        report: {
+          title: "Report and learn",
+          text: "Sourced narrative reports, dashboard, periodic reports, complaints and lessons learned for the next project.",
+        },
+      },
+      trustTitle: "AI suggests, your team decides",
+      trust: {
+        validation: {
+          title: "Human validation",
+          text: "Nothing enters the logframe or a report without review. Every suggested item quotes the passage it comes from.",
+        },
+        offline: {
+          title: "Built for the field",
+          text: "Installable phone app, data entry without network, automatic upload when back online, without duplicates.",
+        },
+        security: {
+          title: "Protected data",
+          text: "Each workspace is isolated down to the database. Sensitive feedback stays confidential and photos without consent never leave.",
+        },
+      },
+      audienceTitle: "An account that fits you",
+      individual: {
+        title: "Individual account",
+        text: "For consultants, evaluators and independent MEAL officers following a few projects on their own.",
+      },
+      organization: {
+        title: "Organisation account",
+        text: "For NGOs, consortia and agencies: a team with roles, shared document templates and the organisation's memory.",
+      },
+      compare: "Compare features",
+      finalTitle: "Ready to try it on your next project?",
+      finalText:
+        "Create your workspace in a minute, upload a project document and see what AI makes of it.",
+    },
+    features: {
+      title: "Features",
+      intro:
+        "We MEAL covers monitoring, evaluation, accountability and learning for a project, from proposal to final report.",
+      groups: {
+        plan: {
+          title: "Planning",
+          items: {
+            extraction:
+              "AI extraction of the project sheet, logframe, indicators, budget and timeline from your documents (PDF, Word, Excel, scans).",
+            citations:
+              'Every suggested item quotes its passage; quotes that cannot be found are flagged "to check".',
+            logframe:
+              "Hierarchical logframe with consistency checks (nodes without indicators, activities without budget).",
+            indicators:
+              "Indicators with baseline, targets per period, disaggregation and means of verification.",
+            budget: "Budget lines, expenses in foreign currencies and exchange rates.",
+            gantt: "Activity timeline as a Gantt chart, movable by keyboard and mouse.",
+          },
+        },
+        execute: {
+          title: "Implementation",
+          items: {
+            tor: "AI-drafted terms of reference, rich editor, submission and approval workflow.",
+            offline: "Installable app, offline reading and data entry, automatic upload queue.",
+            forms: "Custom data collection forms and submissions from the field.",
+            evidence:
+              "Evidence: photos (metadata-free thumbnails, consent), audio, video, attendance lists.",
+            search: "Full-text and semantic search across all project documents.",
+          },
+        },
+        report: {
+          title: "Reporting and accountability",
+          items: {
+            narrative:
+              "Narrative report for each activity, every sentence pointing to its source (entry, ToR, photo).",
+            dashboard: "Dashboard: indicator progress, budget spent, activities.",
+            periodic: "Aggregated periodic reports (quarterly, annual).",
+            feedback:
+              "Complaints and feedback register, with server-side confidentiality for sensitive cases.",
+            exports: "PDF, Word and Excel exports.",
+          },
+        },
+        team: {
+          title: "Teamwork",
+          items: {
+            roles:
+              "Members and roles: administrator, project manager, MEAL officer, field agent, finance, viewer.",
+            templates: "Organisation document templates, and per donor.",
+            lessons: "Library of lessons learned across the organisation.",
+            audit: "Audit log of every change.",
+          },
+        },
+      },
+      orgOnly: "Organisation accounts",
+      tableTitle: "Features by account type",
+      feature: "Feature",
+    },
+    pricing: {
+      title: "Simple pricing that fits your projects",
+      subtitle:
+        "Pay monthly, yearly, or only when you use AI. Every plan starts with a free trial.",
+      accountTypes: { individual: "Individual", organization: "Organisation" },
+      cycles: { monthly: "Monthly", annual: "Yearly", usage: "Pay as you go" },
+      annualSaving: "2 months free",
+      perMonth: "/ month",
+      perYear: "/ year",
+      perCredit: "/ credit",
+      annualEquivalent: "i.e. {{price}} per month",
+      usageNote: "Packs of {{packs}} credits. One credit = one AI generation.",
+      welcomeCredits: "{{count}} free credits when you sign up",
+      trial: "{{days}}-day free trial",
+      choose: "Choose {{plan}}",
+      projects: "{{count}} projects",
+      projectsUnlimited: "Unlimited projects",
+      members: "Up to {{count}} members",
+      membersOne: "1 user",
+      membersUnlimited: "Unlimited members",
+      aiBudget: "AI usage up to {{amount}} per month",
+      allOf: "Everything in {{plan}}, plus:",
+      sameAs: "Every feature in {{plan}}, with higher limits.",
+      included: "Included",
+      notIncluded: "Not included",
+      compareTitle: "Compare plans",
+      unlimited: "Unlimited",
+      limits: {
+        projects: "Projects",
+        members: "Members",
+        ai: "Monthly AI budget",
+      },
+      faqTitle: "Frequently asked questions",
+      faq: {
+        credit: {
+          q: "What is a credit?",
+          a: "A credit covers one AI generation: analysing a project's documents, drafting a ToR, an activity report or a periodic report. Reading scans, classifying feedback and search are included.",
+        },
+        trial: {
+          q: "What happens when the trial ends?",
+          a: "Your data stays available to read. To create new projects and use AI, choose a plan from your workspace's Subscription page.",
+        },
+        switch: {
+          q: "Can I move from an individual to an organisation account?",
+          a: "Yes, at any time from the Subscription page: your projects are kept and you can invite your team.",
+        },
+        cancel: {
+          q: "Can I cancel?",
+          a: "Yes. The plan stays active until the end of the paid period, then the workspace becomes read-only.",
+        },
+        currency: {
+          q: "Which currency?",
+          a: "Prices are in US dollars, excluding taxes. Contact us for a consortium or payment by bank transfer.",
+        },
+      },
+    },
+  },
+  billing: {
+    title: "Subscription",
+    plans: { solo: "Solo", team: "Team", institution: "Institution" },
+    planTaglines: {
+      solo: "To follow a few projects on your own.",
+      team: "For a project team or a small NGO.",
+      institution: "For multi-project organisations and consortia.",
+    },
+    accountType: { individual: "Individual account", organization: "Organisation account" },
+    features: {
+      projects: "Projects, logframe, indicators, budget and timeline",
+      ai_extraction: "AI extraction from your project documents",
+      tor: "AI-drafted terms of reference",
+      offline_collection: "Offline field collection and forms",
+      reports: "Sourced narrative reports",
+      dashboard: "Project dashboard",
+      accountability: "Complaints and feedback register",
+      periodic_reports: "Aggregated periodic reports",
+      exports: "PDF, Word and Excel exports",
+      team: "Members and roles",
+      templates: "Organisation document templates",
+      org_lessons: "Organisation lessons learned",
+      audit: "Audit log",
+    },
+    status: {
+      trialing: "Free trial",
+      active: "Active",
+      canceled: "Cancelled",
+      expired: "Expired",
+    },
+    current: "Current plan",
+    cycle: "Billing",
+    trialEnds: "Trial until {{date}}",
+    renews: "Renews on {{date}}",
+    endsOn: "Ends on {{date}}",
+    expiredOn: "Expired: your data stays available, choose a plan to continue.",
+    credits: "Credits left",
+    creditsCount: "{{count}} credits",
+    usage: "Usage",
+    usageProjects: "Projects",
+    usageMembers: "Members",
+    usageAi: "AI this month",
+    change: "Change plan",
+    renew: "Renew",
+    buyCredits: "Buy credits",
+    pack: "Credit pack",
+    packOption: "{{count}} credits, {{price}}",
+    pay: "Pay {{amount}}",
+    simulated: "Demo mode: payment is simulated and nothing is charged.",
+    paid: "Payment received (ref. {{reference}}). The {{plan}} plan is active.",
+    cancel: "Cancel renewal",
+    confirmCancel: "The plan will stay active until the end of the current period. Cancel?",
+    payments: "Payment history",
+    noPayments: "No payments yet.",
+    date: "Date",
+    description: "Description",
+    amount: "Amount",
+    reference: "Reference",
+    adminOnly: "Only a workspace administrator can change the plan.",
+    banner: {
+      trial: "Free trial: {{count}} day(s) left.",
+      expired: "This workspace's subscription has expired.",
+      noCredits: "No AI credits left.",
+      action: "See subscription",
+    },
+    locked: {
+      title: "Available to organisation accounts",
+      text: "Move to the Team or Institution plan to invite your team, share document templates, find lessons from all your projects and follow the audit log.",
+      action: "See plans",
+    },
   },
 };

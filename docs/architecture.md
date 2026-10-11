@@ -78,7 +78,7 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - L'IA propose, un humain valide : l'extraction produit une **proposition** stockée (`ai_proposals`) qu'un planificateur relit, corrige et applique en partie ou rejette. Rien n'est écrit dans le cadre logique sans validation.
 - Chaque élément proposé cite un extrait du document. Le serveur vérifie que l'extrait figure bien dans le texte (normalisation des espaces, guillemets et casse) et marque les citations introuvables « à vérifier ».
 - Sorties structurées (schémas Pydantic dans `schemas/ai.py`), prompts versionnés dans `llm/prompts/`, cache de prompt sur les documents.
-- Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation (`AI_MONTHLY_BUDGET_USD`) bloque les appels au-delà.
+- Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation, fixé par sa formule et éventuellement abaissé pour toutes par `AI_MONTHLY_BUDGET_USD`, bloque les appels au-delà.
 - Les modèles sont configurables : `LLM_MODEL_EXTRACTION` (claude-opus-5-5 par défaut), `LLM_MODEL_DRAFTING`, `LLM_MODEL_LIGHT`.
 - Les TdR sont rédigés par l'IA (`LLM_MODEL_DRAFTING`) à partir du cadre logique, des indicateurs, des pages de documents les plus pertinentes (recherche plein texte) et des consignes de l'utilisateur. Les informations absentes sont laissées en « [À compléter] » et listées. La section budget est toujours calculée depuis le budget du projet, jamais rédigée par le modèle.
 - Le rapport narratif d'une exécution est rédigé à partir de sources numérotées : saisie et notes (S1), TdR, texte des comptes rendus et listes de présence, légendes des photos consenties (P1…). Chaque phrase factuelle renvoie à sa source ; un renvoi vers une source inexistante est remplacé par « [source introuvable] ». Les sections participants et budget sont calculées. Les valeurs d'indicateurs proposées ne sont enregistrées qu'après vérification humaine.
@@ -98,6 +98,15 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - Le registre des plaintes et retours applique la confidentialité côté serveur : une entrée sensible (fraude, exploitation et abus sexuels, sécurité) renvoie 404 à qui n'est ni chef de projet, ni administrateur, ni la personne qui l'a saisie, ni celle qui la traite. Les statistiques la comptent sans la détailler.
 - Le contact d'une personne n'est montré qu'à ceux qui traitent les retours, et jamais pour un retour anonyme. Le journal d'audit ne garde que la référence, pas le contenu.
 - Le rapport périodique ne transmet à l'IA que les retours non sensibles, sans donnée personnelle, et le nombre de cas sensibles.
+
+## Site public, comptes et abonnements
+
+- Le frontend sert un site public sans connexion : accueil (`/`), fonctionnalités (`/fonctionnalites`) et tarifs (`/tarifs`). Une personne connectée qui ouvre `/` va directement à son espace.
+- Chaque espace est un **compte individuel** (une personne) ou une **organisation** (équipe). Le type découle de la formule, définie dans `services/billing.py` : Solo (individuel), Équipe et Institution (organisation). La formule fixe les limites (projets, membres, budget IA mensuel) et les fonctions ouvertes ; membres et rôles, modèles de documents, leçons de l'organisation et journal d'audit sont réservés aux organisations. L'API refuse avec **402** ce que la formule n'ouvre pas, et l'interface masque ces pages.
+- Facturation au mois, à l'année (deux mois offerts) ou à l'usage : des crédits achetés par packs, une génération IA (extraction, TdR, rapport d'activité, rapport périodique) consommant un crédit. L'inscription ouvre un essai de 14 jours, ou 5 crédits offerts à l'usage.
+- Un abonnement expiré laisse les données consultables mais bloque la création de projets, l'ajout de membres et l'IA.
+- Le catalogue est public (`GET /api/v1/billing/plans`) ; l'abonnement de l'espace se lit et se paie sous `/api/v1/orgs/{org_id}/billing`. Le paiement passe par un prestataire **simulé** qui encaisse immédiatement (`PROVIDER` dans `services/billing.py`) : c'est le point à remplacer pour brancher carte bancaire ou mobile money. Les tarifs sont indicatifs et se modifient au même endroit.
+- `subscriptions` reste hors RLS, comme `memberships`, car `/auth/me` lit la formule de chaque organisation de l'utilisateur ; `payments` est filtrée par organisation.
 
 ## Journal d'audit
 
