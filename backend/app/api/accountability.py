@@ -37,9 +37,9 @@ from app.schemas.accountability import (
     SmsSendIn,
     SmsSimulateIn,
 )
+from app.services import billing, sms
 from app.services import feedback as fb
 from app.services import projects as svc
-from app.services import sms
 from app.services.ai import call_structured
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["redevabilité"])
@@ -422,6 +422,7 @@ async def list_org_lessons(
     org_id: UUID, _: AnyMember, session: SessionDep, q: str = "", tag: str = ""
 ) -> list[LessonOut]:
     """Toutes les leçons de l'organisation, pour apprendre d'un projet à l'autre."""
+    await billing.require_feature(session, org_id, "org_lessons")
     rows = await session.execute(_lesson_query(org_id, q, tag))
     return [_lesson_out(lesson, code) for lesson, code in rows]
 

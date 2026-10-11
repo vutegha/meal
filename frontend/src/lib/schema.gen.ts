@@ -72,6 +72,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/billing/plans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Catalog
+     * @description Formules et tarifs, publics : la page Tarifs du site les affiche sans connexion.
+     */
+    get: operations["catalog_api_v1_billing_plans_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs": {
     parameters: {
       query?: never;
@@ -134,6 +154,94 @@ export interface paths {
     };
     /** List Audit */
     get: operations["list_audit_api_v1_orgs__org_id__audit_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Billing */
+    get: operations["get_billing_api_v1_orgs__org_id__billing_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel
+     * @description Arrête le renouvellement : l'espace garde sa formule jusqu'à la fin de la période.
+     */
+    post: operations["cancel_api_v1_orgs__org_id__billing_cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/checkout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Checkout */
+    post: operations["checkout_api_v1_orgs__org_id__billing_checkout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Payments */
+    get: operations["list_payments_api_v1_orgs__org_id__billing_payments_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Org Dashboard */
+    get: operations["org_dashboard_api_v1_orgs__org_id__dashboard_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1567,6 +1675,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * AccountType
+     * @enum {string}
+     */
+    AccountType: "individual" | "organization";
     /** ActivityBudget */
     ActivityBudget: {
       /** Activity Id */
@@ -1764,6 +1877,15 @@ export interface components {
        */
       id: string;
     };
+    /** BillingUsage */
+    BillingUsage: {
+      /** Ai Month Cost Usd */
+      ai_month_cost_usd: string;
+      /** Members */
+      members: number;
+      /** Projects */
+      projects: number;
+    };
     /** Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post */
     Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post: {
       /** File */
@@ -1793,6 +1915,26 @@ export interface components {
       longitude?: number | string | null;
       /** Taken At */
       taken_at?: string | null;
+    };
+    /**
+     * Breakdown
+     * @description Une ligne de ventilation : un mois, un lieu, une zone ou un projet.
+     */
+    Breakdown: {
+      /**
+       * Executions
+       * @default 0
+       */
+      executions: number;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * People
+       * @default 0
+       */
+      people: number;
     };
     /** BudgetLineIn */
     BudgetLineIn: {
@@ -1917,6 +2059,19 @@ export interface components {
       /** Tor */
       tor: components["schemas"]["BuiltinSection"][];
     };
+    /** Catalog */
+    Catalog: {
+      /** Credit Packs */
+      credit_packs: number[];
+      /** Currency */
+      currency: string;
+      /** Plans */
+      plans: components["schemas"]["PlanOut"][];
+      /** Trial Days */
+      trial_days: number;
+      /** Welcome Credits */
+      welcome_credits: number;
+    };
     /** ChannelConfig */
     ChannelConfig: {
       /**
@@ -1933,6 +2088,46 @@ export interface components {
       provider: string;
       /** Simulated */
       simulated: boolean;
+    };
+    /** CheckoutIn */
+    CheckoutIn: {
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Pack */
+      pack?: number | null;
+      /** Plan */
+      plan: string;
+    };
+    /** CheckoutOut */
+    CheckoutOut: {
+      payment: components["schemas"]["PaymentOut"];
+      subscription: components["schemas"]["SubscriptionOut"];
+    };
+    /** DashboardOptions */
+    DashboardOptions: {
+      /** Locations */
+      locations: string[];
+      /** Projects */
+      projects: components["schemas"]["DashboardProject"][];
+      /** Years */
+      years: number[];
+      /** Zones */
+      zones: string[];
+    };
+    /** DashboardProject */
+    DashboardProject: {
+      /** Code */
+      code: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
     };
     /** DocumentOut */
     DocumentOut: {
@@ -3162,6 +3357,7 @@ export interface components {
     };
     /** MyOrganizationOut */
     MyOrganizationOut: {
+      account_type: components["schemas"]["AccountType"];
       /**
        * Created At
        * Format: date-time
@@ -3169,6 +3365,8 @@ export interface components {
       created_at: string;
       /** Default Language */
       default_language: string;
+      /** Features */
+      features: string[];
       /**
        * Id
        * Format: uuid
@@ -3176,6 +3374,8 @@ export interface components {
       id: string;
       /** Name */
       name: string;
+      /** Plan */
+      plan: string | null;
       role: components["schemas"]["Role"];
       /** Slug */
       slug: string;
@@ -3286,6 +3486,29 @@ export interface components {
       /** Title */
       title?: string | null;
     };
+    /** OrgDashboard */
+    OrgDashboard: {
+      /** Active Projects */
+      active_projects: number;
+      /** By Location */
+      by_location: components["schemas"]["Breakdown"][];
+      /** By Month */
+      by_month: components["schemas"]["Breakdown"][];
+      /** By Project */
+      by_project: components["schemas"]["Breakdown"][];
+      /** By Zone */
+      by_zone: components["schemas"]["Breakdown"][];
+      /** Completed Executions */
+      completed_executions: number;
+      /** Executions */
+      executions: number;
+      options: components["schemas"]["DashboardOptions"];
+      people: components["schemas"]["People"];
+      /** Projects */
+      projects: number;
+      /** Spending */
+      spending: components["schemas"]["Spending"][];
+    };
     /** OrganizationIn */
     OrganizationIn: {
       /**
@@ -3339,6 +3562,71 @@ export interface components {
        * @default 0
        */
       men: number;
+      /**
+       * With Disability
+       * @default 0
+       */
+      with_disability: number;
+      /**
+       * Women
+       * @default 0
+       */
+      women: number;
+    };
+    /** PaymentOut */
+    PaymentOut: {
+      /** Amount */
+      amount: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Credits */
+      credits: number;
+      /** Currency */
+      currency: string;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Plan */
+      plan: string;
+      /** Provider */
+      provider: string;
+      /** Reference */
+      reference: string;
+    };
+    /** People */
+    People: {
+      /**
+       * Boys
+       * @default 0
+       */
+      boys: number;
+      /**
+       * Girls
+       * @default 0
+       */
+      girls: number;
+      /**
+       * Men
+       * @default 0
+       */
+      men: number;
+      /**
+       * Total
+       * @default 0
+       */
+      total: number;
       /**
        * With Disability
        * @default 0
@@ -3496,6 +3784,34 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** PlanLimits */
+    PlanLimits: {
+      /** Ai Monthly Budget Usd */
+      ai_monthly_budget_usd: string;
+      /** Members */
+      members: number | null;
+      /** Projects */
+      projects: number | null;
+    };
+    /** PlanOut */
+    PlanOut: {
+      account_type: components["schemas"]["AccountType"];
+      /** Features */
+      features: string[];
+      /** Id */
+      id: string;
+      limits: components["schemas"]["PlanLimits"];
+      prices: components["schemas"]["PlanPrices"];
+    };
+    /** PlanPrices */
+    PlanPrices: {
+      /** Annual */
+      annual: string;
+      /** Credit */
+      credit: string;
+      /** Monthly */
+      monthly: string;
+    };
     /** ProjectIn */
     ProjectIn: {
       /** Code */
@@ -3641,6 +3957,14 @@ export interface components {
     };
     /** RegisterIn */
     RegisterIn: {
+      /** @default organization */
+      account_type: components["schemas"]["AccountType"];
+      /**
+       * Cycle
+       * @default monthly
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
       /**
        * Email
        * Format: email
@@ -3649,9 +3973,11 @@ export interface components {
       /** Full Name */
       full_name: string;
       /** Organization Name */
-      organization_name: string;
+      organization_name?: string | null;
       /** Password */
       password: string;
+      /** Plan */
+      plan?: string | null;
     };
     /** ReportOut */
     ReportOut: {
@@ -3836,6 +4162,13 @@ export interface components {
        */
       channel: "sms" | "whatsapp";
     };
+    /** Spending */
+    Spending: {
+      /** Amount */
+      amount: string;
+      /** Currency */
+      currency: string;
+    };
     /** SubmissionIn */
     SubmissionIn: {
       /** Answers */
@@ -3890,6 +4223,34 @@ export interface components {
        * @default
        */
       submitter_name: string;
+    };
+    /** SubscriptionOut */
+    SubscriptionOut: {
+      account_type: components["schemas"]["AccountType"];
+      /** Cancel At Period End */
+      cancel_at_period_end: boolean;
+      /** Credits */
+      credits: number;
+      /** Current Period End */
+      current_period_end: string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Features */
+      features: string[];
+      limits: components["schemas"]["PlanLimits"];
+      /** Plan */
+      plan: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "trialing" | "active" | "canceled" | "expired";
+      /** Trial Ends At */
+      trial_ends_at: string | null;
+      usage: components["schemas"]["BillingUsage"];
     };
     /** TemplateIn */
     TemplateIn: {
@@ -4271,6 +4632,26 @@ export interface operations {
       };
     };
   };
+  catalog_api_v1_billing_plans_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Catalog"];
+        };
+      };
+    };
+  };
   list_my_organizations_api_v1_orgs_get: {
     parameters: {
       query?: never;
@@ -4442,6 +4823,172 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AuditLogOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_billing_api_v1_orgs__org_id__billing_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_api_v1_orgs__org_id__billing_cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  checkout_api_v1_orgs__org_id__billing_checkout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckoutIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckoutOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_payments_api_v1_orgs__org_id__billing_payments_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  org_dashboard_api_v1_orgs__org_id__dashboard_get: {
+    parameters: {
+      query?: {
+        year?: number | null;
+        month?: number | null;
+        zone?: string;
+        location?: string;
+        project_id?: string | null;
+        beneficiary?: ("women" | "men" | "girls" | "boys" | "with_disability") | null;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrgDashboard"];
         };
       };
       /** @description Validation Error */

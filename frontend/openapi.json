@@ -1,6 +1,14 @@
 {
   "components": {
     "schemas": {
+      "AccountType": {
+        "enum": [
+          "individual",
+          "organization"
+        ],
+        "title": "AccountType",
+        "type": "string"
+      },
       "ActivityBudget": {
         "properties": {
           "activity_id": {
@@ -470,6 +478,30 @@
         "title": "AuditLogOut",
         "type": "object"
       },
+      "BillingUsage": {
+        "properties": {
+          "ai_month_cost_usd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Ai Month Cost Usd",
+            "type": "string"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "projects",
+          "members",
+          "ai_month_cost_usd"
+        ],
+        "title": "BillingUsage",
+        "type": "object"
+      },
       "Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post": {
         "properties": {
           "file": {
@@ -569,6 +601,35 @@
           "file"
         ],
         "title": "Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post",
+        "type": "object"
+      },
+      "Breakdown": {
+        "description": "Une ligne de ventilation : un mois, un lieu, une zone ou un projet.",
+        "properties": {
+          "executions": {
+            "default": 0,
+            "title": "Executions",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "people": {
+            "default": 0,
+            "title": "People",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "Breakdown",
         "type": "object"
       },
       "BudgetLineIn": {
@@ -976,6 +1037,45 @@
         "title": "BuiltinTemplates",
         "type": "object"
       },
+      "Catalog": {
+        "properties": {
+          "credit_packs": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Credit Packs",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanOut"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "trial_days": {
+            "title": "Trial Days",
+            "type": "integer"
+          },
+          "welcome_credits": {
+            "title": "Welcome Credits",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "currency",
+          "trial_days",
+          "welcome_credits",
+          "credit_packs",
+          "plans"
+        ],
+        "title": "Catalog",
+        "type": "object"
+      },
       "ChannelConfig": {
         "properties": {
           "channel": {
@@ -1006,6 +1106,120 @@
           "simulated"
         ],
         "title": "ChannelConfig",
+        "type": "object"
+      },
+      "CheckoutIn": {
+        "properties": {
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "pack": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "cycle"
+        ],
+        "title": "CheckoutIn",
+        "type": "object"
+      },
+      "CheckoutOut": {
+        "properties": {
+          "payment": {
+            "$ref": "#/components/schemas/PaymentOut"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/SubscriptionOut"
+          }
+        },
+        "required": [
+          "payment",
+          "subscription"
+        ],
+        "title": "CheckoutOut",
+        "type": "object"
+      },
+      "DashboardOptions": {
+        "properties": {
+          "locations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          },
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "zones",
+          "locations",
+          "projects"
+        ],
+        "title": "DashboardOptions",
+        "type": "object"
+      },
+      "DashboardProject": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "title"
+        ],
+        "title": "DashboardProject",
         "type": "object"
       },
       "DocumentOut": {
@@ -4342,6 +4556,9 @@
       },
       "MyOrganizationOut": {
         "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4351,6 +4568,13 @@
             "title": "Default Language",
             "type": "string"
           },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4359,6 +4583,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           },
           "role": {
             "$ref": "#/components/schemas/Role"
@@ -4374,7 +4609,10 @@
           "slug",
           "default_language",
           "created_at",
-          "role"
+          "role",
+          "account_type",
+          "plan",
+          "features"
         ],
         "title": "MyOrganizationOut",
         "type": "object"
@@ -4730,6 +4968,82 @@
         "title": "NodeUpdate",
         "type": "object"
       },
+      "OrgDashboard": {
+        "properties": {
+          "active_projects": {
+            "title": "Active Projects",
+            "type": "integer"
+          },
+          "by_location": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Location",
+            "type": "array"
+          },
+          "by_month": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Month",
+            "type": "array"
+          },
+          "by_project": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Project",
+            "type": "array"
+          },
+          "by_zone": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Zone",
+            "type": "array"
+          },
+          "completed_executions": {
+            "title": "Completed Executions",
+            "type": "integer"
+          },
+          "executions": {
+            "title": "Executions",
+            "type": "integer"
+          },
+          "options": {
+            "$ref": "#/components/schemas/DashboardOptions"
+          },
+          "people": {
+            "$ref": "#/components/schemas/People"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          },
+          "spending": {
+            "items": {
+              "$ref": "#/components/schemas/Spending"
+            },
+            "title": "Spending",
+            "type": "array"
+          }
+        },
+        "required": [
+          "options",
+          "projects",
+          "active_projects",
+          "executions",
+          "completed_executions",
+          "people",
+          "spending",
+          "by_month",
+          "by_location",
+          "by_zone",
+          "by_project"
+        ],
+        "title": "OrgDashboard",
+        "type": "object"
+      },
       "OrganizationIn": {
         "properties": {
           "default_language": {
@@ -4851,6 +5165,108 @@
           }
         },
         "title": "Participants",
+        "type": "object"
+      },
+      "PaymentOut": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "cycle",
+          "amount",
+          "currency",
+          "credits",
+          "description",
+          "provider",
+          "reference",
+          "created_at"
+        ],
+        "title": "PaymentOut",
+        "type": "object"
+      },
+      "People": {
+        "properties": {
+          "boys": {
+            "default": 0,
+            "title": "Boys",
+            "type": "integer"
+          },
+          "girls": {
+            "default": 0,
+            "title": "Girls",
+            "type": "integer"
+          },
+          "men": {
+            "default": 0,
+            "title": "Men",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "with_disability": {
+            "default": 0,
+            "title": "With Disability",
+            "type": "integer"
+          },
+          "women": {
+            "default": 0,
+            "title": "Women",
+            "type": "integer"
+          }
+        },
+        "title": "People",
         "type": "object"
       },
       "PeriodProgress": {
@@ -5171,6 +5587,103 @@
           "updated_at"
         ],
         "title": "PeriodicSummary",
+        "type": "object"
+      },
+      "PlanLimits": {
+        "properties": {
+          "ai_monthly_budget_usd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Ai Monthly Budget Usd",
+            "type": "string"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members"
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projects"
+          }
+        },
+        "required": [
+          "projects",
+          "members",
+          "ai_monthly_budget_usd"
+        ],
+        "title": "PlanLimits",
+        "type": "object"
+      },
+      "PlanOut": {
+        "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/PlanPrices"
+          }
+        },
+        "required": [
+          "id",
+          "account_type",
+          "prices",
+          "limits",
+          "features"
+        ],
+        "title": "PlanOut",
+        "type": "object"
+      },
+      "PlanPrices": {
+        "properties": {
+          "annual": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Annual",
+            "type": "string"
+          },
+          "credit": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Credit",
+            "type": "string"
+          },
+          "monthly": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monthly",
+            "type": "string"
+          }
+        },
+        "required": [
+          "monthly",
+          "annual",
+          "credit"
+        ],
+        "title": "PlanPrices",
         "type": "object"
       },
       "ProjectIn": {
@@ -5588,6 +6101,20 @@
       },
       "RegisterIn": {
         "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType",
+            "default": "organization"
+          },
+          "cycle": {
+            "default": "monthly",
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -5600,23 +6127,40 @@
             "type": "string"
           },
           "organization_name": {
-            "maxLength": 200,
-            "minLength": 2,
-            "title": "Organization Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Name"
           },
           "password": {
             "maxLength": 128,
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           }
         },
         "required": [
           "email",
           "full_name",
-          "password",
-          "organization_name"
+          "password"
         ],
         "title": "RegisterIn",
         "type": "object"
@@ -6056,6 +6600,25 @@
         "title": "SmsSimulateIn",
         "type": "object"
       },
+      "Spending": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "title": "Spending",
+        "type": "object"
+      },
       "SubmissionIn": {
         "properties": {
           "answers": {
@@ -6203,6 +6766,96 @@
           "submitted_by"
         ],
         "title": "SubmissionOut",
+        "type": "object"
+      },
+      "SubscriptionOut": {
+        "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "cancel_at_period_end": {
+            "title": "Cancel At Period End",
+            "type": "boolean"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "trialing",
+              "active",
+              "canceled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/BillingUsage"
+          }
+        },
+        "required": [
+          "plan",
+          "account_type",
+          "cycle",
+          "status",
+          "trial_ends_at",
+          "current_period_end",
+          "credits",
+          "cancel_at_period_end",
+          "limits",
+          "features",
+          "usage"
+        ],
+        "title": "SubscriptionOut",
         "type": "object"
       },
       "TemplateIn": {
@@ -6954,6 +7607,28 @@
         ]
       }
     },
+    "/api/v1/billing/plans": {
+      "get": {
+        "description": "Formules et tarifs, publics : la page Tarifs du site les affiche sans connexion.",
+        "operationId": "catalog_api_v1_billing_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Catalog",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
     "/api/v1/orgs": {
       "get": {
         "operationId": "list_my_organizations_api_v1_orgs_get",
@@ -7252,6 +7927,357 @@
         "summary": "List Audit",
         "tags": [
           "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing": {
+      "get": {
+        "operationId": "get_billing_api_v1_orgs__org_id__billing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Billing",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/cancel": {
+      "post": {
+        "description": "Arrête le renouvellement : l'espace garde sa formule jusqu'à la fin de la période.",
+        "operationId": "cancel_api_v1_orgs__org_id__billing_cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/checkout": {
+      "post": {
+        "operationId": "checkout_api_v1_orgs__org_id__billing_checkout_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Checkout",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments": {
+      "get": {
+        "operationId": "list_payments_api_v1_orgs__org_id__billing_payments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentOut"
+                  },
+                  "title": "Response List Payments Api V1 Orgs  Org Id  Billing Payments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/dashboard": {
+      "get": {
+        "operationId": "org_dashboard_api_v1_orgs__org_id__dashboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2100,
+                  "minimum": 2000,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 12,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zone",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Zone",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "location",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Location",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beneficiary",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "women",
+                    "men",
+                    "girls",
+                    "boys",
+                    "with_disability"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Beneficiary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Org Dashboard",
+        "tags": [
+          "tableau de bord"
         ]
       }
     },

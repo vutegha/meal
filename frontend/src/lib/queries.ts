@@ -13,6 +13,7 @@ import {
   templatesApi,
   torApi,
 } from "./api";
+import { billingApi } from "./billing";
 import { formsApi } from "./formsApi";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
@@ -220,4 +221,19 @@ export const orgDashboardQuery = (orgId: string, filters: DashboardFilters) =>
   queryOptions({
     queryKey: ["orgs", orgId, "dashboard", filters],
     queryFn: () => dashboardApi.org(orgId, filters),
+  });
+
+export const catalogQuery = queryOptions({
+  queryKey: ["billing", "plans"],
+  queryFn: billingApi.catalog,
+  staleTime: Infinity,
+});
+
+export const subscriptionQuery = (orgId: string) =>
+  queryOptions({ queryKey: ["orgs", orgId, "billing"], queryFn: () => billingApi.get(orgId) });
+
+export const paymentsQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "billing", "payments"],
+    queryFn: () => billingApi.payments(orgId),
   });

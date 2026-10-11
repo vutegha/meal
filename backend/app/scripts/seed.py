@@ -7,7 +7,7 @@ Le mot de passe du compte de démonstration est lu dans DEMO_PASSWORD, ou géné
 import asyncio
 import os
 import secrets
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -27,6 +27,7 @@ from app.models import (
     ProjectStatus,
     User,
 )
+from app.services import billing
 from app.services.organizations import create_organization
 from app.services.proposals import month_end, month_start
 
@@ -102,7 +103,13 @@ async def seed(session: AsyncSession) -> str | None:
     )
     session.add(user)
     await session.flush()
-    org = await create_organization(session, name="ONG Démo Kivu", owner=user)
+    org = await create_organization(
+        session, name="ONG Démo Kivu", owner=user, plan="institution", cycle="annual"
+    )
+    # Démonstration : formule active un an, sans passer par l'essai.
+    sub = await billing.get_subscription(session, org.id)
+    sub.status, sub.trial_ends_at = "active", None
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=365)
 
     project = Project(
         organization_id=org.id,
