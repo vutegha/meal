@@ -18,6 +18,8 @@ import {
   monthIndex,
   monthStartIso,
   relatedIndicators,
+  type ScheduleFilter,
+  scheduleRows,
   timelineRange,
   todayIndex,
 } from "@/lib/schedule";
@@ -100,10 +102,21 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
 
   const nodes = useMemo(() => flattenTree(logframe.data ?? []), [logframe.data]);
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
-  const rows = nodes.filter(
-    (n) => n.level === "output" || n.level === "activity" || n.level === "sub_activity",
+  const [filter, setFilter] = useState<ScheduleFilter>({ outcome: null, outputs: [] });
+  const allRows = scheduleRows(nodes, byId, { outcome: null, outputs: [] });
+  const activities = allRows.filter((n) => n.level !== "output");
+  // Le filtre n'agit que sur l'affichage : l'échelle de temps reste celle de tout le projet.
+  const rows = scheduleRows(nodes, byId, filter);
+  const shownActivities = rows.filter((n) => n.level !== "output").length;
+  const outcomes = nodes.filter((n) => n.level === "outcome");
+  const outputs = nodes.filter(
+    (n) => n.level === "output" && (!filter.outcome || n.parent_id === filter.outcome),
   );
-  const activities = rows.filter((n) => n.level !== "output");
+  const toggleOutput = (id: string) =>
+    setFilter((f) => ({
+      ...f,
+      outputs: f.outputs.includes(id) ? f.outputs.filter((o) => o !== id) : [...f.outputs, id],
+    }));
   const bounds = timelineRange(project, activities);
   const months = Array.from({ length: bounds.last - bounds.first + 1 }, (_, i) => bounds.first + i);
 
@@ -242,8 +255,72 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
           </p>
         )}
         <ErrorText error={logframe.error ?? save.error} />
+        {activities.length > 0 && allRows.length - activities.length > 1 && (
+          <div
+            className="mb-3 space-y-2 rounded-lg bg-slate-50 p-3"
+            role="group"
+            aria-label={t("schedule.filter")}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600">{t("schedule.filter")}</span>
+              {outcomes.length > 1 && (
+                <select
+                  aria-label={t("schedule.outcome")}
+                  className="max-w-xs rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
+                  value={filter.outcome ?? ""}
+                  onChange={(e) => setFilter({ outcome: e.target.value || null, outputs: [] })}
+                >
+                  <option value="">{t("schedule.allOutcomes")}</option>
+                  {outcomes.map((outcome) => (
+                    <option key={outcome.id} value={outcome.id}>
+                      {outcome.code} {outcome.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <span className="text-xs text-slate-500">
+                {t("schedule.shown", { shown: shownActivities, total: activities.length })}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                aria-pressed={filter.outputs.length === 0}
+                onClick={() => setFilter((f) => ({ ...f, outputs: [] }))}
+                className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                  filter.outputs.length === 0
+                    ? "border-brand-700 bg-brand-700 text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {t("schedule.allOutputs")}
+              </button>
+              {outputs.map((output) => {
+                const active = filter.outputs.includes(output.id);
+                return (
+                  <button
+                    key={output.id}
+                    type="button"
+                    aria-pressed={active}
+                    title={output.title}
+                    onClick={() => toggleOutput(output.id)}
+                    className={`max-w-xs truncate rounded-full border px-3 py-1 text-xs ${
+                      active
+                        ? "border-brand-700 bg-brand-50 font-semibold text-brand-800"
+                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="font-mono">{output.code}</span> {output.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {activities.length === 0 ? (
           <p className="text-sm text-slate-500">{t("schedule.noActivity")}</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-slate-500">{t("schedule.noMatch")}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200" data-testid="gantt">
             <div className="min-w-max text-sm select-none">

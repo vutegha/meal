@@ -56,6 +56,11 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await bar.focus();
   await page.keyboard.press("ArrowRight");
   await expect(bar).toHaveAccessibleName(/févr\. 2026 – avr\. 2026/);
+  // Filtre par résultat : seules les activités de R1.2 restent affichées
+  await page.getByRole("button", { name: /^R1\.2 / }).click();
+  await expect(bar).toBeHidden();
+  await expect(page.getByText("1 activité(s) sur 3")).toBeVisible();
+  await page.getByRole("button", { name: "Tous les résultats" }).click();
   await bar.click();
   await expect(page.getByRole("dialog").getByText("Planifiée")).toBeVisible();
   await expect(page.getByRole("button", { name: "✨ Générer les TdR" })).toBeVisible();
