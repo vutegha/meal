@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from typing import Any
 
@@ -46,7 +48,11 @@ async def test_send_and_receive_sms_on_feedback(client: AsyncClient, webhook: st
     ctx, base, entry = await setup(client)
     h = ctx["headers"]
     config = (await client.get(f"/api/v1/orgs/{ctx['org_id']}/sms/config", headers=h)).json()
-    assert config["simulated"] is True and config["inbound_enabled"] is True
+    assert [(c["channel"], c["simulated"]) for c in config["channels"]] == [
+        ("sms", True),
+        ("whatsapp", True),
+    ]
+    assert config["inbound_enabled"] is True
 
     url = f"{base}/feedback/{entry['id']}/sms"
     r = await client.post(url, headers=h, json={"body": "Bonjour, pouvez-vous préciser ?"})
@@ -138,7 +144,7 @@ async def test_twilio_adapter() -> None:
     assert result.provider_message_id == "SM123"
     assert sent["url"].endswith("/Accounts/AC1/Messages.json")
     assert sent["form"] == {"To": "+243990000001", "From": "+15550000000", "Body": "Bonjour"}
-    inbound = gateway.parse_inbound({"From": "+243990000001", "Body": "Oui", "MessageSid": "SM9"})
+    [inbound] = gateway.parse_inbound({"From": "+243990000001", "Body": "Oui", "MessageSid": "SM9"})
     assert (inbound.phone, inbound.body, inbound.provider_message_id) == (
         "+243990000001",
         "Oui",
@@ -166,8 +172,123 @@ async def test_africastalking_adapter() -> None:
 
     gateway = sms.AfricasTalkingGateway("sandbox", "key", "", httpx.MockTransport(handler))
     assert (await gateway.send("+243990000001", "Bonjour")).provider_message_id == "ATXid_1"
-    assert gateway.parse_inbound({"from": "+243990000001", "text": "Oui", "id": "a"}).body == "Oui"
+    [inbound] = gateway.parse_inbound({"from": "+243990000001", "text": "Oui", "id": "a"})
+    assert inbound.body == "Oui"
 
     settings = Settings(sms_provider="africastalking")
     with pytest.raises(sms.SmsError, match="AFRICASTALKING_API_KEY"):
         sms.get_gateway(settings)
+
+
+async def test_whatsapp_conversation_and_inbound(client: AsyncClient, webhook: str) -> None:
+    ctx, base, entry = await setup(client)
+    h = ctx["headers"]
+    url = f"{base}/feedback/{entry['id']}/sms"
+    whatsapp = webhook.replace("/sms/", "/whatsapp/")
+
+    r = await client.post(url, headers=h, json={"body": "Bonjour", "channel": "whatsapp"})
+    assert r.status_code == 201 and r.json()["channel"] == "whatsapp"
+    # Réponse par WhatsApp : même échange, canal conservé.
+    r = await client.post(whatsapp, data={"from": "whatsapp:+243990000001", "text": "Merci"})
+    assert r.status_code == 204
+    thread = (await client.get(url, headers=h)).json()
+    assert [(m["channel"], m["direction"]) for m in thread] == [
+        ("whatsapp", "outbound"),
+        ("whatsapp", "inbound"),
+    ]
+    assert thread[1]["phone"] == "+243990000001"
+
+    # Nouveau retour reçu par WhatsApp grâce au code du projet.
+    r = await client.post(whatsapp, json={"from": "+243820000000", "text": "KIW Pas d'eau"})
+    assert r.status_code == 204
+    entries = (await client.get(f"{base}/feedback", headers=h)).json()
+    assert any(e["description"] == "Pas d'eau" and e["channel"] == "sms" for e in entries)
+
+    r = await client.post(
+        f"{url}/simulate", headers=h, json={"body": "Encore moi", "channel": "whatsapp"}
+    )
+    assert r.status_code == 201 and r.json()["channel"] == "whatsapp"
+
+
+async def test_meta_whatsapp_webhook(
+    client: AsyncClient, webhook: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ctx, base, _ = await setup(client)
+    settings = get_settings()
+    monkeypatch.setattr(settings, "whatsapp_provider", "meta")
+    monkeypatch.setattr(settings, "meta_whatsapp_token", "jeton")
+    monkeypatch.setattr(settings, "meta_whatsapp_phone_number_id", "123")
+    monkeypatch.setattr(settings, "meta_app_secret", "secret-app")
+    whatsapp = webhook.replace("/sms/", "/whatsapp/")
+
+    params = {"hub.mode": "subscribe", "hub.verify_token": "secret-de-test", "hub.challenge": "42"}
+    r = await client.get(whatsapp, params=params)
+    assert r.status_code == 200 and r.text == "42"
+    params["hub.verify_token"] = "autre"
+    assert (await client.get(whatsapp, params=params)).status_code == 403
+
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {
+                                    "from": "243830000000",
+                                    "id": "wamid.1",
+                                    "type": "text",
+                                    "text": {"body": "KIW La latrine est cassée"},
+                                },
+                                {"from": "243830000000", "id": "wamid.2", "type": "image"},
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    raw = json.dumps(payload).encode()
+    headers = {"content-type": "application/json"}
+    bad = await client.post(
+        whatsapp, content=raw, headers={**headers, "x-hub-signature-256": "sha256=0"}
+    )
+    assert bad.status_code == 403
+    signature = "sha256=" + hmac.new(b"secret-app", raw, hashlib.sha256).hexdigest()
+    r = await client.post(
+        whatsapp, content=raw, headers={**headers, "x-hub-signature-256": signature}
+    )
+    assert r.status_code == 204
+    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()
+    created = next(e for e in entries if e["description"] == "La latrine est cassée")
+    assert created["contact"] == "+243830000000"
+
+
+async def test_whatsapp_adapters() -> None:
+    sent: dict[str, Any] = {}
+
+    def twilio(request: httpx.Request) -> httpx.Response:
+        sent["form"] = dict(httpx.QueryParams(request.content.decode()))
+        return httpx.Response(201, json={"sid": "SM1"})
+
+    gateway = sms.TwilioGateway(
+        "AC1", "tok", "+14155238886", httpx.MockTransport(twilio), whatsapp=True
+    )
+    await gateway.send("+243990000001", "Bonjour")
+    assert sent["form"]["To"] == "whatsapp:+243990000001"
+    assert sent["form"]["From"] == "whatsapp:+14155238886"
+    [inbound] = gateway.parse_inbound({"From": "whatsapp:+243990000001", "Body": "Oui"})
+    assert inbound.phone == "+243990000001"
+
+    def meta(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/123/messages")
+        assert request.headers["Authorization"] == "Bearer jeton"
+        sent["json"] = json.loads(request.content)
+        return httpx.Response(200, json={"messages": [{"id": "wamid.9"}]})
+
+    meta_gateway = sms.MetaWhatsAppGateway("jeton", "123", transport=httpx.MockTransport(meta))
+    assert (await meta_gateway.send("+243990000001", "Salut")).provider_message_id == "wamid.9"
+    assert sent["json"]["to"] == "243990000001" and sent["json"]["text"] == {"body": "Salut"}
+
+    with pytest.raises(sms.SmsError, match="TWILIO_WHATSAPP_SENDER"):
+        sms.get_gateway(Settings(whatsapp_provider="twilio"), "whatsapp")

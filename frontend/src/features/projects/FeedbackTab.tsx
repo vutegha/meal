@@ -14,6 +14,8 @@ import {
   type FeedbackIn,
   type FeedbackStatus,
   type FeedbackSuggestion,
+  MESSAGE_CHANNELS,
+  type MessageChannel,
   SENSITIVE_CATEGORIES,
 } from "@/lib/api";
 import { flattenTree, formatRate } from "@/lib/format";
@@ -345,13 +347,18 @@ function SmsThread({
   const config = useQuery(smsConfigQuery(orgId));
   const thread = useQuery(feedbackSmsQuery(orgId, projectId, entry.id));
   const [text, setText] = useState("");
+  // Par défaut, on répond sur le canal du dernier message reçu de la personne.
+  const [picked, setPicked] = useState<MessageChannel | null>(null);
+  const lastInbound = [...(thread.data ?? [])].reverse().find((m) => m.direction === "inbound");
+  const channel = picked ?? lastInbound?.channel ?? "sms";
+  const channelConfig = config.data?.channels.find((c) => c.channel === channel);
   const times = new Intl.DateTimeFormat(i18n.language, { dateStyle: "short", timeStyle: "short" });
   const refresh = () =>
     queryClient.invalidateQueries({
       queryKey: ["orgs", orgId, "projects", projectId, "feedback"],
     });
   const send = useMutation({
-    mutationFn: () => accountabilityApi.sendSms(orgId, projectId, entry.id, text.trim()),
+    mutationFn: () => accountabilityApi.sendSms(orgId, projectId, entry.id, text.trim(), channel),
     onSuccess: async (message) => {
       if (message.status !== "failed") setText("");
       await refresh();
@@ -359,7 +366,7 @@ function SmsThread({
   });
   const simulate = useMutation({
     mutationFn: (body: string) =>
-      accountabilityApi.simulateSmsReply(orgId, projectId, entry.id, body),
+      accountabilityApi.simulateSmsReply(orgId, projectId, entry.id, body, channel),
     onSuccess: refresh,
   });
   const askSimulated = () => {
@@ -377,12 +384,12 @@ function SmsThread({
           </span>
         )}
       </p>
-      {config.data?.simulated && (
+      {channelConfig?.simulated && (
         <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-          {t("feedback.sms.simulated")}
+          {t(`feedback.sms.simulated.${channel}`)}
         </p>
       )}
-      {config.data?.error && <p className="text-xs text-red-700">{config.data.error}</p>}
+      {channelConfig?.error && <p className="text-xs text-red-700">{channelConfig.error}</p>}
       <ErrorText error={thread.error} />
       {thread.data?.length ? (
         <ul className="space-y-2">
@@ -405,6 +412,7 @@ function SmsThread({
                       outbound && message.status !== "failed" ? "text-white/80" : "text-slate-500"
                     }`}
                   >
+                    {t(`feedback.sms.channels.${message.channel}`)} ·{" "}
                     {times.format(new Date(message.created_at))} ·{" "}
                     {t(`feedback.sms.status.${message.status}`, { defaultValue: message.status })}
                   </p>
@@ -437,6 +445,26 @@ function SmsThread({
           />
           <ErrorText error={send.error ?? simulate.error} />
           <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="radiogroup"
+              aria-label={t("feedback.sms.channel")}
+              className="inline-flex rounded-md border border-slate-300 bg-white p-0.5"
+            >
+              {MESSAGE_CHANNELS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={channel === value}
+                  onClick={() => setPicked(value)}
+                  className={`rounded px-2.5 py-1 text-xs font-medium ${
+                    channel === value ? "bg-brand-600 text-white" : "text-slate-600"
+                  }`}
+                >
+                  {t(`feedback.sms.channels.${value}`)}
+                </button>
+              ))}
+            </div>
             <Button type="submit" disabled={send.isPending || !text.trim()}>
               {send.isPending ? t("feedback.sms.sending") : t("feedback.sms.send")}
             </Button>
@@ -444,7 +472,7 @@ function SmsThread({
               {t("feedback.sms.chars", { count: text.length })}
             </span>
             <span className="flex-1" />
-            {config.data?.simulated && (
+            {channelConfig?.simulated && (
               <Button
                 type="button"
                 variant="ghost"

@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     twilio_auth_token: str | None = None
     africastalking_username: str | None = None
     africastalking_api_key: str | None = None
+    # WhatsApp : "simulated" (aucun envoi réel), "twilio" ou "meta" (WhatsApp Cloud API).
+    # Réception : /api/v1/whatsapp/inbound/<SMS_WEBHOOK_TOKEN> (même secret que les SMS).
+    whatsapp_provider: str = "simulated"
+    # Numéro WhatsApp Twilio, ex. +14155238886 (bac à sable).
+    twilio_whatsapp_sender: str = ""
+    meta_whatsapp_token: str | None = None
+    meta_whatsapp_phone_number_id: str | None = None
+    # Secret de l'application Meta : contrôle de la signature des notifications reçues.
+    meta_app_secret: str | None = None
 
 
 @lru_cache

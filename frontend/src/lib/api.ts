@@ -1060,9 +1060,13 @@ export interface FeedbackEntry {
   sms_awaiting_reply: boolean;
 }
 
+export type MessageChannel = "sms" | "whatsapp";
+export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
+
 export interface SmsMessage {
   id: string;
   feedback_id: string | null;
+  channel: MessageChannel;
   direction: "inbound" | "outbound";
   phone: string;
   body: string;
@@ -1073,12 +1077,17 @@ export interface SmsMessage {
   created_at: string;
 }
 
-export interface SmsConfig {
+export interface ChannelConfig {
+  channel: MessageChannel;
   provider: string;
   simulated: boolean;
+  error: string;
+}
+
+export interface SmsConfig {
+  channels: ChannelConfig[];
   sender: string;
   inbound_enabled: boolean;
-  error: string;
 }
 
 export interface FeedbackIn {
@@ -1170,15 +1179,27 @@ export const accountabilityApi = {
   smsConfig: (orgId: string) => request<SmsConfig>(`/orgs/${orgId}/sms/config`),
   feedbackSms: (orgId: string, projectId: string, feedbackId: string) =>
     request<SmsMessage[]>(`${project(orgId, projectId)}/feedback/${feedbackId}/sms`),
-  sendSms: (orgId: string, projectId: string, feedbackId: string, body: string) =>
+  sendSms: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
     request<SmsMessage>(
       `${project(orgId, projectId)}/feedback/${feedbackId}/sms`,
-      json("POST", { body }),
+      json("POST", { body, channel }),
     ),
-  simulateSmsReply: (orgId: string, projectId: string, feedbackId: string, body: string) =>
+  simulateSmsReply: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
     request<SmsMessage>(
       `${project(orgId, projectId)}/feedback/${feedbackId}/sms/simulate`,
-      json("POST", { body }),
+      json("POST", { body, channel }),
     ),
   lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
     const params = new URLSearchParams();

@@ -109,12 +109,14 @@ class FeedbackStats(BaseModel):
 
 class SmsSendIn(BaseModel):
     body: str = Field(min_length=1, max_length=640)
+    channel: Literal["sms", "whatsapp"] = "sms"
     # Laissé vide : le contact enregistré sur le retour.
     to: str | None = Field(default=None, max_length=40)
 
 
 class SmsSimulateIn(BaseModel):
     body: str = Field(min_length=1, max_length=640)
+    channel: Literal["sms", "whatsapp"] = "sms"
 
 
 class SmsOut(BaseModel):
@@ -122,6 +124,7 @@ class SmsOut(BaseModel):
 
     id: UUID
     feedback_id: UUID | None
+    channel: Literal["sms", "whatsapp"]
     direction: SmsDirection
     phone: str
     body: str
@@ -132,14 +135,19 @@ class SmsOut(BaseModel):
     created_at: datetime
 
 
-class SmsConfig(BaseModel):
+class ChannelConfig(BaseModel):
+    channel: Literal["sms", "whatsapp"]
     provider: str
-    # Mode simulé : aucun SMS ne part réellement.
+    # Mode simulé : aucun message ne part réellement.
     simulated: bool
-    sender: str
-    inbound_enabled: bool
     # Problème de configuration à signaler (identifiants manquants, prestataire inconnu).
     error: str = ""
+
+
+class SmsConfig(BaseModel):
+    channels: list[ChannelConfig]
+    sender: str
+    inbound_enabled: bool
 
 
 # --- Leçons apprises -----------------------------------------------------------------

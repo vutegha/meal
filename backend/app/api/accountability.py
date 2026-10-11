@@ -294,7 +294,10 @@ async def send_feedback_sms(
     member: AnyMember,
     session: SessionDep,
 ) -> SmsOut:
-    """Envoie un SMS à la personne ; un échec du prestataire est enregistré et renvoyé tel quel."""
+    """Envoie un SMS ou un message WhatsApp à la personne.
+
+    Un échec du prestataire est enregistré et renvoyé tel quel.
+    """
     project = await svc.get_project(session, org_id, project_id)
     entry = await _get_feedback(session, project, member, feedback_id)
     if not fb.can_handle(member, entry):
@@ -313,15 +316,16 @@ async def send_feedback_sms(
         organization_id=org_id,
         project_id=project.id,
         feedback_id=entry.id,
+        channel=body.channel,
         direction=SmsDirection.OUTBOUND,
         phone=phone,
         body=body.body.strip(),
         status="queued",
-        provider=get_settings().sms_provider,
+        provider="",
         sent_by=member.user_id,
     )
     try:
-        gateway = sms.get_gateway()
+        gateway = sms.get_gateway(channel=body.channel)
         message.provider = gateway.name
         result = await gateway.send(phone, message.body)
         message.status = result.status
@@ -341,7 +345,7 @@ async def send_feedback_sms(
         "feedback.sms_sent",
         "feedback",
         entry.id,
-        {"reference": entry.reference, "status": message.status},
+        {"reference": entry.reference, "channel": body.channel, "status": message.status},
     )
     await session.commit()
     await session.refresh(message)
@@ -359,8 +363,11 @@ async def simulate_feedback_sms(
     member: AnyMember,
     session: SessionDep,
 ) -> SmsOut:
-    """Mode simulé seulement : fait comme si la personne avait répondu par SMS."""
-    if get_settings().sms_provider != "simulated":
+    """Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp)."""
+    provider = (
+        get_settings().sms_provider if body.channel == "sms" else get_settings().whatsapp_provider
+    )
+    if provider != "simulated":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Disponible en mode simulé seulement")
     project = await svc.get_project(session, org_id, project_id)
     entry = await _get_feedback(session, project, member, feedback_id)
@@ -370,6 +377,7 @@ async def simulate_feedback_sms(
         organization_id=org_id,
         project_id=project.id,
         feedback_id=entry.id,
+        channel=body.channel,
         direction=SmsDirection.INBOUND,
         phone=sms.normalize_phone(entry.contact) or entry.contact[:32],
         body=body.body.strip(),

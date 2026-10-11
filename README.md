@@ -50,15 +50,21 @@ Pour mesurer la qualité du prompt d'extraction (appel réel, quelques centimes)
 cd backend && uv run python -m app.llm.evals.run
 ```
 
-## SMS des plaintes et retours
+## SMS et WhatsApp des plaintes et retours
 
-Depuis le registre des plaintes et retours, la personne qui traite un retour peut écrire par SMS au contact enregistré et lire ses réponses dans le même fil. La passerelle se choisit avec `SMS_PROVIDER` :
+Depuis le registre des plaintes et retours, la personne qui traite un retour peut écrire par SMS ou par WhatsApp au contact enregistré et lire ses réponses dans le même fil (on répond par défaut sur le canal du dernier message reçu). La passerelle SMS se choisit avec `SMS_PROVIDER` :
 
 - `simulated` (par défaut) : aucun SMS ne part, l'envoi est enregistré comme réussi et un bouton permet de simuler la réponse de la personne ;
 - `twilio` : renseignez `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` et `SMS_SENDER` (numéro Twilio) ;
 - `africastalking` : renseignez `AFRICASTALKING_USERNAME` (`sandbox` pour le bac à sable), `AFRICASTALKING_API_KEY` et, si besoin, `SMS_SENDER`.
 
-Pour recevoir les SMS, choisissez un secret `SMS_WEBHOOK_TOKEN` et déclarez chez le prestataire l'URL `https://<domaine>/api/v1/sms/inbound/<SMS_WEBHOOK_TOKEN>`. Un SMS reçu d'un numéro à qui l'équipe a déjà écrit rejoint l'échange du retour concerné ; un SMS qui commence par le code d'un projet (ex. « RES-NK-01 Le point d'eau est en panne ») crée un nouveau retour dans ce projet, canal SMS, à qualifier. Les autres SMS sont conservés sans être rattachés à une organisation.
+La passerelle WhatsApp se choisit avec `WHATSAPP_PROVIDER` :
+
+- `simulated` (par défaut) : aucun message ne part ;
+- `twilio` : `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` et `TWILIO_WHATSAPP_SENDER` (numéro WhatsApp Twilio, `+14155238886` pour le bac à sable) ;
+- `meta` (WhatsApp Cloud API) : `META_WHATSAPP_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID` et, conseillé, `META_APP_SECRET` pour contrôler la signature des notifications. Hors des 24 h qui suivent le dernier message de la personne, Meta n'accepte qu'un modèle de message approuvé : l'envoi libre est alors refusé et l'erreur s'affiche dans le fil.
+
+Pour recevoir les SMS, choisissez un secret `SMS_WEBHOOK_TOKEN` et déclarez chez le prestataire l'URL `https://<domaine>/api/v1/sms/inbound/<SMS_WEBHOOK_TOKEN>` ; pour WhatsApp, `https://<domaine>/api/v1/whatsapp/inbound/<SMS_WEBHOOK_TOKEN>` (chez Meta, le jeton de vérification est ce même secret). Un SMS ou message WhatsApp reçu d'un numéro à qui l'équipe a déjà écrit rejoint l'échange du retour concerné ; un SMS qui commence par le code d'un projet (ex. « RES-NK-01 Le point d'eau est en panne ») crée un nouveau retour dans ce projet, canal SMS, à qualifier. Les autres SMS sont conservés sans être rattachés à une organisation.
 
 ## Tests et qualité
 

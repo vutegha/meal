@@ -707,7 +707,9 @@ export interface paths {
     put?: never;
     /**
      * Send Feedback Sms
-     * @description Envoie un SMS à la personne ; un échec du prestataire est enregistré et renvoyé tel quel.
+     * @description Envoie un SMS ou un message WhatsApp à la personne.
+     *
+     *     Un échec du prestataire est enregistré et renvoyé tel quel.
      */
     post: operations["send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post"];
     delete?: never;
@@ -727,7 +729,7 @@ export interface paths {
     put?: never;
     /**
      * Simulate Feedback Sms
-     * @description Mode simulé seulement : fait comme si la personne avait répondu par SMS.
+     * @description Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).
      */
     post: operations["simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post"];
     delete?: never;
@@ -1914,6 +1916,23 @@ export interface components {
       report: components["schemas"]["BuiltinSection"][];
       /** Tor */
       tor: components["schemas"]["BuiltinSection"][];
+    };
+    /** ChannelConfig */
+    ChannelConfig: {
+      /**
+       * Channel
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /**
+       * Error
+       * @default
+       */
+      error: string;
+      /** Provider */
+      provider: string;
+      /** Simulated */
+      simulated: boolean;
     };
     /** DocumentOut */
     DocumentOut: {
@@ -3748,19 +3767,12 @@ export interface components {
     };
     /** SmsConfig */
     SmsConfig: {
-      /**
-       * Error
-       * @default
-       */
-      error: string;
+      /** Channels */
+      channels: components["schemas"]["ChannelConfig"][];
       /** Inbound Enabled */
       inbound_enabled: boolean;
-      /** Provider */
-      provider: string;
       /** Sender */
       sender: string;
-      /** Simulated */
-      simulated: boolean;
     };
     /**
      * SmsDirection
@@ -3771,6 +3783,11 @@ export interface components {
     SmsOut: {
       /** Body */
       body: string;
+      /**
+       * Channel
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
       /**
        * Created At
        * Format: date-time
@@ -3799,6 +3816,12 @@ export interface components {
     SmsSendIn: {
       /** Body */
       body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
       /** To */
       to?: string | null;
     };
@@ -3806,6 +3829,12 @@ export interface components {
     SmsSimulateIn: {
       /** Body */
       body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
     };
     /** SubmissionIn */
     SubmissionIn: {

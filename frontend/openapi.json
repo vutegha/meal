@@ -976,6 +976,38 @@
         "title": "BuiltinTemplates",
         "type": "object"
       },
+      "ChannelConfig": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channel",
+          "provider",
+          "simulated"
+        ],
+        "title": "ChannelConfig",
+        "type": "object"
+      },
       "DocumentOut": {
         "properties": {
           "created_at": {
@@ -5848,31 +5880,24 @@
       },
       "SmsConfig": {
         "properties": {
-          "error": {
-            "default": "",
-            "title": "Error",
-            "type": "string"
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelConfig"
+            },
+            "title": "Channels",
+            "type": "array"
           },
           "inbound_enabled": {
             "title": "Inbound Enabled",
             "type": "boolean"
           },
-          "provider": {
-            "title": "Provider",
-            "type": "string"
-          },
           "sender": {
             "title": "Sender",
             "type": "string"
-          },
-          "simulated": {
-            "title": "Simulated",
-            "type": "boolean"
           }
         },
         "required": [
-          "provider",
-          "simulated",
+          "channels",
           "sender",
           "inbound_enabled"
         ],
@@ -5891,6 +5916,14 @@
         "properties": {
           "body": {
             "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
             "type": "string"
           },
           "created_at": {
@@ -5950,6 +5983,7 @@
         "required": [
           "id",
           "feedback_id",
+          "channel",
           "direction",
           "phone",
           "body",
@@ -5968,6 +6002,15 @@
             "maxLength": 640,
             "minLength": 1,
             "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
             "type": "string"
           },
           "to": {
@@ -5995,6 +6038,15 @@
             "maxLength": 640,
             "minLength": 1,
             "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
             "type": "string"
           }
         },
@@ -10312,7 +10364,7 @@
         ]
       },
       "post": {
-        "description": "Envoie un SMS à la personne ; un échec du prestataire est enregistré et renvoyé tel quel.",
+        "description": "Envoie un SMS ou un message WhatsApp à la personne.\n\nUn échec du prestataire est enregistré et renvoyé tel quel.",
         "operationId": "send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post",
         "parameters": [
           {
@@ -10391,7 +10443,7 @@
     },
     "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
       "post": {
-        "description": "Mode simulé seulement : fait comme si la personne avait répondu par SMS.",
+        "description": "Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).",
         "operationId": "simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post",
         "parameters": [
           {

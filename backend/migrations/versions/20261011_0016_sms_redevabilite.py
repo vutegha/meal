@@ -1,4 +1,4 @@
-"""sms de la redevabilite
+"""sms et whatsapp de la redevabilite
 
 Revision ID: 0016
 Revises: 0015
@@ -25,6 +25,7 @@ def upgrade() -> None:
         sa.Column("organization_id", sa.Uuid(), nullable=True),
         sa.Column("project_id", sa.Uuid(), nullable=True),
         sa.Column("feedback_id", sa.Uuid(), nullable=True),
+        sa.Column("channel", sa.String(length=20), nullable=False),
         sa.Column(
             "direction", sa.Enum("inbound", "outbound", name="sms_direction"), nullable=False
         ),

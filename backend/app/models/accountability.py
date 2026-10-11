@@ -155,7 +155,7 @@ class SmsDirection(enum.StrEnum):
 
 
 class SmsMessage(IdMixin, TimestampMixin, Base):
-    """SMS échangé avec la personne à l'origine d'un retour, via la passerelle configurée.
+    """SMS ou message WhatsApp échangé avec la personne à l'origine d'un retour.
 
     Un SMS reçu qu'aucun projet ne reconnaît reste sans organisation : invisible pour tous
     (Row Level Security), il n'est conservé que pour l'administrateur de la plateforme.
@@ -173,6 +173,8 @@ class SmsMessage(IdMixin, TimestampMixin, Base):
     feedback_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("feedback_entries.id", ondelete="CASCADE"), index=True
     )
+    # "sms" ou "whatsapp".
+    channel: Mapped[str] = mapped_column(String(20), default="sms")
     direction: Mapped[SmsDirection] = mapped_column(_enum(SmsDirection, "sms_direction"))
     # Numéro de la personne (destinataire ou expéditeur), normalisé : « +243990000000 ».
     phone: Mapped[str] = mapped_column(String(32), index=True)
