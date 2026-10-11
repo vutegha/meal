@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText } from "@/components/ui";
@@ -29,6 +37,8 @@ import { useJob } from "./useJob";
 const COL = 44;
 
 type Period = [number, number];
+/** Dates exactes saisies dans la fiche, au format AAAA-MM-JJ. */
+type Dates = [string, string];
 
 interface Drag {
   id: string;
@@ -108,14 +118,16 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
   const months = Array.from({ length: bounds.last - bounds.first + 1 }, (_, i) => bounds.first + i);
 
   const save = useMutation({
-    mutationFn: ({ id, period }: { id: string; period: Period | null }) =>
+    mutationFn: ({ id, period, dates }: { id: string; period: Period | null; dates?: Dates }) =>
       projectsApi.updateNode(
         orgId,
         project.id,
         id,
-        period
-          ? { planned_start: monthStartIso(period[0]), planned_end: monthEndIso(period[1]) }
-          : { planned_start: null, planned_end: null },
+        dates
+          ? { planned_start: dates[0], planned_end: dates[1] }
+          : period
+            ? { planned_start: monthStartIso(period[0]), planned_end: monthEndIso(period[1]) }
+            : { planned_start: null, planned_end: null },
       ),
     onMutate: ({ id, period }) => setPending((p) => ({ ...p, [id]: period })),
     onSettled: async (_data, _error, { id }) => {
@@ -422,10 +434,65 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
           executions={(executions.data ?? []).filter((e) => e.activity_id === selectedNode.id)}
           canPlan={canPlan}
           onUnplan={() => save.mutate({ id: selectedNode.id, period: null })}
+          onSetDates={(dates) =>
+            save.mutate({
+              id: selectedNode.id,
+              period: [monthIndex(dates[0]), monthIndex(dates[1])],
+              dates,
+            })
+          }
           onClose={() => setSelected(null)}
         />
       )}
     </>
+  );
+}
+
+/** Dates prévues saisies à la main : la barre du chronogramme suit. */
+function DatesForm({
+  activity,
+  onSave,
+}: {
+  activity: LogframeNode;
+  onSave: (dates: Dates) => void;
+}) {
+  const { t } = useTranslation();
+  const [start, setStart] = useState(activity.planned_start ?? "");
+  const [end, setEnd] = useState(activity.planned_end ?? "");
+  const unchanged =
+    start === (activity.planned_start ?? "") && end === (activity.planned_end ?? "");
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    onSave([start, end]);
+  };
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+      <label className="text-xs text-slate-600">
+        {t("schedule.plannedStart")}
+        <input
+          type="date"
+          required
+          className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          value={start}
+          max={end || undefined}
+          onChange={(e) => setStart(e.target.value)}
+        />
+      </label>
+      <label className="text-xs text-slate-600">
+        {t("schedule.plannedEnd")}
+        <input
+          type="date"
+          required
+          className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          value={end}
+          min={start || undefined}
+          onChange={(e) => setEnd(e.target.value)}
+        />
+      </label>
+      <Button type="submit" variant="ghost" disabled={unchanged}>
+        {t("schedule.saveDates")}
+      </Button>
+    </form>
   );
 }
 
@@ -442,6 +509,7 @@ function ActivityPanel({
   executions,
   canPlan,
   onUnplan,
+  onSetDates,
   onClose,
 }: {
   orgId: string;
@@ -454,6 +522,7 @@ function ActivityPanel({
   executions: Execution[];
   canPlan: boolean;
   onUnplan: () => void;
+  onSetDates: (dates: Dates) => void;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -521,6 +590,7 @@ function ActivityPanel({
               </button>
             )}
           </div>
+          {canPlan && !executed && <DatesForm activity={activity} onSave={onSetDates} />}
 
           {executed ? (
             <>
