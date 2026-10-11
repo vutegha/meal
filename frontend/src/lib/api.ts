@@ -371,7 +371,11 @@ export const projectsApi = {
     orgId: string,
     projectId: string,
     indicatorId: string,
-    body: { period_targets?: PeriodTarget[] },
+    body: {
+      period_targets?: PeriodTarget[];
+      source_of_verification?: string;
+      disaggregations?: string[];
+    },
   ) =>
     request<Indicator>(
       `${project(orgId, projectId)}/indicators/${indicatorId}`,
@@ -389,6 +393,7 @@ export const projectsApi = {
       target: string | null;
       aggregation: "sum" | "latest";
       source_of_verification: string;
+      disaggregations: string[];
     },
   ) => request<Indicator>(`${project(orgId, projectId)}/indicators`, json("POST", body)),
   deleteIndicator: (orgId: string, projectId: string, indicatorId: string) =>
