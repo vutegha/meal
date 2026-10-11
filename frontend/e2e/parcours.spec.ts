@@ -33,22 +33,33 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await expect(page.getByText("TdR maison")).toBeVisible();
   await page.getByRole("link", { name: "Projets" }).click();
 
-  // Projet
+  // Projet créé avec son document : l'extraction démarre d'elle-même et pré-remplit la fiche,
+  // le cadre logique, les indicateurs, le budget et le chronogramme.
   await page.getByRole("button", { name: "+ Nouveau projet" }).click();
   await page.getByLabel("Code").fill("E2E-01");
   await page.getByLabel("Intitulé").fill("Résilience économique à Rutshuru");
   await page.getByLabel("Devise").fill("USD");
-  await page.getByRole("button", { name: "Créer le projet" }).click();
-  await page.getByText("Résilience économique à Rutshuru").click();
-
-  // Import du document et extraction IA du cadre logique et du budget
-  await page.getByRole("button", { name: "Documents et IA" }).click();
-  await page.getByLabel("Importer des documents").setInputFiles(PROPOSAL);
+  await page.getByLabel("Choisir des fichiers").setInputFiles(PROPOSAL);
+  await page.getByRole("button", { name: "Créer le projet et analyser 1 document(s)" }).click();
   await expect(page.getByText("Texte extrait")).toBeVisible();
-  await page.getByRole("button", { name: /Extraire le cadre logique/ }).click();
   await expect(page.getByText("Informations absentes des documents")).toBeVisible();
+  await expect(page.getByText("Fiche du projet")).toBeVisible();
   await page.getByRole("button", { name: /Enregistrer les \d+ éléments retenus/ }).click();
-  await expect(page.getByText("Aucune proposition en attente de validation.")).toBeVisible();
+  await expect(page.getByText("Proposition enregistrée")).toBeVisible();
+  // Dates du projet complétées depuis le document
+  await expect(page.getByText(/janv\. 2026/).first()).toBeVisible();
+
+  // Chronogramme : activités placées d'après le document, déplaçables et cliquables
+  await page.getByRole("button", { name: "Voir le chronogramme" }).click();
+  const bar = page.getByRole("button", { name: /^A1\.1\.1 Former les membres des AVEC, / });
+  await expect(bar).toBeVisible();
+  await bar.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(bar).toHaveAccessibleName(/févr\. 2026 – avr\. 2026/);
+  await bar.click();
+  await expect(page.getByRole("dialog").getByText("Planifiée")).toBeVisible();
+  await expect(page.getByRole("button", { name: "✨ Générer les TdR" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Cadre logique", exact: true }).click();
   await expect(page.getByText("Former les membres des AVEC").first()).toBeVisible();
 
@@ -168,6 +179,14 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await expect(page.getByText("1 réponse(s) de formulaire en attente d'envoi.")).toBeHidden();
   await expect(page.getByRole("heading", { name: "Synthèse" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Savon, Jerrican" })).toBeVisible();
+
+  // Chronogramme : l'activité exécutée renvoie à ses indicateurs
+  await page.getByRole("button", { name: "Chronogramme", exact: true }).click();
+  await page.getByRole("button", { name: /^A1\.1\.1 Former les membres des AVEC, / }).click();
+  const panel = page.getByRole("dialog");
+  await expect(panel.getByText("Indicateurs liés")).toBeVisible();
+  await expect(panel.getByText("Nombre de membres d'AVEC formés")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // Tableau de bord : l'activité réalisée et les 36 personnes atteintes
   await page.getByRole("button", { name: "Tableau de bord" }).click();

@@ -119,6 +119,35 @@ async def test_logframe_hierarchy_and_tree(client: AsyncClient) -> None:
     )
     assert r.json()["title"] == "Accompagner les AVEC"
 
+    # Chronogramme : une activité se place sur une période, puis s'en retire.
+    node_url = f"{base}/logframe/nodes/{second['id']}"
+    r = await client.patch(
+        node_url,
+        headers=ctx["headers"],
+        json={"planned_start": "2026-03-01", "planned_end": "2026-05-31"},
+    )
+    assert r.status_code == 200, r.text
+    assert (r.json()["planned_start"], r.json()["planned_end"]) == ("2026-03-01", "2026-05-31")
+    assert r.json()["title"] == "Accompagner les AVEC"
+    r = await client.patch(
+        node_url,
+        headers=ctx["headers"],
+        json={"planned_start": "2026-06-01", "planned_end": "2026-05-31"},
+    )
+    assert r.status_code == 422
+    r = await client.patch(node_url, headers=ctx["headers"], json={"planned_end": None})
+    assert r.status_code == 422
+    r = await client.patch(
+        f"{base}/logframe/nodes/{nodes['output']['id']}",
+        headers=ctx["headers"],
+        json={"planned_start": "2026-03-01", "planned_end": "2026-05-31"},
+    )
+    assert r.status_code == 422
+    r = await client.patch(
+        node_url, headers=ctx["headers"], json={"planned_start": None, "planned_end": None}
+    )
+    assert r.json()["planned_start"] is None
+
     # Supprimer le résultat supprime ses activités.
     r = await client.delete(
         f"{base}/logframe/nodes/{nodes['output']['id']}", headers=ctx["headers"]

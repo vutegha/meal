@@ -211,6 +211,9 @@ export interface LogframeNode {
   description: string;
   assumptions: string;
   position: number;
+  /** Période au chronogramme (activités et sous-activités), dates AAAA-MM-JJ. */
+  planned_start: string | null;
+  planned_end: string | null;
   children: LogframeNode[];
 }
 
@@ -320,6 +323,18 @@ export const projectsApi = {
     projectId: string,
     body: { level: NodeLevel; title: string; code?: string; parent_id?: string | null },
   ) => request<LogframeNode>(`${project(orgId, projectId)}/logframe/nodes`, json("POST", body)),
+  updateNode: (
+    orgId: string,
+    projectId: string,
+    nodeId: string,
+    body: Partial<
+      Pick<LogframeNode, "code" | "title" | "assumptions" | "planned_start" | "planned_end">
+    >,
+  ) =>
+    request<LogframeNode>(
+      `${project(orgId, projectId)}/logframe/nodes/${nodeId}`,
+      json("PATCH", body),
+    ),
   deleteNode: (orgId: string, projectId: string, nodeId: string) =>
     request<void>(`${project(orgId, projectId)}/logframe/nodes/${nodeId}`, { method: "DELETE" }),
   budgetLines: (orgId: string, projectId: string) =>
@@ -439,6 +454,9 @@ export interface ProposedNode extends Sourced {
   code: string;
   title: string;
   assumptions: string;
+  /** Mois prévus au chronogramme, comptés depuis le début du projet (1 = premier mois). */
+  start_month?: number | null;
+  end_month?: number | null;
 }
 
 export interface ProposedIndicator extends Sourced {
@@ -465,9 +483,19 @@ export interface ProposedBudgetLine extends Sourced {
   is_estimate: boolean;
 }
 
+export interface ExtractedProject {
+  donor: string;
+  start_date: string | null;
+  end_date: string | null;
+  duration_months: number | null;
+  zones: string[];
+  target_groups: string[];
+}
+
 export interface LogframeProposal {
   summary: string;
   currency: string | null;
+  project?: ExtractedProject | null;
   documents: string[];
   nodes: ProposedNode[];
   indicators: ProposedIndicator[];

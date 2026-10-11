@@ -1623,7 +1623,53 @@ export interface components {
        */
       indicators: components["schemas"]["ExtractedIndicator"][];
       /** Nodes */
-      nodes: components["schemas"]["ExtractedNode"][];
+      nodes: components["schemas"]["ApplyNode"][];
+    };
+    /** ApplyNode */
+    ApplyNode: {
+      /**
+       * Assumptions
+       * @description Hypothèses ou risques associés, sinon chaîne vide
+       */
+      assumptions: string;
+      /**
+       * Code
+       * @description Code tel qu'écrit dans le document, sinon le ref
+       */
+      code: string;
+      /** End Month */
+      end_month?: number | null;
+      /**
+       * Level
+       * @enum {string}
+       */
+      level: "goal" | "outcome" | "output" | "activity" | "sub_activity";
+      /**
+       * Parent Ref
+       * @description ref du parent ; null pour l'objectif général
+       */
+      parent_ref: string | null;
+      /**
+       * Ref
+       * @description Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3
+       */
+      ref: string;
+      /**
+       * Source Document
+       * @description Numéro du document source (1, 2…)
+       */
+      source_document: number | null;
+      /** Source Page */
+      source_page: number | null;
+      /**
+       * Source Quote
+       * @description Extrait exact du document, 5 à 30 mots
+       */
+      source_quote: string;
+      /** Start Month */
+      start_month?: number | null;
+      /** Title */
+      title: string;
     };
     /** ApplySuggestionIn */
     ApplySuggestionIn: {
@@ -2291,48 +2337,6 @@ export interface components {
       target: number | null;
       /** Unit */
       unit: string;
-    };
-    /** ExtractedNode */
-    ExtractedNode: {
-      /**
-       * Assumptions
-       * @description Hypothèses ou risques associés, sinon chaîne vide
-       */
-      assumptions: string;
-      /**
-       * Code
-       * @description Code tel qu'écrit dans le document, sinon le ref
-       */
-      code: string;
-      /**
-       * Level
-       * @enum {string}
-       */
-      level: "goal" | "outcome" | "output" | "activity" | "sub_activity";
-      /**
-       * Parent Ref
-       * @description ref du parent ; null pour l'objectif général
-       */
-      parent_ref: string | null;
-      /**
-       * Ref
-       * @description Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3
-       */
-      ref: string;
-      /**
-       * Source Document
-       * @description Numéro du document source (1, 2…)
-       */
-      source_document: number | null;
-      /** Source Page */
-      source_page: number | null;
-      /**
-       * Source Quote
-       * @description Extrait exact du document, 5 à 30 mots
-       */
-      source_quote: string;
-      /** Title */
-      title: string;
     };
     /**
      * FeedbackCategory
@@ -3109,6 +3113,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id?: string | null;
+      /** Planned End */
+      planned_end?: string | null;
+      /** Planned Start */
+      planned_start?: string | null;
       /** Position */
       position?: number | null;
       /** Title */
@@ -3135,6 +3143,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id: string | null;
+      /** Planned End */
+      planned_end: string | null;
+      /** Planned Start */
+      planned_start: string | null;
       /** Position */
       position: number;
       /** Title */
@@ -3161,6 +3173,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id: string | null;
+      /** Planned End */
+      planned_end: string | null;
+      /** Planned Start */
+      planned_start: string | null;
       /** Position */
       position: number;
       /** Title */
@@ -3174,6 +3190,10 @@ export interface components {
       code?: string | null;
       /** Description */
       description?: string | null;
+      /** Planned End */
+      planned_end?: string | null;
+      /** Planned Start */
+      planned_start?: string | null;
       /** Position */
       position?: number | null;
       /** Title */

@@ -16,6 +16,7 @@ type Check<T extends true> = T;
 export type Contract = [
   Check<Refines<api.Organization, S["OrganizationOut"]>>,
   Check<Refines<api.Project, S["ProjectOut"]>>,
+  Check<Same<keyof api.LogframeNode, keyof S["NodeTree"]>>,
   Check<Refines<api.Indicator, S["IndicatorOut"]>>,
   Check<Refines<api.CollectionForm, S["FormOut"]>>,
   Check<Refines<api.Submission, S["SubmissionOut"]>>,

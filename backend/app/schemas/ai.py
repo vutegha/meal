@@ -26,6 +26,13 @@ class ExtractedNode(BaseModel):
     code: str = Field(description="Code tel qu'écrit dans le document, sinon le ref")
     title: str
     assumptions: str = Field(description="Hypothèses ou risques associés, sinon chaîne vide")
+    start_month: int | None = Field(
+        description="Activités : premier mois prévu au chronogramme, compté depuis le début du "
+        "projet (1 = premier mois) ; null si le document ne le dit pas ou hors activités"
+    )
+    end_month: int | None = Field(
+        description="Activités : dernier mois prévu au chronogramme (inclus), même convention"
+    )
     source_document: int | None = Field(description="Numéro du document source (1, 2…)")
     source_page: int | None
     source_quote: str = Field(description="Extrait exact du document, 5 à 30 mots")
@@ -63,9 +70,21 @@ class ExtractedBudgetLine(BaseModel):
     source_quote: str
 
 
+class ExtractedProject(BaseModel):
+    """Fiche du projet, pour compléter ce que l'utilisateur n'a pas saisi à la création."""
+
+    donor: str = Field(description="Bailleur de fonds, sinon chaîne vide")
+    start_date: str | None = Field(description="Date de début AAAA-MM-JJ si le document la donne")
+    end_date: str | None = Field(description="Date de fin AAAA-MM-JJ si le document la donne")
+    duration_months: int | None = Field(description="Durée du projet en mois")
+    zones: list[str] = Field(description="Zones d'intervention (provinces, territoires…)")
+    target_groups: list[str] = Field(description="Groupes cibles ou bénéficiaires")
+
+
 class LogframeExtraction(BaseModel):
     summary: str = Field(description="Résumé du projet en 3 à 5 phrases")
     currency: str | None = Field(description="Code ISO de la devise du budget, ex. USD")
+    project: ExtractedProject
     nodes: list[ExtractedNode]
     indicators: list[ExtractedIndicator]
     budget_lines: list[ExtractedBudgetLine]
@@ -82,7 +101,8 @@ class Verified(BaseModel):
 
 
 class ProposedNode(ExtractedNode, Verified):
-    pass
+    start_month: int | None = None
+    end_month: int | None = None
 
 
 class ProposedIndicator(ExtractedIndicator, Verified):
@@ -96,6 +116,8 @@ class ProposedBudgetLine(ExtractedBudgetLine, Verified):
 class LogframeProposal(BaseModel):
     summary: str
     currency: str | None
+    # Absente des propositions faites avant le chronogramme.
+    project: ExtractedProject | None = None
     documents: list[str] = []
     nodes: list[ProposedNode]
     indicators: list[ProposedIndicator]
@@ -103,10 +125,16 @@ class LogframeProposal(BaseModel):
     missing_information: list[str]
 
 
+class ApplyNode(ExtractedNode):
+    # Facultatifs ici : une proposition antérieure au chronogramme ne les contient pas.
+    start_month: int | None = None
+    end_month: int | None = None
+
+
 class ApplyLogframeIn(BaseModel):
     """Sous-ensemble (éventuellement corrigé) de la proposition retenu par l'utilisateur."""
 
-    nodes: list[ExtractedNode]
+    nodes: list[ApplyNode]
     indicators: list[ExtractedIndicator] = []
     budget_lines: list[ExtractedBudgetLine] = []
 

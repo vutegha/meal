@@ -265,7 +265,7 @@
           },
           "nodes": {
             "items": {
-              "$ref": "#/components/schemas/ExtractedNode"
+              "$ref": "#/components/schemas/ApplyNode"
             },
             "title": "Nodes",
             "type": "array"
@@ -275,6 +275,115 @@
           "nodes"
         ],
         "title": "ApplyLogframeIn",
+        "type": "object"
+      },
+      "ApplyNode": {
+        "properties": {
+          "assumptions": {
+            "description": "Hypothèses ou risques associés, sinon chaîne vide",
+            "title": "Assumptions",
+            "type": "string"
+          },
+          "code": {
+            "description": "Code tel qu'écrit dans le document, sinon le ref",
+            "title": "Code",
+            "type": "string"
+          },
+          "end_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Month"
+          },
+          "level": {
+            "enum": [
+              "goal",
+              "outcome",
+              "output",
+              "activity",
+              "sub_activity"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "parent_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ref du parent ; null pour l'objectif général",
+            "title": "Parent Ref"
+          },
+          "ref": {
+            "description": "Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3",
+            "title": "Ref",
+            "type": "string"
+          },
+          "source_document": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Numéro du document source (1, 2…)",
+            "title": "Source Document"
+          },
+          "source_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page"
+          },
+          "source_quote": {
+            "description": "Extrait exact du document, 5 à 30 mots",
+            "title": "Source Quote",
+            "type": "string"
+          },
+          "start_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Month"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "parent_ref",
+          "level",
+          "code",
+          "title",
+          "assumptions",
+          "source_document",
+          "source_page",
+          "source_quote"
+        ],
+        "title": "ApplyNode",
         "type": "object"
       },
       "ApplySuggestionIn": {
@@ -2139,93 +2248,6 @@
           "source_quote"
         ],
         "title": "ExtractedIndicator",
-        "type": "object"
-      },
-      "ExtractedNode": {
-        "properties": {
-          "assumptions": {
-            "description": "Hypothèses ou risques associés, sinon chaîne vide",
-            "title": "Assumptions",
-            "type": "string"
-          },
-          "code": {
-            "description": "Code tel qu'écrit dans le document, sinon le ref",
-            "title": "Code",
-            "type": "string"
-          },
-          "level": {
-            "enum": [
-              "goal",
-              "outcome",
-              "output",
-              "activity",
-              "sub_activity"
-            ],
-            "title": "Level",
-            "type": "string"
-          },
-          "parent_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "ref du parent ; null pour l'objectif général",
-            "title": "Parent Ref"
-          },
-          "ref": {
-            "description": "Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3",
-            "title": "Ref",
-            "type": "string"
-          },
-          "source_document": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Numéro du document source (1, 2…)",
-            "title": "Source Document"
-          },
-          "source_page": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Page"
-          },
-          "source_quote": {
-            "description": "Extrait exact du document, 5 à 30 mots",
-            "title": "Source Quote",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ref",
-          "parent_ref",
-          "level",
-          "code",
-          "title",
-          "assumptions",
-          "source_document",
-          "source_page",
-          "source_quote"
-        ],
-        "title": "ExtractedNode",
         "type": "object"
       },
       "FeedbackCategory": {
@@ -4348,6 +4370,30 @@
             ],
             "title": "Parent Id"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "anyOf": [
               {
@@ -4417,6 +4463,30 @@
             ],
             "title": "Parent Id"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "title": "Position",
             "type": "integer"
@@ -4434,7 +4504,9 @@
           "title",
           "description",
           "assumptions",
-          "position"
+          "position",
+          "planned_start",
+          "planned_end"
         ],
         "title": "NodeOut",
         "type": "object"
@@ -4481,6 +4553,30 @@
             ],
             "title": "Parent Id"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "title": "Position",
             "type": "integer"
@@ -4498,7 +4594,9 @@
           "title",
           "description",
           "assumptions",
-          "position"
+          "position",
+          "planned_start",
+          "planned_end"
         ],
         "title": "NodeTree",
         "type": "object"
@@ -4538,6 +4636,30 @@
               }
             ],
             "title": "Description"
+          },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
           },
           "position": {
             "anyOf": [

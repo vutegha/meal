@@ -86,6 +86,9 @@ class LogframeNode(IdMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     assumptions: Mapped[str] = mapped_column(Text, default="")
     position: Mapped[int] = mapped_column(default=0)
+    # Période prévue au chronogramme (activités et sous-activités).
+    planned_start: Mapped[date | None]
+    planned_end: Mapped[date | None]
 
 
 class BudgetLine(IdMixin, TimestampMixin, Base):
