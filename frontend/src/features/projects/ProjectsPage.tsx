@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { type DragEvent, type FormEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText, Field } from "@/components/ui";
-import { projectsApi } from "@/lib/api";
+import { aiApi, projectsApi } from "@/lib/api";
 import { permissions } from "@/lib/permissions";
 import { projectsQuery } from "@/lib/queries";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 
+import { ACCEPT } from "./DocumentsTab";
 import { StatusBadge } from "./StatusBadge";
 
 const emptyForm = { code: "", title: "", donor: "", currency: "USD", start_date: "", end_date: "" };
@@ -20,21 +21,62 @@ export function ProjectsPage() {
   const projects = useQuery(projectsQuery(orgId));
   const [form, setForm] = useState(emptyForm);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const input = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [step, setStep] = useState<string | null>(null);
 
+  // Création en une fois : le projet, puis ses documents ; l'onglet Documents lance ensuite
+  // l'extraction qui pré-remplit le cadre logique, les indicateurs, le budget et le chronogramme.
   const create = useMutation({
-    mutationFn: () =>
-      projectsApi.create(orgId, {
+    mutationFn: async () => {
+      setStep(t("projects.setup.creating"));
+      const project = await projectsApi.create(orgId, {
         ...form,
         currency: form.currency.toUpperCase(),
         start_date: form.start_date || null,
         end_date: form.end_date || null,
-      }),
-    onSuccess: async () => {
+      });
+      // Le projet existe déjà : un import refusé (format, taille) se reprend dans son onglet
+      // Documents plutôt que de recréer le projet.
+      let uploaded = true;
+      for (const file of files) {
+        setStep(t("projects.setup.uploading", { name: file.name }));
+        try {
+          await aiApi.upload(orgId, project.id, file);
+        } catch {
+          uploaded = false;
+        }
+      }
+      return { project, uploaded };
+    },
+    onSettled: () => setStep(null),
+    onSuccess: async ({ project, uploaded }) => {
+      const withDocuments = files.length > 0;
       setForm(emptyForm);
+      setFiles([]);
       setOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "projects"] });
+      await navigate({
+        to: "/orgs/$orgId/projects/$projectId",
+        params: { orgId, projectId: project.id },
+        search: withDocuments
+          ? { tab: "documents", setup: uploaded || undefined }
+          : { tab: "dashboard" },
+      });
     },
   });
+
+  const addFiles = (list: FileList | null) => {
+    const added = Array.from(list ?? []);
+    if (added.length) setFiles((current) => [...current, ...added]);
+  };
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
+    setDragOver(false);
+    addFiles(event.dataTransfer.files);
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -88,10 +130,75 @@ export function ProjectsPage() {
                 onChange={set("end_date")}
               />
             </div>
+            <p className="text-xs text-slate-500">{t("projects.setup.optional")}</p>
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              className={`rounded-lg border-2 border-dashed p-4 ${
+                dragOver ? "border-brand-600 bg-brand-50" : "border-slate-300"
+              }`}
+            >
+              <p className="text-sm font-medium">{t("projects.setup.documents")}</p>
+              <p className="mt-0.5 text-xs text-slate-600">{t("projects.setup.documentsHint")}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  ref={input}
+                  type="file"
+                  multiple
+                  accept={ACCEPT}
+                  className="hidden"
+                  aria-label={t("projects.setup.choose")}
+                  onChange={(e) => {
+                    addFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <Button type="button" variant="ghost" onClick={() => input.current?.click()}>
+                  ⬆ {t("projects.setup.choose")}
+                </Button>
+                <span className="text-xs text-slate-500">
+                  {t("projects.setup.drop")} · {t("documents.formats")}
+                </span>
+              </div>
+              {files.length > 0 && (
+                <ul className="mt-3 divide-y divide-slate-100 rounded-md bg-white text-sm">
+                  {files.map((file, index) => (
+                    <li
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-2 px-2 py-1.5"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        className="rounded px-1.5 text-xs text-red-700 hover:bg-red-50"
+                        onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                      >
+                        {t("common.remove")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <ErrorText error={create.error} />
-            <Button type="submit" disabled={create.isPending}>
-              {t("projects.create")}
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={create.isPending}>
+                {files.length
+                  ? t("projects.setup.createWithDocuments", { count: files.length })
+                  : t("projects.create")}
+              </Button>
+              {step && (
+                <span role="status" className="text-sm text-slate-600">
+                  {step}
+                </span>
+              )}
+            </div>
           </form>
         </Card>
       )}

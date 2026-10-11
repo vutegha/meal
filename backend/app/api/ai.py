@@ -27,6 +27,7 @@ from app.schemas.ai import (
     ApplyLogframeIn,
     DocumentOut,
     JobOut,
+    LogframeProposal,
     ProposalOut,
     SearchHit,
 )
@@ -257,7 +258,8 @@ async def apply_proposal(
     proposal = await _get_proposal(session, org_id, project_id, proposal_id)
     _ensure_pending(proposal)
     project = await svc.get_project(session, org_id, project_id)
-    counts = await apply_logframe(session, project, body)
+    stored = LogframeProposal.model_validate(proposal.payload)
+    counts = await apply_logframe(session, project, body, stored.project, stored.summary)
     proposal.status = ProposalStatus.APPLIED
     proposal.reviewed_by = member.user_id
     proposal.reviewed_at = datetime.now(UTC)

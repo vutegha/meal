@@ -13,7 +13,14 @@ from app.services.ocr import OcrPage
 T = TypeVar("T", bound=BaseModel)
 
 
-def node(ref: str, parent: str | None, level: str, title: str, quote: str) -> dict[str, Any]:
+def node(
+    ref: str,
+    parent: str | None,
+    level: str,
+    title: str,
+    quote: str,
+    months: tuple[int, int] | None = None,
+) -> dict[str, Any]:
     return {
         "ref": ref,
         "parent_ref": parent,
@@ -21,6 +28,8 @@ def node(ref: str, parent: str | None, level: str, title: str, quote: str) -> di
         "code": ref,
         "title": title,
         "assumptions": "",
+        "start_month": months[0] if months else None,
+        "end_month": months[1] if months else None,
         "source_document": 1,
         "source_page": 1,
         "source_quote": quote,
@@ -52,6 +61,14 @@ EXTRACTION = LogframeExtraction.model_validate(
     {
         "summary": "Projet de résilience économique à Rutshuru.",
         "currency": "USD",
+        "project": {
+            "donor": "Fonds de démonstration pour le développement",
+            "start_date": "2026-01-01",
+            "end_date": "2027-12-31",
+            "duration_months": 24,
+            "zones": ["Rutshuru"],
+            "target_groups": ["Ménages vulnérables", "Jeunes"],
+        },
         "nodes": [
             node(
                 "OG",
@@ -80,6 +97,7 @@ EXTRACTION = LogframeExtraction.model_validate(
                 "activity",
                 "Former les membres des AVEC",
                 "Former les membres des AVEC à la gestion de l'épargne",
+                (1, 3),
             ),
             node(
                 "A1.1.2",
@@ -87,6 +105,7 @@ EXTRACTION = LogframeExtraction.model_validate(
                 "activity",
                 "Doter les AVEC en kits",
                 "Doter chaque AVEC d'un kit de démarrage",
+                (3, 4),
             ),
             node(
                 "R1.2",
@@ -101,6 +120,7 @@ EXTRACTION = LogframeExtraction.model_validate(
                 "activity",
                 "Former 150 jeunes",
                 "Cette phrase n'existe pas dans le document source",
+                (5, 9),
             ),
         ],
         "indicators": [

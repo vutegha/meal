@@ -16,7 +16,7 @@ Toutes les clés primaires sont des UUID. Les horodatages sont en UTC (`timestam
 | Entité | Champs principaux |
 |---|---|
 | `projects` | id, organization_id, code, title, donor, start_date, end_date, currency, language, zones (jsonb), target_groups (jsonb), status |
-| `logframe_nodes` | id, project_id, parent_id, level (`goal`, `outcome`, `output`, `activity`, `sub_activity`), code, title, description, assumptions, order ; arbre auto-référencé |
+| `logframe_nodes` | id, project_id, parent_id, level (`goal`, `outcome`, `output`, `activity`, `sub_activity`), code, title, description, assumptions, order, planned_start, planned_end (période au chronogramme des activités) ; arbre auto-référencé |
 | `budget_lines` | id, project_id, activity_id → logframe_nodes, donor_line_code, label, quantity, unit, unit_cost, frequency, currency, is_estimate |
 | `expenses` | id, budget_line_id, amount, currency, fx_rate, date, reference, execution_id (nullable) |
 | `exchange_rates` | id, organization_id, from_currency, to_currency, rate, valid_on |

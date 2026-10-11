@@ -64,6 +64,7 @@ def verify(extraction: LogframeExtraction, documents: list[SourceDocument]) -> L
     return LogframeProposal(
         summary=extraction.summary,
         currency=extraction.currency,
+        project=extraction.project,
         documents=[d.filename for d in documents],
         nodes=[mark(n, ProposedNode) for n in extraction.nodes],
         indicators=[mark(i, ProposedIndicator) for i in extraction.indicators],

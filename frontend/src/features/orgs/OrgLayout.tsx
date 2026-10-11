@@ -19,6 +19,8 @@ export function OrgLayout() {
   // « Projets » reste actif sur la liste et sur chaque projet.
   const path = useRouterState({ select: (state) => state.location.pathname });
   const onProjects = !/\/(lessons|templates|members)\/?$/.test(path);
+  // Une page de projet porte un menu vertical : on lui laisse plus de largeur.
+  const width = /\/projects\/[^/]+/.test(path) ? "max-w-7xl" : "max-w-5xl";
   useOutboxSync();
   const { data: me } = useSuspenseQuery(meQuery);
   const [creating, setCreating] = useState(false);
@@ -50,7 +52,7 @@ export function OrgLayout() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
+        <div className={`mx-auto flex ${width} flex-wrap items-center gap-3 px-4 py-3`}>
           <span className="text-lg font-bold text-brand-700">{t("app.name")}</span>
           {!online && (
             <span
@@ -117,7 +119,7 @@ export function OrgLayout() {
           </Button>
         </div>
         {creating && (
-          <form onSubmit={submit} className="mx-auto flex max-w-5xl gap-2 px-4 pb-3">
+          <form onSubmit={submit} className={`mx-auto flex ${width} gap-2 px-4 pb-3`}>
             <input
               aria-label={t("orgs.newOrganization")}
               className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
@@ -132,7 +134,7 @@ export function OrgLayout() {
           </form>
         )}
       </header>
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <main className={`mx-auto ${width} space-y-6 px-4 py-6`}>
         <Outlet />
       </main>
     </div>

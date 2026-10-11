@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -297,9 +298,37 @@ async def update_node(
     project = await svc.get_project(session, org_id, project_id)
     node = await svc.get_node(session, project, node_id)
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    # Les dates du chronogramme peuvent être effacées (null) ; elles vont toujours par paire.
+    schedule = body.model_dump(include={"planned_start", "planned_end"}, exclude_unset=True)
+    if schedule:
+        if node.level not in svc.ACTIVITY_LEVELS:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "Seules les activités se placent au chronogramme",
+            )
+        start = schedule.get("planned_start", node.planned_start)
+        end = schedule.get("planned_end", node.planned_end)
+        if (start is None) != (end is None):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "Indiquez à la fois le début et la fin de la période",
+            )
+        if start and end and end < start:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "La date de fin doit suivre la date de début",
+            )
+        changes.update(schedule)
     for field, value in changes.items():
         setattr(node, field, value)
-    _log(session, member, "logframe.node_updated", "logframe_node", node.id, changes)
+    _log(
+        session,
+        member,
+        "logframe.node_updated",
+        "logframe_node",
+        node.id,
+        {k: v.isoformat() if isinstance(v, date) else v for k, v in changes.items()},
+    )
     await session.commit()
     await session.refresh(node)
     return node

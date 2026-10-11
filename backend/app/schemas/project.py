@@ -89,6 +89,13 @@ class NodeIn(BaseModel):
     description: str = ""
     assumptions: str = ""
     position: int | None = None
+    planned_start: date | None = None
+    planned_end: date | None = None
+
+    @model_validator(mode="after")
+    def dates(self) -> Self:
+        _check_dates(self.planned_start, self.planned_end)
+        return self
 
 
 class NodeUpdate(BaseModel):
@@ -97,6 +104,14 @@ class NodeUpdate(BaseModel):
     description: str | None = None
     assumptions: str | None = None
     position: int | None = None
+    # Envoyer null retire l'activité du chronogramme.
+    planned_start: date | None = None
+    planned_end: date | None = None
+
+    @model_validator(mode="after")
+    def dates(self) -> Self:
+        _check_dates(self.planned_start, self.planned_end)
+        return self
 
 
 class NodeOut(ORMModel):
@@ -108,6 +123,8 @@ class NodeOut(ORMModel):
     description: str
     assumptions: str
     position: int
+    planned_start: date | None
+    planned_end: date | None
 
 
 class NodeTree(NodeOut):

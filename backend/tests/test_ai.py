@@ -173,6 +173,66 @@ async def test_apply_selected_items(client: AsyncClient, fake_llm: FakeLLM) -> N
     again = await client.post(f"{url}/apply", headers=ctx["headers"], json={"nodes": kept})
     assert again.status_code == 409
 
+    # Chronogramme : les mois relatifs du document deviennent des dates depuis le début du
+    # projet (janvier 2026).
+    activities = {a["code"]: a for a in outputs[0]["children"]}
+    assert activities["A1.1.1"]["planned_start"] == "2026-01-01"
+    assert activities["A1.1.1"]["planned_end"] == "2026-03-31"
+    assert activities["A1.1.2"]["planned_start"] == "2026-03-01"
+    assert activities["A1.1.2"]["planned_end"] == "2026-04-30"
+    assert outputs[0]["planned_start"] is None
+
+    # La fiche saisie à la création n'est pas écrasée ; ce qui manquait est complété.
+    project = (await client.get(base, headers=ctx["headers"])).json()
+    assert project["donor"] == "UE"
+    assert project["zones"] == ["Goma", "Rutshuru"]
+    assert project["target_groups"] == ["Ménages vulnérables", "Jeunes"]
+    assert project["description"] == "Projet de résilience économique à Rutshuru."
+
+
+async def test_extraction_fills_empty_project(client: AsyncClient, fake_llm: FakeLLM) -> None:
+    """Projet créé avec le seul code et le seul titre : les documents complètent la fiche."""
+    ctx = await register(client, "meal@example.org")
+    r = await client.post(
+        f"/api/v1/orgs/{ctx['org_id']}/projects",
+        headers=ctx["headers"],
+        json={"code": "P2", "title": "Résilience à Rutshuru"},
+    )
+    base = f"/api/v1/orgs/{ctx['org_id']}/projects/{r.json()['id']}"
+    r = await upload(client, ctx, base, "proposition.txt", SAMPLE.read_bytes(), "text/plain")
+    job = await extract(client, ctx, base)
+    url = f"{base}/proposals/{job['result']['proposal_id']}"
+    payload = (await client.get(url, headers=ctx["headers"])).json()["payload"]
+    assert payload["project"]["duration_months"] == 24
+
+    r = await client.post(
+        f"{url}/apply",
+        headers=ctx["headers"],
+        json={"nodes": payload["nodes"], "indicators": payload["indicators"]},
+    )
+    assert r.status_code == 200, r.text
+    project = (await client.get(base, headers=ctx["headers"])).json()
+    assert project["donor"] == "Fonds de démonstration pour le développement"
+    assert (project["start_date"], project["end_date"]) == ("2026-01-01", "2027-12-31")
+    assert project["zones"] == ["Rutshuru"]
+    tree = (await client.get(f"{base}/logframe", headers=ctx["headers"])).json()
+    youth = tree[0]["children"][0]["children"][1]["children"][0]
+    assert (youth["planned_start"], youth["planned_end"]) == ("2026-05-01", "2026-09-30")
+
+
+async def test_apply_proposal_without_schedule(client: AsyncClient, fake_llm: FakeLLM) -> None:
+    """Une proposition faite avant le chronogramme s'applique encore."""
+    ctx, base = await project_with_document(client)
+    job = await extract(client, ctx, base)
+    url = f"{base}/proposals/{job['result']['proposal_id']}"
+    payload = (await client.get(url, headers=ctx["headers"])).json()["payload"]
+    nodes = [
+        {k: v for k, v in n.items() if k not in ("start_month", "end_month")}
+        for n in payload["nodes"]
+    ]
+    r = await client.post(f"{url}/apply", headers=ctx["headers"], json={"nodes": nodes})
+    assert r.status_code == 200, r.text
+
 
 async def test_reject_proposal(client: AsyncClient, fake_llm: FakeLLM) -> None:
     ctx, base = await project_with_document(client)
