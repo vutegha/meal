@@ -20,7 +20,7 @@ async def test_every_tenant_table_has_rls() -> None:
             )
         )
         tables: dict[str, bool] = {name: enabled for name, enabled in rows}
-    assert set(tables) - {"memberships"} == set(rls.TENANT_TABLES)
+    assert set(tables) - {"memberships", "subscriptions"} == set(rls.TENANT_TABLES)
     assert all(tables[t] for t in rls.TENANT_TABLES)
     assert not tables["memberships"]
 

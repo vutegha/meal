@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
@@ -8,6 +8,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, IdMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.billing import Subscription
 
 
 class Role(enum.StrEnum):
@@ -28,6 +31,10 @@ class Organization(IdMixin, TimestampMixin, Base):
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
+    )
+    # Chargé avec l'organisation : le type de compte et les fonctions ouvertes en dépendent.
+    subscription: Mapped["Subscription | None"] = relationship(
+        lazy="selectin", passive_deletes=True
     )
 
 

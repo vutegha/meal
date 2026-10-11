@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import bind_org
-from app.models import Membership, Organization, Role, User
-from app.services import audit
+from app.models import AccountType, Membership, Organization, Role, User
+from app.services import audit, billing
 
 
 def slugify(value: str) -> str:
@@ -25,8 +25,15 @@ async def unique_slug(session: AsyncSession, name: str) -> str:
 
 
 async def create_organization(
-    session: AsyncSession, *, name: str, owner: User, default_language: str = "fr"
+    session: AsyncSession,
+    *,
+    name: str,
+    owner: User,
+    default_language: str = "fr",
+    plan: str | None = None,
+    cycle: str = "monthly",
 ) -> Organization:
+    """Crée l'espace, son administrateur et son abonnement (essai de la formule choisie)."""
     org = Organization(
         name=name, slug=await unique_slug(session, name), default_language=default_language
     )
@@ -34,6 +41,8 @@ async def create_organization(
     await session.flush()
     await bind_org(session, org.id)
     session.add(Membership(organization_id=org.id, user_id=owner.id, role=Role.ADMIN))
+    plan = plan or billing.DEFAULT_PLAN[AccountType.ORGANIZATION]
+    session.add(billing.new_subscription(org.id, plan, cycle))
     audit.record(
         session,
         organization_id=org.id,
@@ -41,6 +50,6 @@ async def create_organization(
         action="organization.created",
         entity_type="organization",
         entity_id=org.id,
-        data={"name": name},
+        data={"name": name, "plan": plan, "cycle": cycle},
     )
     return org

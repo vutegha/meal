@@ -12,6 +12,8 @@ export const ROLES: Role[] = [
   "viewer",
 ];
 
+export type AccountType = "individual" | "organization";
+
 export interface Organization {
   id: string;
   name: string;
@@ -19,6 +21,11 @@ export interface Organization {
   default_language: string;
   created_at: string;
   role: Role;
+  /** Compte individuel ou organisation, d'après la formule de l'espace. */
+  account_type: AccountType;
+  plan: string | null;
+  /** Fonctions ouvertes par la formule (voir lib/billing.ts). */
+  features: string[];
 }
 
 export interface User {
@@ -138,7 +145,10 @@ export const api = {
     email: string;
     full_name: string;
     password: string;
-    organization_name: string;
+    organization_name?: string;
+    account_type?: AccountType;
+    plan?: string;
+    cycle?: "monthly" | "annual" | "usage";
   }) => request<Tokens>("/auth/register", json("POST", body)),
   me: () => request<Me>("/auth/me"),
   createOrganization: (name: string) => request<Organization>("/orgs", json("POST", { name })),
