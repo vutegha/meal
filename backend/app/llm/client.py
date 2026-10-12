@@ -46,6 +46,7 @@ class LLMClient(Protocol):
 class AnthropicClient:
     def __init__(self) -> None:
         settings = get_settings()
+        self.has_key = bool(settings.anthropic_api_key)
         self.client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     async def structured(
@@ -58,6 +59,12 @@ class AnthropicClient:
         effort: Effort | None = "high",
         max_tokens: int = 64000,
     ) -> LLMResult[T]:
+        if not self.has_key:
+            # Sans clé, le SDK lève une TypeError peu parlante au premier appel.
+            raise LLMError(
+                "Clé API Anthropic absente : renseignez ANTHROPIC_API_KEY dans le fichier .env "
+                "du serveur, puis redémarrez l'API et le worker."
+            )
         started = time.monotonic()
         try:
             # Streaming : les générations longues ne heurtent pas les délais HTTP.
