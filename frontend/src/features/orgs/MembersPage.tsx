@@ -6,6 +6,7 @@ import { permissions } from "@/lib/permissions";
 import { AiUsagePanel } from "./AiUsagePanel";
 import { AuditPanel } from "./AuditPanel";
 import { MembersPanel } from "./MembersPanel";
+import { RolesMatrix } from "./RolesMatrix";
 import { useCurrentOrg } from "./useCurrentOrg";
 
 export function MembersPage() {
@@ -23,6 +24,7 @@ export function MembersPage() {
         </p>
       </Card>
       <MembersPanel orgId={orgId} isAdmin={isAdmin} currentUserId={me.id} />
+      <RolesMatrix />
       {isAdmin && <AiUsagePanel orgId={orgId} />}
       {isAdmin && <AuditPanel orgId={orgId} />}
     </>

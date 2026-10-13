@@ -13,6 +13,7 @@ import { RegisterPage } from "@/features/auth/RegisterPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
+import { OrgDashboardPage } from "@/features/orgs/OrgDashboardPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
 import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
@@ -107,6 +108,12 @@ const orgIndexRoute = createRoute({
   component: ProjectsPage,
 });
 
+const orgDashboardRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/dashboard",
+  component: OrgDashboardPage,
+});
+
 const membersRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/members",
@@ -175,6 +182,7 @@ const routeTree = rootRoute.addChildren([
   registerRoute,
   orgRoute.addChildren([
     orgIndexRoute,
+    orgDashboardRoute,
     lessonsRoute,
     templatesRoute,
     membersRoute,

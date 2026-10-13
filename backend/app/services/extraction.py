@@ -111,6 +111,8 @@ async def run_logframe_extraction(session: AsyncSession, job: Job) -> dict[str, 
         system=prompt.SYSTEM,
         content=content,
         output_type=LogframeExtraction,
+        # Réflexion comprise : un cadre logique complet dépasse souvent 64 000 jetons.
+        max_tokens=128000,
     )
     proposal_payload = verify(result.output, documents)
     proposal = AiProposal(
