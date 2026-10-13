@@ -262,6 +262,12 @@ export const fr = {
     noDates:
       "Le projet n'a pas de dates : le chronogramme couvre les douze prochains mois. Renseignez les dates du projet pour l'ajuster.",
     dragToPlan: "Glissez ici pour planifier",
+    filter: "Afficher",
+    outcome: "Effet",
+    allOutcomes: "Tous les effets",
+    allOutputs: "Tous les résultats",
+    shown: "{{shown}} activité(s) sur {{total}}",
+    noMatch: "Aucune activité pour ce filtre.",
     state: {
       unscheduled: "Non planifiée",
       planned: "Planifiée",

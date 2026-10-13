@@ -8,6 +8,7 @@ import {
   monthIndex,
   monthStartIso,
   relatedIndicators,
+  scheduleRows,
   timelineRange,
 } from "./schedule";
 
@@ -84,5 +85,26 @@ describe("chronogramme", () => {
     const all = [indicator("i-os", "os"), indicator("i-r", "r"), indicator("i-a", "a")];
     expect(relatedIndicators(activity, nodes, all).map((i) => i.id)).toEqual(["i-a", "i-r"]);
     expect(relatedIndicators(sub, nodes, all).map((i) => i.id)).toEqual(["i-a", "i-r"]);
+  });
+
+  it("filtre le diagramme par effet et par résultat", () => {
+    const tree = [
+      node("os1", "outcome", null),
+      node("r1", "output", "os1"),
+      node("a1", "activity", "r1"),
+      node("s1", "sub_activity", "a1"),
+      node("r2", "output", "os1"),
+      node("a2", "activity", "r2"),
+      node("os2", "outcome", null),
+      node("r3", "output", "os2"),
+      node("a3", "activity", "r3"),
+    ];
+    const byId = new Map(tree.map((n) => [n.id, n]));
+    const ids = (outcome: string | null, outputs: string[]) =>
+      scheduleRows(tree, byId, { outcome, outputs }).map((n) => n.id);
+    expect(ids(null, [])).toEqual(["r1", "a1", "s1", "r2", "a2", "r3", "a3"]);
+    expect(ids("os2", [])).toEqual(["r3", "a3"]);
+    expect(ids(null, ["r1", "r3"])).toEqual(["r1", "a1", "s1", "r3", "a3"]);
+    expect(ids("os1", ["r2"])).toEqual(["r2", "a2"]);
   });
 });
