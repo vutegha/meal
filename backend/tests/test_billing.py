@@ -6,8 +6,10 @@ from uuid import UUID
 from httpx import AsyncClient
 from sqlalchemy import text
 
-from app.core.db import SessionLocal
+from app.core.db import SessionLocal, bind_org
+from app.models import AiCall
 from app.services import billing
+from app.services.ai import log_call
 from tests.conftest import owner_engine, register
 from tests.test_projects import create_project
 
@@ -46,6 +48,9 @@ async def test_catalog_is_public(client: AsyncClient) -> None:
     assert "team" not in plans["solo"]["features"]
     assert {"team", "templates", "org_lessons", "audit"} <= set(plans["team"]["features"])
     assert plans["institution"]["limits"]["projects"] is None
+    # Les formules annoncent des crédits mensuels, jamais un budget en dollars.
+    assert [p["limits"]["monthly_credits"] for p in catalog["plans"]] == [20, 100, 500]
+    assert "ai_monthly_budget_usd" not in r.text
     assert Decimal(plans["team"]["prices"]["annual"]) < 12 * Decimal(
         plans["team"]["prices"]["monthly"]
     )
@@ -83,7 +88,8 @@ async def test_organization_starts_with_trial(client: AsyncClient) -> None:
     assert sub["cycle"] == "monthly"
     trial_end = datetime.fromisoformat(sub["trial_ends_at"])
     assert timedelta(days=13) < trial_end - datetime.now(UTC) <= timedelta(days=14)
-    assert sub["usage"] == {"projects": 0, "members": 1, "ai_month_cost_usd": "0"}
+    assert sub["usage"] == {"projects": 0, "members": 1, "credits_used_this_month": 0}
+    assert sub["limits"]["monthly_credits"] == 100
 
 
 async def test_individual_account_has_no_team_features(client: AsyncClient) -> None:
@@ -104,7 +110,7 @@ async def test_individual_account_has_no_team_features(client: AsyncClient) -> N
         },
     )
     assert r.status_code == 402
-    assert "comptes organisation" in r.json()["detail"]
+    assert "formule Équipe" in r.json()["detail"]
     template = {"kind": "tor", "name": "Maison", "sections": [{"key": "a", "title": "A"}]}
     r = await client.post(f"{org_url}/templates", headers=ctx["headers"], json=template)
     assert r.status_code == 402
@@ -234,3 +240,80 @@ async def test_usage_credits(client: AsyncClient) -> None:
         assert await billing.ai_block_reason(session, org_id, "tor_generation")
         assert await billing.ai_block_reason(session, org_id, "document_ocr") is None
         assert await billing.ai_cap(session, org_id) == Decimal("10")
+
+
+async def test_monthly_credits_quota(client: AsyncClient) -> None:
+    ctx = await signup(client, "quota@x.org", account_type="individual")
+    org_id = UUID(ctx["org_id"])
+    calls = [
+        AiCall(
+            organization_id=org_id,
+            purpose=purpose,
+            prompt_version="v1",
+            model="test",
+            status=status,
+        )
+        for purpose, status in [("tor_generation", "ok")] * 19
+        + [("document_ocr", "ok"), ("report_generation", "error")]
+    ]
+    for call in calls:
+        await log_call(call)
+    async with SessionLocal() as session:
+        await bind_org(session, org_id)
+        assert await billing.credits_used_this_month(session, org_id) == 19
+        assert await billing.ai_block_reason(session, org_id, "tor_generation") is None
+    await log_call(
+        AiCall(
+            organization_id=org_id,
+            purpose="logframe_extraction",
+            prompt_version="v1",
+            model="test",
+            status="ok",
+        )
+    )
+    async with SessionLocal() as session:
+        await bind_org(session, org_id)
+        reason = await billing.ai_block_reason(session, org_id, "tor_generation")
+        assert reason and "20 crédits IA du mois" in reason
+        # La lecture des scans reste incluse
+        assert await billing.ai_block_reason(session, org_id, "document_ocr") is None
+    assert (await billing_of(client, ctx))["usage"]["credits_used_this_month"] == 20
+
+
+async def test_features_are_locked_by_plan(client: AsyncClient) -> None:
+    """Solo : ni formulaires ni rapports périodiques ; Équipe : pas de SMS ; lecture toujours."""
+    solo = await signup(client, "plan-solo@x.org", account_type="individual")
+    project = await create_project(client, solo)
+    base = f"/api/v1/orgs/{solo['org_id']}/projects/{project}"
+    form = {"title": "Enquête", "fields": [{"key": "q1", "label": "Q1", "type": "text"}]}
+    r = await client.post(f"{base}/forms", headers=solo["headers"], json=form)
+    assert r.status_code == 402
+    assert "formule Équipe" in r.json()["detail"]
+    assert (await client.get(f"{base}/forms", headers=solo["headers"])).status_code == 200
+    period = {"kind": "quarterly", "period_start": "2026-01-01", "period_end": "2026-03-31"}
+    r = await client.post(f"{base}/periodic-reports", headers=solo["headers"], json=period)
+    assert r.status_code == 402
+
+    team = await register(client, "plan-team@x.org")
+    team_project = await create_project(client, team)
+    team_base = f"/api/v1/orgs/{team['org_id']}/projects/{team_project}"
+    r = await client.post(
+        f"{team_base}/feedback",
+        headers=team["headers"],
+        json={
+            "channel": "hotline",
+            "category": "complaint",
+            "description": "Kits incomplets",
+            "contact": "+243990000001",
+        },
+    )
+    feedback = r.json()["id"]
+    r = await client.post(
+        f"{team_base}/feedback/{feedback}/sms", headers=team["headers"], json={"body": "Bonjour"}
+    )
+    assert r.status_code == 402
+    assert "formule Institution" in r.json()["detail"]
+
+    # Un non-membre reçoit 404, pas l'information sur la formule.
+    r = await client.post(f"{base}/forms", headers=team["headers"], json=form)
+    assert r.status_code == 404

@@ -45,6 +45,7 @@ class UserOut(ORMModel):
 
 
 class MeOut(UserOut):
+    is_platform_admin: bool
     organizations: list[MyOrganizationOut]
 
 

@@ -11,7 +11,7 @@ import {
   templatesApi,
   torApi,
 } from "./api";
-import { billingApi } from "./billing";
+import { type AdminFilters, adminApi, billingApi } from "./billing";
 import { formsApi } from "./formsApi";
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: api.me });
@@ -228,4 +228,16 @@ export const paymentsQuery = (orgId: string) =>
   queryOptions({
     queryKey: ["orgs", orgId, "billing", "payments"],
     queryFn: () => billingApi.payments(orgId),
+  });
+
+export const adminSubscriptionsQuery = (filters: AdminFilters) =>
+  queryOptions({
+    queryKey: ["admin", "subscriptions", filters],
+    queryFn: () => adminApi.subscriptions(filters),
+  });
+
+export const adminPaymentsQuery = (filters: { q?: string; status?: string }) =>
+  queryOptions({
+    queryKey: ["admin", "payments", filters],
+    queryFn: () => adminApi.payments(filters),
   });

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     accountability,
+    admin,
     ai,
     auth,
     billing,
@@ -48,6 +49,7 @@ api.include_router(periodic.router)
 api.include_router(templates.router)
 api.include_router(forms.router)
 api.include_router(sms.router)
+api.include_router(admin.router)
 app.include_router(api)
 
 

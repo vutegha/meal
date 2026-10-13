@@ -16,6 +16,13 @@ from tests.test_projects import create_project
 
 async def setup(client: AsyncClient) -> tuple[dict[str, Any], str, dict[str, Any]]:
     ctx = await register(client, "pm@example.org")
+    # SMS et WhatsApp sont ouverts par la formule Institution.
+    r = await client.post(
+        f"/api/v1/orgs/{ctx['org_id']}/billing/checkout",
+        headers=ctx["headers"],
+        json={"plan": "institution", "cycle": "monthly"},
+    )
+    assert r.status_code == 200, r.text
     base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx, 'KIW')}"
     r = await client.post(
         f"{base}/feedback",

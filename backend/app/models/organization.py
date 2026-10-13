@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,6 +45,8 @@ class User(IdMixin, TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Équipe qui exploite la plateforme : gère les abonnements de tous les espaces (/admin).
+    is_platform_admin: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="user")
 

@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, params, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import bind_org, get_session
 from app.core.security import decode_token
 from app.models import Membership, Role, User
+from app.services import billing
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -62,3 +63,13 @@ def require_membership(
 
 AnyMember = Annotated[Membership, Depends(require_membership())]
 OrgAdmin = Annotated[Membership, Depends(require_membership(Role.ADMIN))]
+
+
+def plan_feature(feature: str) -> params.Depends:
+    """Réserve une route aux formules qui ouvrent `feature` (402 sinon), après le contrôle
+    d'appartenance : un non-membre reçoit toujours 404."""
+
+    async def dependency(org_id: UUID, _: AnyMember, session: SessionDep) -> None:
+        await billing.require_feature(session, org_id, feature)
+
+    return params.Depends(dependency)

@@ -84,6 +84,14 @@ async def bind_org(session: AsyncSession, org_id: UUID) -> None:
         await session.execute(_TENANT_SQL, _tenant_params(session.sync_session))
 
 
+async def bind_system(session: AsyncSession) -> None:
+    """Ouvre la session à toutes les organisations (administration de la plateforme)."""
+    session.info["system"] = True
+    session.info.pop("org_id", None)
+    if session.in_transaction():
+        await session.execute(_TENANT_SQL, _tenant_params(session.sync_session))
+
+
 def system_session() -> AsyncSession:
     """Session des tâches internes (worker, démonstration) : voit toutes les organisations."""
     return SessionLocal(info={"system": True})

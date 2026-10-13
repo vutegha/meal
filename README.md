@@ -66,6 +66,22 @@ La passerelle WhatsApp se choisit avec `WHATSAPP_PROVIDER` :
 
 Pour recevoir les SMS, choisissez un secret `SMS_WEBHOOK_TOKEN` et déclarez chez le prestataire l'URL `https://<domaine>/api/v1/sms/inbound/<SMS_WEBHOOK_TOKEN>` ; pour WhatsApp, `https://<domaine>/api/v1/whatsapp/inbound/<SMS_WEBHOOK_TOKEN>` (chez Meta, le jeton de vérification est ce même secret). Un SMS ou message WhatsApp reçu d'un numéro à qui l'équipe a déjà écrit rejoint l'échange du retour concerné ; un SMS qui commence par le code d'un projet (ex. « RES-NK-01 Le point d'eau est en panne ») crée un nouveau retour dans ce projet, canal SMS, à qualifier. Les autres SMS sont conservés sans être rattachés à une organisation.
 
+## Formules et administration des abonnements
+
+Trois formules, définies dans `backend/app/services/billing.py` (tarifs indicatifs) : **Solo** (compte individuel), **Équipe** et **Institution** (organisations). Équipe ajoute les formulaires de collecte personnalisés, les rapports périodiques, les membres et rôles, les modèles, les leçons de l'organisation et le journal d'audit ; Institution ajoute les SMS et WhatsApp avec les communautés. L'API refuse avec 402 ce que la formule n'ouvre pas, l'interface affiche à la place une invitation à changer de formule. Le détail est dans `docs/architecture.md`.
+
+L'équipe qui exploite la plateforme gère les abonnements et les paiements de tous les espaces sur `/admin`.
+- Elle confirme les virements et envois mobile money annoncés par les clients.
+- Elle enregistre un paiement reçu hors de l'application, ou rembourse un paiement.
+- Elle ajuste une formule, une échéance ou des crédits.
+
+Chaque paiement encaissé reçoit un reçu PDF numéroté, et chaque changement est inscrit au journal de l'espace. Les coordonnées de paiement affichées aux clients se règlent avec `PAYMENT_INSTRUCTIONS`. Pour y donner accès à un compte existant :
+
+```bash
+cd backend
+uv run python -m app.scripts.platform_admin personne@exemple.org            # --revoke pour retirer
+```
+
 ## Tests et qualité
 
 ```bash

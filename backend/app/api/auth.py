@@ -69,6 +69,7 @@ async def me(user: CurrentUser, session: SessionDep) -> MeOut:
         email=user.email,
         full_name=user.full_name,
         is_active=user.is_active,
+        is_platform_admin=user.is_platform_admin,
         organizations=[
             my_organization(m)
             for m in sorted(memberships, key=lambda m: m.organization.name.lower())

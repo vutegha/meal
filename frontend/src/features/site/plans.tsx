@@ -88,8 +88,8 @@ export function PlanPrice({
   );
 }
 
-function limitLines(plan: Plan, catalog: Catalog, t: TFunction, language: string) {
-  const { projects, members, ai_monthly_budget_usd } = plan.limits;
+function limitLines(plan: Plan, cycle: Cycle, t: TFunction) {
+  const { projects, members, monthly_credits } = plan.limits;
   return [
     projects === null
       ? t("site.pricing.projectsUnlimited")
@@ -99,9 +99,9 @@ function limitLines(plan: Plan, catalog: Catalog, t: TFunction, language: string
       : members === 1
         ? t("site.pricing.membersOne")
         : t("site.pricing.members", { count: members }),
-    t("site.pricing.aiBudget", {
-      amount: formatPrice(ai_monthly_budget_usd, catalog.currency, language),
-    }),
+    cycle === "usage"
+      ? t("site.pricing.creditsOnDemand")
+      : t("site.pricing.monthlyCredits", { count: monthly_credits }),
   ];
 }
 
@@ -138,7 +138,7 @@ export function PlanCard({
   inApp?: boolean;
   action: ReactNode;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const added = plan.features.filter((f) => !previous?.features.includes(f)) as Feature[];
   return (
     <article
@@ -168,7 +168,7 @@ export function PlanCard({
       )}
       <div className="mt-5">{action}</div>
       <ul className="mt-6 space-y-2 text-sm text-slate-700">
-        {limitLines(plan, catalog, t, i18n.language).map((line) => (
+        {limitLines(plan, cycle, t).map((line) => (
           <Check key={line}>{line}</Check>
         ))}
       </ul>

@@ -35,9 +35,22 @@ test("du site public à l'abonnement d'un compte individuel", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1, name: "Solo" })).toBeVisible();
   await page.getByRole("radio", { name: "À l'usage" }).click();
   await page.getByRole("button", { name: "Payer 20 $US" }).click();
-  await expect(page.getByText(/Paiement reçu \(réf\. SIM-/)).toBeVisible();
+  await expect(page.getByText(/Paiement reçu \(reçu WM-\d{4}-\d{6}\)/)).toBeVisible();
   await expect(page.getByText("Crédits restants")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Solo · À l'usage · 10 crédits" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /Solo · À l'usage · 10 crédits/ })).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Télécharger le reçu WM-/ }).click();
+  expect((await download).suggestedFilename()).toMatch(/^recu-WM-\d{4}-\d{6}\.pdf$/);
+
+  // Virement annoncé : en attente, avec une référence, annulable
+  await page.getByRole("radio", { name: "Virement bancaire" }).click();
+  await page.getByRole("button", { name: "Annoncer un paiement de 20 $US" }).click();
+  await expect(page.getByText(/Paiement annoncé \(réf\. WM-/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paiements en attente" })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Annuler ce paiement" }).click();
+  await expect(page.getByRole("heading", { name: "Paiements en attente" })).toHaveCount(0);
+  await expect(page.getByText("Annulé")).toBeVisible();
 
   expect(errors).toEqual([]);
 });
