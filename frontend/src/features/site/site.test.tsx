@@ -24,7 +24,7 @@ const catalog = {
   plans: [
     plan("solo", "individual", "12", "120", core),
     plan("team", "organization", "59", "590", [...core, ...team]),
-    plan("institution", "organization", "249", "2490", [...core, ...team]),
+    plan("institution", "organization", "249", "2490", [...core, ...team, "messaging"]),
   ],
 };
 const me = {
@@ -32,6 +32,7 @@ const me = {
   email: "awa@example.org",
   full_name: "Awa Diallo",
   is_active: true,
+  is_platform_admin: false,
   organizations: [
     {
       id: "org-1",
@@ -111,13 +112,28 @@ it("ne demande pas de nom d'organisation pour un compte individuel", async () =>
   expect(screen.getByRole("radio", { name: /Individuel/ })).toBeChecked();
 });
 
-it("réserve les membres aux comptes organisation", async () => {
+it("réserve les membres aux formules qui les ouvrent", async () => {
   tokenStore.set({ access_token: "a", refresh_token: "r" });
   setup("/orgs/org-1/members");
-  expect(
-    await screen.findByRole("heading", { name: "Fonction réservée aux comptes organisation" }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Membres et rôles" })).toBeInTheDocument();
+  expect(await screen.findByText("Formule Équipe")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Voir les formules" })).toHaveAttribute(
+    "href",
+    "/orgs/org-1/billing",
+  );
   const nav = screen.getByRole("navigation");
   expect(within(nav).queryByRole("link", { name: "Modèles" })).not.toBeInTheDocument();
   expect(within(nav).getByRole("link", { name: "Abonnement" })).toBeInTheDocument();
+});
+
+it("compare les fonctions de chaque formule", async () => {
+  setup("/fonctionnalites");
+  const row = (await screen.findByRole("rowheader", { name: /SMS et WhatsApp/ })).closest("tr")!;
+  const cells = within(row).getAllByRole("cell");
+  expect(cells.map((c) => c.firstElementChild?.getAttribute("aria-label"))).toEqual([
+    "Non inclus",
+    "Non inclus",
+    "Inclus",
+  ]);
+  expect(screen.getAllByText("Dès la formule Institution").length).toBeGreaterThan(0);
 });

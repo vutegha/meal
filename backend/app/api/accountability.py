@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import Select, or_, select
 
-from app.api.deps import AnyMember, SessionDep
+from app.api.deps import AnyMember, SessionDep, plan_feature
 from app.api.projects import Collector, Planner, ProjectAdmin, _flush, _log
 from app.core.config import get_settings
 from app.llm.client import LLMError
@@ -285,7 +285,12 @@ async def list_feedback_sms(
     return await _sms_thread(session, entry)
 
 
-@router.post(f"{PROJECT}/feedback/{{feedback_id}}/sms", response_model=SmsOut, status_code=201)
+@router.post(
+    f"{PROJECT}/feedback/{{feedback_id}}/sms",
+    response_model=SmsOut,
+    status_code=201,
+    dependencies=[plan_feature("messaging")],
+)
 async def send_feedback_sms(
     org_id: UUID,
     project_id: UUID,
@@ -353,7 +358,10 @@ async def send_feedback_sms(
 
 
 @router.post(
-    f"{PROJECT}/feedback/{{feedback_id}}/sms/simulate", response_model=SmsOut, status_code=201
+    f"{PROJECT}/feedback/{{feedback_id}}/sms/simulate",
+    response_model=SmsOut,
+    status_code=201,
+    dependencies=[plan_feature("messaging")],
 )
 async def simulate_feedback_sms(
     org_id: UUID,

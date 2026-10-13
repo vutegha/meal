@@ -36,6 +36,8 @@ export interface User {
 }
 
 export interface Me extends User {
+  /** Équipe qui exploite la plateforme : accès à /admin. */
+  is_platform_admin: boolean;
   organizations: Organization[];
 }
 

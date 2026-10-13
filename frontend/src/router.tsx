@@ -8,6 +8,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { AdminPage } from "@/features/admin/AdminPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
@@ -89,6 +90,18 @@ const registerRoute = createRoute({
     cycle: CYCLES.includes(search.cycle as Cycle) ? (search.cycle as Cycle) : undefined,
   }),
   component: RegisterPage,
+});
+
+// Administration de la plateforme ; l'API répond 404 aux autres comptes.
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  beforeLoad: async ({ context }) => {
+    requireAuth();
+    const me = await loadMe(context.queryClient);
+    if (!me.is_platform_admin) throw redirect({ to: "/" });
+  },
+  component: AdminPage,
 });
 
 const orgRoute = createRoute({
@@ -173,6 +186,7 @@ const routeTree = rootRoute.addChildren([
   pricingRoute,
   loginRoute,
   registerRoute,
+  adminRoute,
   orgRoute.addChildren([
     orgIndexRoute,
     lessonsRoute,

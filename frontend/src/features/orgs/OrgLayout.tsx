@@ -117,7 +117,19 @@ export function OrgLayout() {
           </Button>
           {/* Le nom cède la place au menu sur les écrans moyens. */}
           <span className="ml-auto hidden text-sm text-slate-600 2xl:inline">{me.full_name}</span>
-          <Button variant="ghost" className="ml-auto 2xl:ml-0" onClick={logout}>
+          {me.is_platform_admin && (
+            <Link
+              to="/admin"
+              className="ml-auto rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 2xl:ml-0"
+            >
+              {t("admin.badge")}
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            className={me.is_platform_admin ? "" : "ml-auto 2xl:ml-0"}
+            onClick={logout}
+          >
             {t("common.logout")}
           </Button>
         </div>

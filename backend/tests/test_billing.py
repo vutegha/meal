@@ -110,7 +110,7 @@ async def test_individual_account_has_no_team_features(client: AsyncClient) -> N
         },
     )
     assert r.status_code == 402
-    assert "comptes organisation" in r.json()["detail"]
+    assert "formule Équipe" in r.json()["detail"]
     template = {"kind": "tor", "name": "Maison", "sections": [{"key": "a", "title": "A"}]}
     r = await client.post(f"{org_url}/templates", headers=ctx["headers"], json=template)
     assert r.status_code == 402
@@ -278,3 +278,42 @@ async def test_monthly_credits_quota(client: AsyncClient) -> None:
         # La lecture des scans reste incluse
         assert await billing.ai_block_reason(session, org_id, "document_ocr") is None
     assert (await billing_of(client, ctx))["usage"]["credits_used_this_month"] == 20
+
+
+async def test_features_are_locked_by_plan(client: AsyncClient) -> None:
+    """Solo : ni formulaires ni rapports périodiques ; Équipe : pas de SMS ; lecture toujours."""
+    solo = await signup(client, "plan-solo@x.org", account_type="individual")
+    project = await create_project(client, solo)
+    base = f"/api/v1/orgs/{solo['org_id']}/projects/{project}"
+    form = {"title": "Enquête", "fields": [{"key": "q1", "label": "Q1", "type": "text"}]}
+    r = await client.post(f"{base}/forms", headers=solo["headers"], json=form)
+    assert r.status_code == 402
+    assert "formule Équipe" in r.json()["detail"]
+    assert (await client.get(f"{base}/forms", headers=solo["headers"])).status_code == 200
+    period = {"kind": "quarterly", "period_start": "2026-01-01", "period_end": "2026-03-31"}
+    r = await client.post(f"{base}/periodic-reports", headers=solo["headers"], json=period)
+    assert r.status_code == 402
+
+    team = await register(client, "plan-team@x.org")
+    team_project = await create_project(client, team)
+    team_base = f"/api/v1/orgs/{team['org_id']}/projects/{team_project}"
+    r = await client.post(
+        f"{team_base}/feedback",
+        headers=team["headers"],
+        json={
+            "channel": "hotline",
+            "category": "complaint",
+            "description": "Kits incomplets",
+            "contact": "+243990000001",
+        },
+    )
+    feedback = r.json()["id"]
+    r = await client.post(
+        f"{team_base}/feedback/{feedback}/sms", headers=team["headers"], json={"body": "Bonjour"}
+    )
+    assert r.status_code == 402
+    assert "formule Institution" in r.json()["detail"]
+
+    # Un non-membre reçoit 404, pas l'information sur la formule.
+    r = await client.post(f"{base}/forms", headers=team["headers"], json=form)
+    assert r.status_code == 404

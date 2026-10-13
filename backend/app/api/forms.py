@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from openpyxl import Workbook
 from sqlalchemy import func, select
 
-from app.api.deps import AnyMember, SessionDep
+from app.api.deps import AnyMember, SessionDep, plan_feature
 from app.api.projects import Collector, Planner, ProjectAdmin, _log
 from app.models import CollectionForm, FormSubmission, Project, User
 from app.schemas.form import (
@@ -83,7 +83,12 @@ async def list_forms(
     return [_out(f, counts.get(f.id, 0)) for f in forms]
 
 
-@router.post("", response_model=FormOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=FormOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[plan_feature("forms")],
+)
 async def create_form(
     org_id: UUID, project_id: UUID, body: FormIn, member: Planner, session: SessionDep
 ) -> FormOut:
@@ -112,7 +117,7 @@ async def get_form(
     return _out(form, await _count(session, form))
 
 
-@router.patch("/{form_id}", response_model=FormOut)
+@router.patch("/{form_id}", response_model=FormOut, dependencies=[plan_feature("forms")])
 async def update_form(
     org_id: UUID,
     project_id: UUID,
@@ -149,7 +154,9 @@ async def update_form(
     return _out(form, submissions)
 
 
-@router.delete("/{form_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{form_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[plan_feature("forms")]
+)
 async def delete_form(
     org_id: UUID, project_id: UUID, form_id: UUID, member: Planner, session: SessionDep
 ) -> None:
@@ -168,7 +175,12 @@ async def delete_form(
 # --- Réponses ---------------------------------------------------------------------------
 
 
-@router.post("/{form_id}/submissions", response_model=SubmissionOut, status_code=201)
+@router.post(
+    "/{form_id}/submissions",
+    response_model=SubmissionOut,
+    status_code=201,
+    dependencies=[plan_feature("forms")],
+)
 async def submit(
     org_id: UUID,
     project_id: UUID,
@@ -238,7 +250,9 @@ async def list_submissions(
     ]
 
 
-@router.delete("/{form_id}/submissions/{submission_id}", status_code=204)
+@router.delete(
+    "/{form_id}/submissions/{submission_id}", status_code=204, dependencies=[plan_feature("forms")]
+)
 async def delete_submission(
     org_id: UUID,
     project_id: UUID,

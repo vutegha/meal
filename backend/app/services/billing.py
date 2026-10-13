@@ -38,7 +38,7 @@ CREDIT_PURPOSES = frozenset(
 )
 
 
-# Fonctions ouvertes à tous les comptes.
+# Fonctions ouvertes à toutes les formules.
 CORE_FEATURES = (
     "projects",
     "ai_extraction",
@@ -47,11 +47,20 @@ CORE_FEATURES = (
     "reports",
     "dashboard",
     "accountability",
-    "periodic_reports",
     "exports",
 )
-# Fonctions réservées aux organisations.
-TEAM_FEATURES = ("team", "templates", "org_lessons", "audit")
+# Ajoutées par la formule Équipe : travail à plusieurs et suivi dans la durée.
+TEAM_FEATURES = (
+    "forms",
+    "periodic_reports",
+    "team",
+    "templates",
+    "org_lessons",
+    "audit",
+)
+# Ajoutées par la formule Institution : SMS et WhatsApp vers les communautés.
+INSTITUTION_FEATURES = ("messaging",)
+ALL_FEATURES = CORE_FEATURES + TEAM_FEATURES + INSTITUTION_FEATURES
 
 
 @dataclass(frozen=True)
@@ -110,7 +119,7 @@ PLANS: dict[str, Plan] = {
             max_members=None,
             monthly_credits=500,
             ai_monthly_budget_usd=Decimal("250"),
-            features=CORE_FEATURES + TEAM_FEATURES,
+            features=ALL_FEATURES,
         ),
     )
 }
@@ -181,11 +190,21 @@ async def get_subscription(session: AsyncSession, org_id: UUID) -> Subscription:
     return sub
 
 
+PLAN_NAMES = {"solo": "Solo", "team": "Équipe", "institution": "Institution"}
+
+
+def lowest_plan_with(feature: str) -> Plan | None:
+    """La formule la moins chère qui ouvre cette fonction (les formules sont classées par prix)."""
+    return next((plan for plan in PLANS.values() if feature in plan.features), None)
+
+
 async def require_feature(session: AsyncSession, org_id: UUID, feature: str) -> Subscription:
     sub = await get_subscription(session, org_id)
     if feature not in PLANS[sub.plan].features:
+        plan = lowest_plan_with(feature)
+        name = PLAN_NAMES.get(plan.id, plan.id) if plan else "supérieure"
         raise payment_required(
-            "Cette fonction est réservée aux comptes organisation. "
+            f"Cette fonction est disponible à partir de la formule {name}. "
             "Changez de formule depuis la page Abonnement."
         )
     return sub
@@ -252,7 +271,7 @@ async def ai_cap(session: AsyncSession, org_id: UUID) -> Decimal | None:
     return min(caps) if caps else None
 
 
-def _month_start() -> datetime:
+def month_start() -> datetime:
     return datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
@@ -266,7 +285,7 @@ async def credits_used_this_month(session: AsyncSession, org_id: UUID) -> int:
                 AiCall.organization_id == org_id,
                 AiCall.status == "ok",
                 AiCall.purpose.in_(CREDIT_PURPOSES),
-                AiCall.created_at >= _month_start(),
+                AiCall.created_at >= month_start(),
             )
         )
         or 0
@@ -316,7 +335,7 @@ async def spend_credit(org_id: UUID, purpose: str) -> None:
         await session.commit()
 
 
-def _period(cycle: str) -> timedelta:
+def period(cycle: str) -> timedelta:
     return timedelta(days=365) if cycle == "annual" else timedelta(days=30)
 
 
@@ -378,7 +397,7 @@ async def checkout(
             and sub.current_period_end > now
         )
         start = sub.current_period_end if renewing and sub.current_period_end else now
-        sub.current_period_end = start + _period(cycle)
+        sub.current_period_end = start + period(cycle)
     sub.plan, sub.cycle, sub.status = plan.id, cycle, "active"
     sub.trial_ends_at = None
     sub.cancel_at_period_end = False

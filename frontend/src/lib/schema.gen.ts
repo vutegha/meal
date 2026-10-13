@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+  "/api/v1/admin/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Subscriptions
+     * @description Tous les espaces, leur formule et leur usage. Les filtres ne changent pas le résumé.
+     */
+    get: operations["list_subscriptions_api_v1_admin_subscriptions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions/{org_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Subscription
+     * @description Change la formule, les dates ou les crédits d'un espace, sans paiement (geste commercial,
+     *     paiement reçu hors ligne, correction). Chaque changement est inscrit au journal de l'espace.
+     */
+    patch: operations["update_subscription_api_v1_admin_subscriptions__org_id__patch"];
+    trace?: never;
+  };
   "/api/v1/auth/login": {
     parameters: {
       query?: never;
@@ -1678,6 +1719,105 @@ export interface components {
       /** Title */
       title: string;
     };
+    /** AdminSubscriptionRow */
+    AdminSubscriptionRow: {
+      account_type: components["schemas"]["AccountType"];
+      /** Cancel At Period End */
+      cancel_at_period_end: boolean;
+      /** Contact Email */
+      contact_email: string | null;
+      /** Contact Name */
+      contact_name: string | null;
+      /** Credits */
+      credits: number;
+      /** Credits Used This Month */
+      credits_used_this_month: number;
+      /** Current Period End */
+      current_period_end: string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Last Payment At */
+      last_payment_at: string | null;
+      /** Members */
+      members: number;
+      /**
+       * Organization Created At
+       * Format: date-time
+       */
+      organization_created_at: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
+      /** Plan */
+      plan: string;
+      /** Projects */
+      projects: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "trialing" | "active" | "canceled" | "expired";
+      /** Total Paid */
+      total_paid: string;
+      /** Trial Ends At */
+      trial_ends_at: string | null;
+    };
+    /** AdminSubscriptionUpdate */
+    AdminSubscriptionUpdate: {
+      /** Add Credits */
+      add_credits?: number | null;
+      /** Cancel At Period End */
+      cancel_at_period_end?: boolean | null;
+      /** Current Period End */
+      current_period_end?: string | null;
+      /** Cycle */
+      cycle?: ("monthly" | "annual" | "usage") | null;
+      /** Extend Days */
+      extend_days?: number | null;
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+      /** Plan */
+      plan?: string | null;
+      /** Status */
+      status?: ("trialing" | "active") | null;
+      /** Trial Ends At */
+      trial_ends_at?: string | null;
+    };
+    /** AdminSubscriptions */
+    AdminSubscriptions: {
+      /** Items */
+      items: components["schemas"]["AdminSubscriptionRow"][];
+      summary: components["schemas"]["AdminSummary"];
+    };
+    /** AdminSummary */
+    AdminSummary: {
+      /** By Plan */
+      by_plan: {
+        [key: string]: number;
+      };
+      /** By Status */
+      by_status: {
+        [key: string]: number;
+      };
+      /** Currency */
+      currency: string;
+      /** Monthly Recurring */
+      monthly_recurring: string;
+      /** Organizations */
+      organizations: number;
+      /** Revenue Last 30 Days */
+      revenue_last_30_days: string;
+    };
     /**
      * Aggregation
      * @enum {string}
@@ -3260,6 +3400,8 @@ export interface components {
       id: string;
       /** Is Active */
       is_active: boolean;
+      /** Is Platform Admin */
+      is_platform_admin: boolean;
       /** Organizations */
       organizations: components["schemas"]["MyOrganizationOut"][];
     };
@@ -4390,6 +4532,74 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  list_subscriptions_api_v1_admin_subscriptions_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        status?: string | null;
+        plan?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptions"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_subscription_api_v1_admin_subscriptions__org_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminSubscriptionUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptionRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   login_api_v1_auth_login_post: {
     parameters: {
       query?: never;
