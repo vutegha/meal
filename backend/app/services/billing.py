@@ -7,8 +7,11 @@ compte, les limites (projets, membres, budget IA) et les fonctions ouvertes. Ell
 rapport) consommant un crédit.
 
 Les tarifs sont indicatifs et se modifient ici : l'interface publique les lit depuis
-`GET /api/v1/billing/plans`. Le paiement passe par un prestataire simulé (`PROVIDER`) qui
+`GET /api/v1/billing/plans`. Le paiement en ligne passe par un prestataire simulé (`PROVIDER`) qui
 encaisse immédiatement : c'est l'unique point à remplacer pour brancher un vrai prestataire.
+Un client peut aussi annoncer un virement ou un envoi mobile money : le paiement reste en attente
+jusqu'à ce que l'équipe de la plateforme le confirme depuis /admin (`mark_paid`). Chaque paiement
+encaissé reçoit un numéro de reçu continu (WM-2026-000042) et un reçu PDF (`services/receipts.py`).
 """
 
 import secrets
@@ -23,7 +26,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal
-from app.models import AccountType, AiCall, Membership, Payment, Project, Subscription
+from app.models import (
+    AccountType,
+    AiCall,
+    Membership,
+    Payment,
+    PaymentStatus,
+    Project,
+    Subscription,
+)
+from app.models.billing import RECEIPT_SEQUENCE
 
 CURRENCY = "USD"
 TRIAL_DAYS = 14
@@ -31,6 +43,17 @@ TRIAL_DAYS = 14
 WELCOME_CREDITS = 5
 CREDIT_PACKS = (10, 50, 200)
 PROVIDER = "simulation"
+# Coordonnées de paiement hors ligne tant que PAYMENT_INSTRUCTIONS n'est pas renseigné.
+DEFAULT_PAYMENT_INSTRUCTIONS = (
+    "Virement : banque et numéro de compte à préciser. Mobile money : numéro à préciser. "
+    "Indiquez la référence du paiement dans le motif."
+)
+
+
+def payment_instructions() -> str:
+    return get_settings().payment_instructions.strip() or DEFAULT_PAYMENT_INSTRUCTIONS
+
+
 # Appels IA décomptés en crédits sur les formules à l'usage. La lecture de pages scannées, la
 # classification d'un retour et la recherche sont incluses.
 CREDIT_PURPOSES = frozenset(
@@ -339,6 +362,94 @@ def period(cycle: str) -> timedelta:
     return timedelta(days=365) if cycle == "annual" else timedelta(days=30)
 
 
+def _plan_and_amount(plan: Plan, cycle: str, pack: int | None) -> tuple[Decimal, str, int]:
+    """Montant, libellé et crédits d'un achat ; un pack doit être l'un de ceux du catalogue."""
+    if cycle == "usage":
+        if pack not in CREDIT_PACKS:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Pack de crédits inconnu")
+        return plan.credit * pack, f"{pack} crédits, formule {plan.id}", pack
+    return plan.price(cycle), f"Formule {plan.id}, {'1 an' if cycle == 'annual' else '1 mois'}", 0
+
+
+async def _ensure_members_fit(session: AsyncSession, org_id: UUID, plan: Plan) -> None:
+    if plan.max_members is not None and await count_members(session, org_id) > plan.max_members:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Cette formule est limitée à {plan.max_members} membre(s) : retirez d'abord des "
+            "membres de l'espace.",
+        )
+
+
+def new_payment(
+    org_id: UUID,
+    *,
+    plan_id: str,
+    cycle: str,
+    pack: int | None,
+    method: str,
+    user_id: UUID | None,
+    amount: Decimal | None = None,
+) -> Payment:
+    """Paiement en attente pour la formule choisie, au prix du catalogue sauf montant donné."""
+    plan = get_plan(plan_id)
+    price, description, credits = _plan_and_amount(plan, cycle, pack)
+    prefix = "SIM" if method == "online" else "WM"
+    return Payment(
+        organization_id=org_id,
+        plan=plan.id,
+        cycle=cycle,
+        amount=(price if amount is None else amount).quantize(Decimal("0.01")),
+        currency=CURRENCY,
+        credits=credits,
+        description=description,
+        provider=PROVIDER if method == "online" else "manual",
+        reference=f"{prefix}-{secrets.token_hex(4 if prefix == 'WM' else 6).upper()}",
+        paid_by=user_id,
+        status=PaymentStatus.PENDING,
+        method=method,
+        note="",
+        created_at=datetime.now(UTC),
+    )
+
+
+async def mark_paid(
+    session: AsyncSession, sub: Subscription, payment: Payment, *, recorded_by: UUID | None = None
+) -> None:
+    """Encaisse : numéro de reçu, puis la formule payée s'applique à l'espace."""
+    if payment.status != PaymentStatus.PENDING:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ce paiement n'est plus en attente")
+    await _ensure_members_fit(session, sub.organization_id, get_plan(payment.plan))
+    now = datetime.now(UTC)
+    number = await session.scalar(RECEIPT_SEQUENCE.next_value())
+    payment.status = PaymentStatus.PAID
+    payment.paid_at = now
+    payment.receipt_number = f"WM-{now:%Y}-{number:06d}"
+    if recorded_by is not None:
+        payment.recorded_by = recorded_by
+    _apply(sub, payment, now)
+    await session.flush()
+
+
+def _apply(sub: Subscription, payment: Payment, now: datetime) -> None:
+    if payment.cycle == "usage":
+        sub.credits += payment.credits
+        sub.current_period_end = None
+    else:
+        # Un renouvellement de la même formule prolonge la période en cours.
+        renewing = (
+            sub.plan == payment.plan
+            and sub.cycle == payment.cycle
+            and sub.status == "active"
+            and sub.current_period_end is not None
+            and sub.current_period_end > now
+        )
+        start = sub.current_period_end if renewing and sub.current_period_end else now
+        sub.current_period_end = start + period(payment.cycle)
+    sub.plan, sub.cycle, sub.status = payment.plan, payment.cycle, "active"
+    sub.trial_ends_at = None
+    sub.cancel_at_period_end = False
+
+
 async def checkout(
     session: AsyncSession,
     sub: Subscription,
@@ -347,59 +458,33 @@ async def checkout(
     cycle: str,
     pack: int | None,
     user_id: UUID,
+    method: str = "online",
 ) -> Payment:
-    """Encaisse (paiement simulé) puis applique la formule choisie."""
+    """Paiement en ligne (prestataire simulé, encaissé tout de suite) ou annonce d'un virement
+    ou d'un envoi mobile money, qui reste en attente jusqu'à sa confirmation."""
     plan = get_plan(plan_id)
-    org_id = sub.organization_id
-    if plan.max_members is not None and await count_members(session, org_id) > plan.max_members:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"Cette formule est limitée à {plan.max_members} membre(s) : retirez d'abord des "
-            "membres de l'espace.",
-        )
-    now = datetime.now(UTC)
-    if cycle == "usage":
-        if pack not in CREDIT_PACKS:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Pack de crédits inconnu")
-        amount = plan.credit * pack
-        description = f"{pack} crédits, formule {plan.id}"
-        credits = pack
-    else:
-        amount = plan.price(cycle)
-        description = f"Formule {plan.id}, {'1 an' if cycle == 'annual' else '1 mois'}"
-        credits = 0
-
-    payment = Payment(
-        organization_id=org_id,
-        plan=plan.id,
-        cycle=cycle,
-        amount=amount.quantize(Decimal("0.01")),
-        currency=CURRENCY,
-        credits=credits,
-        description=description,
-        provider=PROVIDER,
-        reference=f"SIM-{secrets.token_hex(6).upper()}",
-        paid_by=user_id,
-        created_at=now,
+    await _ensure_members_fit(session, sub.organization_id, plan)
+    payment = new_payment(
+        sub.organization_id, plan_id=plan.id, cycle=cycle, pack=pack, method=method, user_id=user_id
     )
     session.add(payment)
-
-    if cycle == "usage":
-        sub.credits += credits
-        sub.current_period_end = None
-    else:
-        # Un renouvellement de la même formule prolonge la période en cours.
-        renewing = (
-            sub.plan == plan.id
-            and sub.cycle == cycle
-            and sub.status == "active"
-            and sub.current_period_end is not None
-            and sub.current_period_end > now
-        )
-        start = sub.current_period_end if renewing and sub.current_period_end else now
-        sub.current_period_end = start + period(cycle)
-    sub.plan, sub.cycle, sub.status = plan.id, cycle, "active"
-    sub.trial_ends_at = None
-    sub.cancel_at_period_end = False
     await session.flush()
+    if method == "online":
+        await mark_paid(session, sub, payment)
     return payment
+
+
+async def refund(
+    session: AsyncSession, sub: Subscription, payment: Payment, *, recorded_by: UUID, note: str
+) -> None:
+    """Rembourse un paiement encaissé ; les crédits achetés non consommés sont retirés. La
+    formule n'est pas retirée d'office : l'administration ajuste l'abonnement si besoin."""
+    if payment.status != PaymentStatus.PAID:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Seul un paiement encaissé se rembourse")
+    payment.status = PaymentStatus.REFUNDED
+    payment.refunded_at = datetime.now(UTC)
+    payment.recorded_by = recorded_by
+    payment.note = note[:500]
+    if payment.credits:
+        sub.credits = max(0, sub.credits - payment.credits)
+    await session.flush()

@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models import AccountType
-from app.schemas.billing import Cycle
+from app.schemas.billing import Cycle, PaymentMethod, PaymentOut
 
 Status = Literal["trialing", "active", "canceled", "expired"]
 
@@ -60,4 +60,47 @@ class AdminSubscriptionUpdate(BaseModel):
     # Crédits ajoutés (ou retirés si négatif) au solde des formules à l'usage.
     add_credits: int | None = Field(default=None, ge=-100_000, le=100_000)
     cancel_at_period_end: bool | None = None
+    note: str = Field(default="", max_length=500)
+
+
+class AdminPaymentRow(PaymentOut):
+    organization_id: UUID
+    organization_name: str
+    paid_by_email: str | None
+
+
+class AdminPaymentsSummary(BaseModel):
+    pending: int
+    pending_amount: Decimal
+    paid_last_30_days: Decimal
+    refunded_last_30_days: Decimal
+    currency: str
+
+
+class AdminPayments(BaseModel):
+    summary: AdminPaymentsSummary
+    items: list[AdminPaymentRow]
+
+
+class AdminPaymentConfirm(BaseModel):
+    # Moyen effectivement utilisé, s'il diffère de celui annoncé.
+    method: PaymentMethod | None = None
+    note: str = Field(default="", max_length=500)
+
+
+class AdminPaymentRefund(BaseModel):
+    note: str = Field(min_length=3, max_length=500)
+
+
+class AdminPaymentRecord(BaseModel):
+    """Paiement reçu hors de l'application (virement, mobile money, espèces)."""
+
+    plan: str
+    cycle: Cycle
+    pack: int | None = None
+    # Montant réellement reçu ; par défaut, le prix du catalogue.
+    amount: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    method: Literal["mobile_money", "bank_transfer", "cash", "other"]
+    # Référence du virement ou de la transaction mobile money.
+    reference: str = Field(default="", max_length=80)
     note: str = Field(default="", max_length=500)

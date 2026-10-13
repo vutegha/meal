@@ -8,6 +8,10 @@ from pydantic import BaseModel, ConfigDict
 from app.models import AccountType
 
 Cycle = Literal["monthly", "annual", "usage"]
+PaymentStatus = Literal["pending", "paid", "canceled", "failed", "refunded"]
+PaymentMethod = Literal["online", "mobile_money", "bank_transfer", "cash", "other"]
+# Ce qu'un client peut choisir : en ligne, ou annoncer un virement ou un envoi mobile money.
+CheckoutMethod = Literal["online", "mobile_money", "bank_transfer"]
 
 
 class PlanLimits(BaseModel):
@@ -37,6 +41,8 @@ class Catalog(BaseModel):
     welcome_credits: int
     credit_packs: list[int]
     plans: list[PlanOut]
+    # Coordonnées de paiement par virement ou mobile money.
+    payment_instructions: str
 
 
 class BillingUsage(BaseModel):
@@ -64,6 +70,7 @@ class CheckoutIn(BaseModel):
     cycle: Cycle
     # Nombre de crédits achetés (formules à l'usage) : l'un des packs du catalogue.
     pack: int | None = None
+    method: CheckoutMethod = "online"
 
 
 class PaymentOut(BaseModel):
@@ -78,6 +85,12 @@ class PaymentOut(BaseModel):
     description: str
     provider: str
     reference: str
+    status: PaymentStatus
+    method: PaymentMethod
+    receipt_number: str | None
+    paid_at: datetime | None
+    refunded_at: datetime | None
+    note: str
     created_at: datetime
 
 

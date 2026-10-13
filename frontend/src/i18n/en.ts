@@ -1028,6 +1028,7 @@ export const en: Messages = {
       messaging: "SMS and WhatsApp with communities",
     },
     status: {
+      label: "Status",
       trialing: "Free trial",
       active: "Active",
       canceled: "Cancelled",
@@ -1052,7 +1053,37 @@ export const en: Messages = {
     packOption: "{{count}} credits, {{price}}",
     pay: "Pay {{amount}}",
     simulated: "Demo mode: payment is simulated and nothing is charged.",
-    paid: "Payment received (ref. {{reference}}). The {{plan}} plan is active.",
+    paid: "Payment received (receipt {{reference}}). The {{plan}} plan is active.",
+    method: "Payment method",
+    methods: {
+      online: "Online",
+      mobile_money: "Mobile money",
+      bank_transfer: "Bank transfer",
+      cash: "Cash",
+      other: "Other",
+    },
+    announce: "Announce a payment of {{amount}}",
+    offlineHint:
+      "You get a reference and our payment details; the plan starts as soon as the payment arrives.",
+    paymentStatus: {
+      pending: "Pending",
+      paid: "Paid",
+      canceled: "Cancelled",
+      failed: "Failed",
+      refunded: "Refunded",
+    },
+    receipt: "PDF receipt",
+    receiptOf: "Download receipt {{number}}",
+    pending: {
+      title: "Pending payments",
+      line: "{{amount}}, {{plan}} plan ({{method}})",
+      reference: "Reference to quote with your payment:",
+      next: "The plan starts as soon as we receive the payment; you will then get a receipt.",
+      cancel: "Cancel this payment",
+      confirmCancel: "Cancel this announced payment?",
+      announced:
+        "Payment announced (ref. {{reference}}). Follow the instructions below; the plan will start on receipt.",
+    },
     cancel: "Cancel renewal",
     confirmCancel: "The plan will stay active until the end of the current period. Cancel?",
     payments: "Payment history",
@@ -1088,9 +1119,33 @@ export const en: Messages = {
   },
   admin: {
     badge: "Administration",
-    title: "Platform subscriptions",
+    tabs: { subscriptions: "Subscriptions", payments: "Payments" },
+    payments: {
+      pending: "Pending payments",
+      pendingAmount: "Amount expected",
+      refunded: "Refunded in 30 days",
+      searchPlaceholder: "Workspace, email, reference or receipt",
+      confirm: "Confirm receipt",
+      confirmOf: "Confirm receipt of payment {{reference}}",
+      confirmPrompt:
+        "Confirm receipt of payment {{reference}}? The plan will apply to the workspace. Note (optional):",
+      refund: "Refund",
+      refundPrompt: "Reason for refunding receipt {{number}}:",
+      empty: "No payment matches these filters.",
+    },
+    record: {
+      title: "Record a payment received for {{name}}",
+      intro:
+        "For a payment received outside the app: the paid plan applies and a receipt is issued.",
+      amount: "Amount received",
+      amountHint: "Empty: catalogue price.",
+      reference: "Transaction reference",
+      submit: "Record payment",
+      saved: "Payment recorded, receipt {{number}}.",
+    },
+    title: "Platform administration",
     subtitle:
-      "Every workspace, its plan and its usage. Changes made here bypass payment and are recorded in the workspace's audit log.",
+      "Subscriptions and payments of every workspace. Each change made here is recorded in that workspace's audit log.",
     backToApp: "Back to my workspace",
     summary: {
       organizations: "Workspaces",

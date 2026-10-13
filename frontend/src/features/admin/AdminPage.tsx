@@ -16,6 +16,8 @@ import {
 import { adminSubscriptionsQuery, catalogQuery, meQuery } from "@/lib/queries";
 import { tokenStore } from "@/lib/tokens";
 
+import { PaymentsView, RecordPayment } from "./AdminPayments";
+
 const STATUSES = ["trialing", "active", "canceled", "expired"] as const;
 const STATUS_TONE = {
   trialing: "info",
@@ -34,6 +36,7 @@ export function AdminPage() {
   const [filters, setFilters] = useState<AdminFilters>({});
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<"subscriptions" | "payments">("subscriptions");
   const list = useQuery({ ...adminSubscriptionsQuery(filters), placeholderData: keepPreviousData });
   const data = list.data;
   const row = data?.items.find((r) => r.organization_id === selected);
@@ -91,134 +94,162 @@ export function AdminPage() {
           <p className="mt-1 text-sm text-slate-600">{t("admin.subtitle")}</p>
         </div>
 
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {tiles.map(([label, value]) => (
-            <li key={label} className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="text-xs text-slate-500">{label}</p>
-              <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
-            </li>
+        <div role="tablist" className="flex gap-1 border-b border-slate-200">
+          {(["subscriptions", "payments"] as const).map((key) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={view === key}
+              onClick={() => setView(key)}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+                view === key
+                  ? "border-brand-700 text-brand-800"
+                  : "border-transparent text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {t(`admin.tabs.${key}`)}
+            </button>
           ))}
-        </ul>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <form onSubmit={submitSearch} className="flex items-end gap-2">
-            <Field
-              label={t("admin.search")}
-              placeholder={t("admin.searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button type="submit" variant="ghost">
-              {t("admin.searchAction")}
-            </Button>
-          </form>
-          <Select
-            label={t("admin.status")}
-            value={filters.status ?? ""}
-            onChange={(e) => setFilter("status", e.target.value)}
-          >
-            <option value="">{t("admin.all")}</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(`billing.status.${s}`)}
-              </option>
-            ))}
-          </Select>
-          <Select
-            label={t("admin.plan")}
-            value={filters.plan ?? ""}
-            onChange={(e) => setFilter("plan", e.target.value)}
-          >
-            <option value="">{t("admin.all")}</option>
-            {catalog?.plans.map((p) => (
-              <option key={p.id} value={p.id}>
-                {t(`billing.plans.${p.id}`)}
-              </option>
-            ))}
-          </Select>
         </div>
 
-        <ErrorText error={list.error} />
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[60rem] text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
-                <th className="p-3 font-medium">{t("admin.columns.organization")}</th>
-                <th className="p-3 font-medium">{t("admin.columns.plan")}</th>
-                <th className="p-3 font-medium">{t("admin.columns.status")}</th>
-                <th className="p-3 font-medium">{t("admin.columns.ends")}</th>
-                <th className="p-3 font-medium">{t("admin.columns.usage")}</th>
-                <th className="p-3 text-right font-medium">{t("admin.columns.paid")}</th>
-                <th className="p-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {data?.items.map((r) => (
-                <tr
-                  key={r.organization_id}
-                  className={`border-b border-slate-100 last:border-0 ${
-                    r.organization_id === selected ? "bg-brand-50/60" : ""
-                  }`}
-                >
-                  <td className="p-3">
-                    <p className="font-medium text-slate-900">{r.organization_name}</p>
-                    <p className="text-xs text-slate-500">
-                      {r.contact_email ?? "—"} ·{" "}
-                      {t("admin.since", { date: date(r.organization_created_at) })}
-                    </p>
-                  </td>
-                  <td className="p-3">
-                    <p className="font-medium text-slate-900">{t(`billing.plans.${r.plan}`)}</p>
-                    <p className="text-xs text-slate-500">
-                      {t(`site.pricing.cycles.${r.cycle}`)} ·{" "}
-                      {t(`billing.accountType.${r.account_type}`)}
-                    </p>
-                  </td>
-                  <td className="p-3">
-                    <Badge tone={STATUS_TONE[r.status]}>{t(`billing.status.${r.status}`)}</Badge>
-                  </td>
-                  <td className="p-3 text-slate-700">
-                    {r.cycle === "usage" && r.status !== "trialing"
-                      ? t("billing.creditsCount", { count: r.credits })
-                      : date(r.status === "trialing" ? r.trial_ends_at : r.current_period_end)}
-                  </td>
-                  <td className="p-3 text-xs text-slate-600">
-                    {t("admin.usageLine", {
-                      projects: r.projects,
-                      members: r.members,
-                      credits: r.credits_used_this_month,
-                    })}
-                  </td>
-                  <td className="p-3 text-right text-slate-900">{money(r.total_paid)}</td>
-                  <td className="p-3 text-right">
-                    <Button
-                      variant="ghost"
-                      aria-label={t("admin.manageOf", { name: r.organization_name })}
-                      onClick={() => setSelected(r.organization_id)}
-                    >
-                      {t("admin.manage")}
-                    </Button>
-                  </td>
-                </tr>
+        {view === "payments" && <PaymentsView />}
+        {view === "subscriptions" && (
+          <>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              {tiles.map(([label, value]) => (
+                <li key={label} className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
+                </li>
               ))}
-              {data && data.items.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
-                    {t("admin.empty")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </ul>
 
-        {row && (
-          <EditSubscription
-            key={row.organization_id}
-            row={row}
-            plans={catalog?.plans.map((p) => p.id) ?? []}
-            onClose={() => setSelected(null)}
-          />
+            <div className="flex flex-wrap items-end gap-3">
+              <form onSubmit={submitSearch} className="flex items-end gap-2">
+                <Field
+                  label={t("admin.search")}
+                  placeholder={t("admin.searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <Button type="submit" variant="ghost">
+                  {t("admin.searchAction")}
+                </Button>
+              </form>
+              <Select
+                label={t("admin.status")}
+                value={filters.status ?? ""}
+                onChange={(e) => setFilter("status", e.target.value)}
+              >
+                <option value="">{t("admin.all")}</option>
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`billing.status.${s}`)}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label={t("admin.plan")}
+                value={filters.plan ?? ""}
+                onChange={(e) => setFilter("plan", e.target.value)}
+              >
+                <option value="">{t("admin.all")}</option>
+                {catalog?.plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {t(`billing.plans.${p.id}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <ErrorText error={list.error} />
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table className="w-full min-w-[60rem] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th className="p-3 font-medium">{t("admin.columns.organization")}</th>
+                    <th className="p-3 font-medium">{t("admin.columns.plan")}</th>
+                    <th className="p-3 font-medium">{t("admin.columns.status")}</th>
+                    <th className="p-3 font-medium">{t("admin.columns.ends")}</th>
+                    <th className="p-3 font-medium">{t("admin.columns.usage")}</th>
+                    <th className="p-3 text-right font-medium">{t("admin.columns.paid")}</th>
+                    <th className="p-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.items.map((r) => (
+                    <tr
+                      key={r.organization_id}
+                      className={`border-b border-slate-100 last:border-0 ${
+                        r.organization_id === selected ? "bg-brand-50/60" : ""
+                      }`}
+                    >
+                      <td className="p-3">
+                        <p className="font-medium text-slate-900">{r.organization_name}</p>
+                        <p className="text-xs text-slate-500">
+                          {r.contact_email ?? "—"} ·{" "}
+                          {t("admin.since", { date: date(r.organization_created_at) })}
+                        </p>
+                      </td>
+                      <td className="p-3">
+                        <p className="font-medium text-slate-900">{t(`billing.plans.${r.plan}`)}</p>
+                        <p className="text-xs text-slate-500">
+                          {t(`site.pricing.cycles.${r.cycle}`)} ·{" "}
+                          {t(`billing.accountType.${r.account_type}`)}
+                        </p>
+                      </td>
+                      <td className="p-3">
+                        <Badge tone={STATUS_TONE[r.status]}>
+                          {t(`billing.status.${r.status}`)}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-slate-700">
+                        {r.cycle === "usage" && r.status !== "trialing"
+                          ? t("billing.creditsCount", { count: r.credits })
+                          : date(r.status === "trialing" ? r.trial_ends_at : r.current_period_end)}
+                      </td>
+                      <td className="p-3 text-xs text-slate-600">
+                        {t("admin.usageLine", {
+                          projects: r.projects,
+                          members: r.members,
+                          credits: r.credits_used_this_month,
+                        })}
+                      </td>
+                      <td className="p-3 text-right text-slate-900">{money(r.total_paid)}</td>
+                      <td className="p-3 text-right">
+                        <Button
+                          variant="ghost"
+                          aria-label={t("admin.manageOf", { name: r.organization_name })}
+                          onClick={() => setSelected(r.organization_id)}
+                        >
+                          {t("admin.manage")}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {data && data.items.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-slate-500">
+                        {t("admin.empty")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {row && (
+              <EditSubscription
+                key={row.organization_id}
+                row={row}
+                plans={catalog?.plans.map((p) => p.id) ?? []}
+                onClose={() => setSelected(null)}
+              />
+            )}
+            {row && catalog && (
+              <RecordPayment key={`pay-${row.organization_id}`} row={row} catalog={catalog} />
+            )}
+          </>
         )}
       </main>
     </div>

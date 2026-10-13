@@ -235,3 +235,9 @@ export const adminSubscriptionsQuery = (filters: AdminFilters) =>
     queryKey: ["admin", "subscriptions", filters],
     queryFn: () => adminApi.subscriptions(filters),
   });
+
+export const adminPaymentsQuery = (filters: { q?: string; status?: string }) =>
+  queryOptions({
+    queryKey: ["admin", "payments", filters],
+    queryFn: () => adminApi.payments(filters),
+  });

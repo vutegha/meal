@@ -64,6 +64,337 @@
         "title": "ActivityBudget",
         "type": "object"
       },
+      "AdminPaymentConfirm": {
+        "properties": {
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "online",
+                  "mobile_money",
+                  "bank_transfer",
+                  "cash",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "title": "AdminPaymentConfirm",
+        "type": "object"
+      },
+      "AdminPaymentRecord": {
+        "description": "Paiement reçu hors de l'application (virement, mobile money, espèces).",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "pack": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "reference": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "cycle",
+          "method"
+        ],
+        "title": "AdminPaymentRecord",
+        "type": "object"
+      },
+      "AdminPaymentRefund": {
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "AdminPaymentRefund",
+        "type": "object"
+      },
+      "AdminPaymentRow": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "paid_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid By Email"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "canceled",
+              "failed",
+              "refunded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "cycle",
+          "amount",
+          "currency",
+          "credits",
+          "description",
+          "provider",
+          "reference",
+          "status",
+          "method",
+          "receipt_number",
+          "paid_at",
+          "refunded_at",
+          "note",
+          "created_at",
+          "organization_id",
+          "organization_name",
+          "paid_by_email"
+        ],
+        "title": "AdminPaymentRow",
+        "type": "object"
+      },
+      "AdminPayments": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPaymentRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminPaymentsSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ],
+        "title": "AdminPayments",
+        "type": "object"
+      },
+      "AdminPaymentsSummary": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "paid_last_30_days": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Paid Last 30 Days",
+            "type": "string"
+          },
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "pending_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pending Amount",
+            "type": "string"
+          },
+          "refunded_last_30_days": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Refunded Last 30 Days",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pending",
+          "pending_amount",
+          "paid_last_30_days",
+          "refunded_last_30_days",
+          "currency"
+        ],
+        "title": "AdminPaymentsSummary",
+        "type": "object"
+      },
       "AdminSubscriptionRow": {
         "properties": {
           "account_type": {
@@ -1350,6 +1681,10 @@
             "title": "Currency",
             "type": "string"
           },
+          "payment_instructions": {
+            "title": "Payment Instructions",
+            "type": "string"
+          },
           "plans": {
             "items": {
               "$ref": "#/components/schemas/PlanOut"
@@ -1371,7 +1706,8 @@
           "trial_days",
           "welcome_credits",
           "credit_packs",
-          "plans"
+          "plans",
+          "payment_instructions"
         ],
         "title": "Catalog",
         "type": "object"
@@ -1417,6 +1753,16 @@
               "usage"
             ],
             "title": "Cycle",
+            "type": "string"
+          },
+          "method": {
+            "default": "online",
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer"
+            ],
+            "title": "Method",
             "type": "string"
           },
           "pack": {
@@ -5370,6 +5716,33 @@
             "title": "Id",
             "type": "string"
           },
+          "method": {
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
           "plan": {
             "title": "Plan",
             "type": "string"
@@ -5378,8 +5751,42 @@
             "title": "Provider",
             "type": "string"
           },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
           "reference": {
             "title": "Reference",
+            "type": "string"
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "canceled",
+              "failed",
+              "refunded"
+            ],
+            "title": "Status",
             "type": "string"
           }
         },
@@ -5393,6 +5800,12 @@
           "description",
           "provider",
           "reference",
+          "status",
+          "method",
+          "receipt_number",
+          "paid_at",
+          "refunded_at",
+          "note",
           "created_at"
         ],
         "title": "PaymentOut",
@@ -7567,6 +7980,241 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/payments": {
+      "get": {
+        "description": "Tous les paiements, les plus récents d'abord ; ceux en attente sont à confirmer.",
+        "operationId": "list_payments_api_v1_admin_payments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayments"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/confirm": {
+      "post": {
+        "description": "Le virement ou l'envoi mobile money annoncé est arrivé : la formule s'applique.",
+        "operationId": "confirm_payment_api_v1_admin_payments__payment_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Payment",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/receipt.pdf": {
+      "get": {
+        "operationId": "admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Receipt",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/refund": {
+      "post": {
+        "operationId": "refund_payment_api_v1_admin_payments__payment_id__refund_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentRefund"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refund Payment",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
     "/api/v1/admin/subscriptions": {
       "get": {
         "description": "Tous les espaces, leur formule et leur usage. Les filtres ne changent pas le résumé.",
@@ -7709,6 +8357,65 @@
           }
         ],
         "summary": "Update Subscription",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/subscriptions/{org_id}/payments": {
+      "post": {
+        "description": "Enregistre un paiement reçu hors de l'application ; la formule payée s'applique.",
+        "operationId": "record_payment_api_v1_admin_subscriptions__org_id__payments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Payment",
         "tags": [
           "administration"
         ]
@@ -8388,6 +9095,121 @@
           }
         ],
         "summary": "List Payments",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/cancel": {
+      "post": {
+        "description": "Annule un virement ou un envoi mobile money annoncé et pas encore reçu.",
+        "operationId": "cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Payment",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/receipt.pdf": {
+      "get": {
+        "operationId": "payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Payment Receipt",
         "tags": [
           "abonnements"
         ]

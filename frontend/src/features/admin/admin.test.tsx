@@ -57,6 +57,37 @@ const list = {
   },
   items: [row],
 };
+const payment = {
+  id: "pay-1",
+  plan: "team",
+  cycle: "annual",
+  amount: "590.00",
+  currency: "USD",
+  credits: 0,
+  description: "Formule team, 1 an",
+  provider: "manual",
+  reference: "WM-1A2B3C4D",
+  status: "pending",
+  method: "bank_transfer",
+  receipt_number: null,
+  paid_at: null,
+  refunded_at: null,
+  note: "",
+  created_at: "2026-10-13T10:00:00Z",
+  organization_id: "org-2",
+  organization_name: "ONG Kivu",
+  paid_by_email: "awa@kivu.org",
+};
+const payments = {
+  summary: {
+    pending: 1,
+    pending_amount: "590.00",
+    paid_last_30_days: "0.00",
+    refunded_last_30_days: "0.00",
+    currency: "USD",
+  },
+  items: [payment],
+};
 const catalog = {
   currency: "USD",
   trial_days: 14,
@@ -81,6 +112,10 @@ function setup(admin: boolean) {
     let body: unknown = [];
     if (url.endsWith("/auth/me")) body = me(admin);
     else if (url.endsWith("/billing/plans")) body = catalog;
+    else if (url.includes("/confirm")) {
+      patched = { url, body: (await (input as Request).json()) as Record<string, unknown> };
+      body = { ...payment, status: "paid", receipt_number: "WM-2026-000007" };
+    } else if (url.includes("/admin/payments")) body = payments;
     else if (typeof input !== "string" && input.method === "PATCH") {
       const changes = (await input.json()) as Record<string, unknown>;
       patched = { url, body: changes };
@@ -107,7 +142,7 @@ afterEach(() => {
 it("liste les abonnements et modifie celui d'un espace", async () => {
   setup(true);
   expect(
-    await screen.findByRole("heading", { name: "Abonnements de la plateforme" }),
+    await screen.findByRole("heading", { name: "Administration de la plateforme" }),
   ).toBeInTheDocument();
   const line = (await screen.findByText("ONG Kivu")).closest("tr")!;
   expect(within(line).getByText("Expirée")).toBeInTheDocument();
@@ -117,7 +152,7 @@ it("liste les abonnements et modifie celui d'un espace", async () => {
   // Les filtres viennent en premier, puis le formulaire de l'espace choisi.
   await user.selectOptions(screen.getAllByLabelText("Formule")[1], "institution");
   await user.selectOptions(screen.getAllByLabelText("Statut")[1], "active");
-  await user.type(screen.getByLabelText("Motif"), "Virement reçu");
+  await user.type(screen.getAllByLabelText("Motif")[0], "Virement reçu");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   expect(await screen.findByText("Abonnement mis à jour.")).toBeInTheDocument();
@@ -128,4 +163,18 @@ it("liste les abonnements et modifie celui d'un espace", async () => {
 it("renvoie les autres comptes vers l'accueil", async () => {
   const { router } = setup(false);
   await waitFor(() => expect(router.state.location.pathname).toBe("/orgs/org-1"));
+});
+
+it("confirme un virement reçu depuis l'onglet Paiements", async () => {
+  setup(true);
+  vi.stubGlobal("prompt", () => "Reçu sur le compte");
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("tab", { name: "Paiements" }));
+  const line = (await screen.findByText("WM-1A2B3C4D")).closest("tr")!;
+  expect(within(line).getByText("En attente")).toBeInTheDocument();
+  await user.click(
+    within(line).getByRole("button", { name: "Confirmer la réception du paiement WM-1A2B3C4D" }),
+  );
+  await waitFor(() => expect(patched?.url).toContain("/api/v1/admin/payments/pay-1/confirm"));
+  expect(patched?.body).toEqual({ note: "Reçu sur le compte" });
 });

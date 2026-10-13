@@ -20,7 +20,14 @@ from app.models.ai import (
     ProposalStatus,
     SourceDocument,
 )
-from app.models.billing import CYCLES, AccountType, Payment, Subscription
+from app.models.billing import (
+    CYCLES,
+    PAYMENT_METHODS,
+    AccountType,
+    Payment,
+    PaymentStatus,
+    Subscription,
+)
 from app.models.execution import (
     ActivityExecution,
     Evidence,
@@ -49,6 +56,8 @@ __all__ = [
     "CYCLES",
     "AccountType",
     "Payment",
+    "PaymentStatus",
+    "PAYMENT_METHODS",
     "Subscription",
     "FIELD_TYPES",
     "FORM_STATUSES",

@@ -3,10 +3,14 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Badge, Button, Card, ErrorText, Select } from "@/components/ui";
+import { download } from "@/lib/api";
 import {
   billingApi,
+  CHECKOUT_METHODS,
+  type CheckoutMethod,
   type Cycle,
   formatPrice,
+  PAYMENT_STATUS_TONE,
   type Payment,
   type Subscription,
 } from "@/lib/billing";
@@ -105,45 +109,127 @@ function CurrentPlan({ sub }: { sub: Subscription }) {
   );
 }
 
-function Payments({ orgId }: { orgId: string }) {
+/** Virements et envois mobile money annoncés, en attente de réception. */
+function PendingPayments({
+  orgId,
+  payments,
+  instructions,
+}: {
+  orgId: string;
+  payments: Payment[];
+  instructions: string;
+}) {
   const { t, i18n } = useTranslation();
-  const { data, error } = useQuery(paymentsQuery(orgId));
+  const queryClient = useQueryClient();
+  const cancel = useMutation({
+    mutationFn: (id: string) => billingApi.cancelPayment(orgId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "billing"] }),
+  });
+  if (!payments.length) return null;
+  return (
+    <Card title={t("billing.pending.title")}>
+      <ul className="space-y-3">
+        {payments.map((p) => (
+          <li key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <p className="font-medium text-amber-900">
+              {t("billing.pending.line", {
+                amount: formatPrice(p.amount, p.currency, i18n.language),
+                method: t(`billing.methods.${p.method}`),
+                plan: t(`billing.plans.${p.plan}`),
+              })}
+            </p>
+            <p className="mt-1 text-amber-900">
+              {t("billing.pending.reference")}{" "}
+              <span className="font-mono font-semibold">{p.reference}</span>
+            </p>
+            <p className="mt-2 text-slate-700">{instructions}</p>
+            <p className="mt-1 text-xs text-slate-500">{t("billing.pending.next")}</p>
+            <Button
+              variant="ghost"
+              className="mt-2"
+              disabled={cancel.isPending}
+              onClick={() =>
+                window.confirm(t("billing.pending.confirmCancel")) && cancel.mutate(p.id)
+              }
+            >
+              {t("billing.pending.cancel")}
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <ErrorText error={cancel.error} />
+    </Card>
+  );
+}
+
+function Payments({ orgId, payments }: { orgId: string; payments: Payment[] | undefined }) {
+  const { t, i18n } = useTranslation();
   const date = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
+  const receipt = useMutation({
+    mutationFn: (p: Payment) =>
+      download(billingApi.receiptPath(orgId, p.id), `recu-${p.receipt_number}.pdf`),
+  });
   return (
     <Card title={t("billing.payments")}>
-      <ErrorText error={error} />
-      {data?.length === 0 && <p className="text-sm text-slate-500">{t("billing.noPayments")}</p>}
-      {!!data?.length && (
+      {payments?.length === 0 && (
+        <p className="text-sm text-slate-500">{t("billing.noPayments")}</p>
+      )}
+      {!!payments?.length && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-slate-500">
                 <th className="py-2 pr-3 font-medium">{t("billing.date")}</th>
                 <th className="py-2 pr-3 font-medium">{t("billing.description")}</th>
+                <th className="py-2 pr-3 font-medium">{t("billing.status.label")}</th>
                 <th className="py-2 pr-3 text-right font-medium">{t("billing.amount")}</th>
-                <th className="py-2 font-medium">{t("billing.reference")}</th>
+                <th className="py-2 pr-3 font-medium">{t("billing.reference")}</th>
+                <th className="py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {data.map((p: Payment) => (
+              {payments.map((p) => (
                 <tr key={p.id}>
                   <td className="py-2 pr-3 whitespace-nowrap">
-                    {date.format(new Date(p.created_at))}
+                    {date.format(new Date(p.paid_at ?? p.created_at))}
                   </td>
                   <td className="py-2 pr-3">
                     {t(`billing.plans.${p.plan}`)} · {t(`site.pricing.cycles.${p.cycle}`)}
                     {p.credits > 0 && ` · ${t("billing.creditsCount", { count: p.credits })}`}
+                    <span className="block text-xs text-slate-500">
+                      {t(`billing.methods.${p.method}`)}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Badge tone={PAYMENT_STATUS_TONE[p.status]}>
+                      {t(`billing.paymentStatus.${p.status}`)}
+                    </Badge>
                   </td>
                   <td className="py-2 pr-3 text-right whitespace-nowrap">
                     {formatPrice(p.amount, p.currency, i18n.language)}
                   </td>
-                  <td className="py-2 font-mono text-xs text-slate-500">{p.reference}</td>
+                  <td className="py-2 pr-3 font-mono text-xs text-slate-500">
+                    {p.receipt_number ?? p.reference}
+                  </td>
+                  <td className="py-2 text-right">
+                    {p.receipt_number && (
+                      <Button
+                        variant="ghost"
+                        disabled={receipt.isPending}
+                        aria-label={t("billing.receiptOf", { number: p.receipt_number })}
+                        onClick={() => receipt.mutate(p)}
+                      >
+                        {t("billing.receipt")}
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      <ErrorText error={receipt.error} />
     </Card>
   );
 }
@@ -158,21 +244,28 @@ export function BillingPage() {
   const [cycle, setCycle] = useState<Cycle | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
   const [pack, setPack] = useState<number | null>(null);
+  const [method, setMethod] = useState<CheckoutMethod>("online");
   const [message, setMessage] = useState("");
+  const { data: payments, error: paymentsError } = useQuery({
+    ...paymentsQuery(orgId),
+    enabled: isAdmin,
+  });
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["orgs", orgId, "billing"] });
     await queryClient.invalidateQueries({ queryKey: ["me"] });
   };
   const checkout = useMutation({
-    mutationFn: (body: { plan: string; cycle: Cycle; pack?: number }) =>
+    mutationFn: (body: { plan: string; cycle: Cycle; pack?: number; method: CheckoutMethod }) =>
       billingApi.checkout(orgId, body),
     onSuccess: async (out) => {
       setMessage(
-        t("billing.paid", {
-          reference: out.payment.reference,
-          plan: t(`billing.plans.${out.subscription.plan}`),
-        }),
+        out.payment.status === "paid"
+          ? t("billing.paid", {
+              reference: out.payment.receipt_number ?? out.payment.reference,
+              plan: t(`billing.plans.${out.subscription.plan}`),
+            })
+          : t("billing.pending.announced", { reference: out.payment.reference }),
       );
       await refresh();
     },
@@ -196,6 +289,7 @@ export function BillingPage() {
     checkout.mutate({
       plan: chosenPlan.id,
       cycle: chosenCycle,
+      method,
       ...(chosenCycle === "usage" ? { pack: chosenPack } : {}),
     });
   };
@@ -207,6 +301,14 @@ export function BillingPage() {
         <p role="status" className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
           {message}
         </p>
+      )}
+
+      {isAdmin && (
+        <PendingPayments
+          orgId={orgId}
+          payments={payments?.filter((p) => p.status === "pending") ?? []}
+          instructions={catalog.payment_instructions}
+        />
       )}
 
       {isAdmin ? (
@@ -263,12 +365,40 @@ export function BillingPage() {
                   </Select>
                 </div>
               )}
+              <fieldset className="w-full">
+                <legend className="mb-2 text-sm font-medium text-slate-700">
+                  {t("billing.method")}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {CHECKOUT_METHODS.map((value) => (
+                    <label
+                      key={value}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                        method === value
+                          ? "border-brand-600 bg-white text-brand-800"
+                          : "border-slate-200 text-slate-700"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="method"
+                        value={value}
+                        checked={method === value}
+                        onChange={() => setMethod(value)}
+                      />
+                      {t(`billing.methods.${value}`)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <Button type="submit" disabled={checkout.isPending}>
-                {t("billing.pay", {
+                {t(method === "online" ? "billing.pay" : "billing.announce", {
                   amount: formatPrice(amount, catalog.currency, i18n.language),
                 })}
               </Button>
-              <p className="flex-1 text-xs text-slate-500">{t("billing.simulated")}</p>
+              <p className="flex-1 text-xs text-slate-500">
+                {method === "online" ? t("billing.simulated") : t("billing.offlineHint")}
+              </p>
             </div>
             <div className="mt-3">
               <ErrorText error={checkout.error} />
@@ -293,7 +423,12 @@ export function BillingPage() {
         </Card>
       )}
 
-      {isAdmin && <Payments orgId={orgId} />}
+      {isAdmin && (
+        <>
+          <ErrorText error={paymentsError} />
+          <Payments orgId={orgId} payments={payments} />
+        </>
+      )}
     </>
   );
 }

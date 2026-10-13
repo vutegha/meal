@@ -1042,6 +1042,7 @@ export const fr = {
       messaging: "SMS et WhatsApp avec les communautés",
     },
     status: {
+      label: "Statut",
       trialing: "Essai gratuit",
       active: "Active",
       canceled: "Résiliée",
@@ -1066,7 +1067,37 @@ export const fr = {
     packOption: "{{count}} crédits, {{price}}",
     pay: "Payer {{amount}}",
     simulated: "Mode démonstration : le paiement est simulé et aucun montant n'est prélevé.",
-    paid: "Paiement reçu (réf. {{reference}}). La formule {{plan}} est active.",
+    paid: "Paiement reçu (reçu {{reference}}). La formule {{plan}} est active.",
+    method: "Moyen de paiement",
+    methods: {
+      online: "En ligne",
+      mobile_money: "Mobile money",
+      bank_transfer: "Virement bancaire",
+      cash: "Espèces",
+      other: "Autre",
+    },
+    announce: "Annoncer un paiement de {{amount}}",
+    offlineHint:
+      "Vous recevez une référence et nos coordonnées de paiement ; la formule s'active dès réception du paiement.",
+    paymentStatus: {
+      pending: "En attente",
+      paid: "Payé",
+      canceled: "Annulé",
+      failed: "Échoué",
+      refunded: "Remboursé",
+    },
+    receipt: "Reçu PDF",
+    receiptOf: "Télécharger le reçu {{number}}",
+    pending: {
+      title: "Paiements en attente",
+      line: "{{amount}}, formule {{plan}} ({{method}})",
+      reference: "Référence à indiquer dans le motif :",
+      next: "La formule s'active dès que nous recevons le paiement ; vous recevrez alors un reçu.",
+      cancel: "Annuler ce paiement",
+      confirmCancel: "Annuler ce paiement annoncé ?",
+      announced:
+        "Paiement annoncé (réf. {{reference}}). Suivez les instructions ci-dessous ; la formule s'activera dès réception.",
+    },
     cancel: "Résilier le renouvellement",
     confirmCancel: "La formule restera active jusqu'à la fin de la période en cours. Résilier ?",
     payments: "Historique des paiements",
@@ -1103,9 +1134,33 @@ export const fr = {
   },
   admin: {
     badge: "Administration",
-    title: "Abonnements de la plateforme",
+    tabs: { subscriptions: "Abonnements", payments: "Paiements" },
+    payments: {
+      pending: "Paiements en attente",
+      pendingAmount: "Montant attendu",
+      refunded: "Remboursé sur 30 jours",
+      searchPlaceholder: "Espace, e-mail, référence ou reçu",
+      confirm: "Confirmer la réception",
+      confirmOf: "Confirmer la réception du paiement {{reference}}",
+      confirmPrompt:
+        "Confirmer la réception du paiement {{reference}} ? La formule s'appliquera à l'espace. Note (facultative) :",
+      refund: "Rembourser",
+      refundPrompt: "Motif du remboursement du reçu {{number}} :",
+      empty: "Aucun paiement ne correspond à ces filtres.",
+    },
+    record: {
+      title: "Enregistrer un paiement reçu pour {{name}}",
+      intro:
+        "Pour un paiement reçu hors de l'application : la formule payée s'applique et un reçu est émis.",
+      amount: "Montant reçu",
+      amountHint: "Vide : prix du catalogue.",
+      reference: "Référence de la transaction",
+      submit: "Enregistrer le paiement",
+      saved: "Paiement enregistré, reçu {{number}}.",
+    },
+    title: "Administration de la plateforme",
     subtitle:
-      "Tous les espaces, leur formule et leur usage. Les changements faits ici ne passent pas par un paiement et sont inscrits au journal de l'espace.",
+      "Abonnements et paiements de tous les espaces. Chaque changement fait ici est inscrit au journal de l'espace concerné.",
     backToApp: "Retour à mon espace",
     summary: {
       organizations: "Espaces",

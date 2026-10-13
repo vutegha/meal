@@ -70,7 +70,12 @@ Pour recevoir les SMS, choisissez un secret `SMS_WEBHOOK_TOKEN` et déclarez che
 
 Trois formules, définies dans `backend/app/services/billing.py` (tarifs indicatifs) : **Solo** (compte individuel), **Équipe** et **Institution** (organisations). Équipe ajoute les formulaires de collecte personnalisés, les rapports périodiques, les membres et rôles, les modèles, les leçons de l'organisation et le journal d'audit ; Institution ajoute les SMS et WhatsApp avec les communautés. L'API refuse avec 402 ce que la formule n'ouvre pas, l'interface affiche à la place une invitation à changer de formule. Le détail est dans `docs/architecture.md`.
 
-L'équipe qui exploite la plateforme gère les abonnements de tous les espaces sur `/admin` (formule, échéance, crédits, sans paiement, chaque changement inscrit au journal de l'espace). Pour y donner accès à un compte existant :
+L'équipe qui exploite la plateforme gère les abonnements et les paiements de tous les espaces sur `/admin`.
+- Elle confirme les virements et envois mobile money annoncés par les clients.
+- Elle enregistre un paiement reçu hors de l'application, ou rembourse un paiement.
+- Elle ajuste une formule, une échéance ou des crédits.
+
+Chaque paiement encaissé reçoit un reçu PDF numéroté, et chaque changement est inscrit au journal de l'espace. Les coordonnées de paiement affichées aux clients se règlent avec `PAYMENT_INSTRUCTIONS`. Pour y donner accès à un compte existant :
 
 ```bash
 cd backend
