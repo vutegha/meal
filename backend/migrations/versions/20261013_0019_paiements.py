@@ -36,9 +36,7 @@ def upgrade() -> None:
         ["id"],
         ondelete="SET NULL",
     )
-    op.create_unique_constraint(
-        op.f("uq_payments_receipt_number"), "payments", ["receipt_number"]
-    )
+    op.create_unique_constraint(op.f("uq_payments_receipt_number"), "payments", ["receipt_number"])
     # Numérotation continue des reçus, toutes organisations confondues.
     op.execute("CREATE SEQUENCE payment_receipt_seq")
     # Les paiements déjà enregistrés ont été encaissés : ils reçoivent leur numéro dans l'ordre.
