@@ -71,6 +71,25 @@ services:
     volumes: [files:/data/files]
     depends_on: [api, redis]
 
+  # Sauvegarde chiffrée quotidienne de la base et des fichiers dans BACKUP_DIR (ops/backup.sh).
+  # Copier ce dossier hors du serveur : une sauvegarde sur la même machine ne protège pas
+  # d'une panne de disque ni d'un vol.
+  backup:
+    image: pgvector/pgvector:pg16
+    entrypoint: ["/ops/backup.sh"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?Définir BACKUP_PASSPHRASE dans .env}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./ops:/ops:ro
+      - files:/data/files
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
   web:
     build: ./frontend
     environment:
