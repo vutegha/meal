@@ -20,12 +20,13 @@ export function OrgLayout() {
   const online = useOnline();
   // « Projets » reste actif sur la liste et sur chaque projet.
   const path = useRouterState({ select: (state) => state.location.pathname });
-  const onProjects = !/\/(lessons|templates|members|billing)\/?$/.test(path);
+  const onProjects = !/\/(lessons|templates|members|billing|privacy|account)\/?$/.test(path);
   // Une page de projet porte un menu vertical : on lui laisse plus de largeur.
   const width = /\/projects\/[^/]+/.test(path) ? "max-w-7xl" : "max-w-5xl";
   useOutboxSync();
   const { data: me } = useSuspenseQuery(meQuery);
   const org = me.organizations.find((o) => o.id === orgId);
+  const isAdmin = org?.role === "admin";
   // Les pages réservées aux organisations n'apparaissent pas dans le menu d'un compte individuel.
   const shows = (feature: Feature) => !org || hasFeature(org, feature);
   const [creating, setCreating] = useState(false);
@@ -99,8 +100,10 @@ export function OrgLayout() {
                 ["/orgs/$orgId/templates", "nav.templates", "templates"],
                 ["/orgs/$orgId/members", "nav.members", "team"],
                 ["/orgs/$orgId/billing", "nav.billing", null],
+                ["/orgs/$orgId/privacy", "nav.privacy", null],
               ] as const
             )
+              .filter(([to]) => to !== "/orgs/$orgId/privacy" || isAdmin)
               .filter(([, , feature]) => !feature || shows(feature))
               .map(([to, label]) => (
                 <Link

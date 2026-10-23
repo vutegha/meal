@@ -494,6 +494,64 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/personal-data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Person
+     * @description Tout ce qui mentionne une personne : nom, numéro de téléphone ou adresse e-mail.
+     */
+    get: operations["search_person_api_v1_orgs__org_id__personal_data_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/personal-data/erase": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Erase Person
+     * @description Efface le contenu des retours choisis (et leurs SMS) et supprime les réponses choisies.
+     */
+    post: operations["erase_person_api_v1_orgs__org_id__personal_data_erase_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/privacy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Privacy */
+    get: operations["get_privacy_api_v1_orgs__org_id__privacy_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Privacy */
+    patch: operations["update_privacy_api_v1_orgs__org_id__privacy_patch"];
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/projects": {
     parameters: {
       query?: never;
@@ -2076,6 +2134,8 @@ export interface components {
        * @default false
        */
       consent_given: boolean;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       /** File */
       file: string;
       /** @default other */
@@ -2288,11 +2348,48 @@ export interface components {
      * @enum {string}
      */
     DocumentStatus: "uploaded" | "ocr" | "extracted" | "failed";
+    /** ErasureIn */
+    ErasureIn: {
+      /** Feedback Ids */
+      feedback_ids?: string[];
+      /** Reason */
+      reason: string;
+      /** Submission Ids */
+      submission_ids?: string[];
+    };
+    /** ErasureOut */
+    ErasureOut: {
+      /** Feedback */
+      feedback: number;
+      /** Submissions */
+      submissions: number;
+    };
     /**
      * EvidenceKind
      * @enum {string}
      */
     EvidenceKind: "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+    /**
+     * EvidenceMatch
+     * @description Preuve qui cite la personne (légende ou texte) : à vérifier, jamais effacée d'office.
+     */
+    EvidenceMatch: {
+      /** Caption */
+      caption: string;
+      /** Excerpt */
+      excerpt: string;
+      /** Filename */
+      filename: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Project Code */
+      project_code: string;
+    };
     /** EvidenceOut */
     EvidenceOut: {
       /**
@@ -2304,6 +2401,13 @@ export interface components {
       caption: string;
       /** Consent Given */
       consent_given: boolean;
+      /**
+       * Consent Method
+       * @default
+       */
+      consent_method: string;
+      /** Consent Recorded At */
+      consent_recorded_at?: string | null;
       /** Content Type */
       content_type: string;
       /**
@@ -2350,6 +2454,8 @@ export interface components {
       caption?: string | null;
       /** Consent Given */
       consent_given?: boolean | null;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       kind?: components["schemas"]["EvidenceKind"] | null;
     };
     /**
@@ -2801,6 +2907,41 @@ export interface components {
       received_on?: string;
       /** Sensitive */
       sensitive?: boolean | null;
+    };
+    /** FeedbackMatch */
+    FeedbackMatch: {
+      /** Anonymized */
+      anonymized: boolean;
+      /** Category */
+      category: string;
+      /** Contact */
+      contact: string;
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Messages */
+      messages: {
+        [key: string]: unknown;
+      }[];
+      /** Project Code */
+      project_code: string;
+      /**
+       * Received On
+       * Format: date
+       */
+      received_on: string;
+      /** Reference */
+      reference: string;
+      /** Response */
+      response: string;
+      /** Sensitive */
+      sensitive: boolean;
+      /** Status */
+      status: string;
     };
     /** FeedbackOut */
     FeedbackOut: {
@@ -3895,6 +4036,17 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** PersonalDataResult */
+    PersonalDataResult: {
+      /** Evidence */
+      evidence: components["schemas"]["EvidenceMatch"][];
+      /** Feedback */
+      feedback: components["schemas"]["FeedbackMatch"][];
+      /** Query */
+      query: string;
+      /** Submissions */
+      submissions: components["schemas"]["SubmissionMatch"][];
+    };
     /** PlanLimits */
     PlanLimits: {
       /** Ai Monthly Budget Usd */
@@ -3922,6 +4074,31 @@ export interface components {
       credit: string;
       /** Monthly */
       monthly: string;
+    };
+    /**
+     * PrivacySettings
+     * @description Réglages de protection des données de l'espace.
+     */
+    PrivacySettings: {
+      /** Ai Enabled */
+      ai_enabled: boolean;
+      /** Feedback Retention Months */
+      feedback_retention_months: number;
+      /** Privacy Contact */
+      privacy_contact: string;
+      /** Sms Acknowledgement */
+      sms_acknowledgement: boolean;
+    };
+    /** PrivacyUpdate */
+    PrivacyUpdate: {
+      /** Ai Enabled */
+      ai_enabled?: boolean | null;
+      /** Feedback Retention Months */
+      feedback_retention_months?: number | null;
+      /** Privacy Contact */
+      privacy_contact?: string | null;
+      /** Sms Acknowledgement */
+      sms_acknowledgement?: boolean | null;
     };
     /** ProjectIn */
     ProjectIn: {
@@ -4321,6 +4498,29 @@ export interface components {
       location: string;
       /** Longitude */
       longitude?: number | null;
+    };
+    /** SubmissionMatch */
+    SubmissionMatch: {
+      /** Answers */
+      answers: {
+        [key: string]: unknown;
+      };
+      /**
+       * Collected At
+       * Format: date-time
+       */
+      collected_at: string;
+      /** Form Title */
+      form_title: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Location */
+      location: string;
+      /** Project Code */
+      project_code: string;
     };
     /** SubmissionOut */
     SubmissionOut: {
@@ -5573,6 +5773,140 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ResetLinkOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_person_api_v1_orgs__org_id__personal_data_get: {
+    parameters: {
+      query: {
+        q: string;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalDataResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  erase_person_api_v1_orgs__org_id__personal_data_erase_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ErasureIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErasureOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_privacy_api_v1_orgs__org_id__privacy_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_privacy_api_v1_orgs__org_id__privacy_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PrivacyUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
         };
       };
       /** @description Validation Error */

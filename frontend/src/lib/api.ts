@@ -75,6 +75,47 @@ export interface AuditEntry {
   created_at: string;
 }
 
+export interface PrivacySettings {
+  ai_enabled: boolean;
+  feedback_retention_months: number;
+  sms_acknowledgement: boolean;
+  privacy_contact: string;
+}
+
+export interface PersonalData {
+  query: string;
+  feedback: {
+    id: string;
+    project_code: string;
+    reference: string;
+    received_on: string;
+    category: string;
+    status: string;
+    sensitive: boolean;
+    contact: string;
+    description: string;
+    response: string;
+    anonymized: boolean;
+    messages: { date: string; direction: string; channel: string; phone: string; body: string }[];
+  }[];
+  submissions: {
+    id: string;
+    project_code: string;
+    form_title: string;
+    collected_at: string;
+    location: string;
+    answers: Record<string, unknown>;
+  }[];
+  evidence: {
+    id: string;
+    project_code: string;
+    filename: string;
+    kind: string;
+    caption: string;
+    excerpt: string;
+  }[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -211,6 +252,19 @@ export const api = {
   removeMember: (orgId: string, memberId: string) =>
     request<void>(`/orgs/${orgId}/members/${memberId}`, { method: "DELETE" }),
   audit: (orgId: string) => request<AuditEntry[]>(`/orgs/${orgId}/audit`),
+  privacy: (orgId: string) => request<PrivacySettings>(`/orgs/${orgId}/privacy`),
+  updatePrivacy: (orgId: string, body: Partial<PrivacySettings>) =>
+    request<PrivacySettings>(`/orgs/${orgId}/privacy`, json("PATCH", body)),
+  searchPerson: (orgId: string, q: string) =>
+    request<PersonalData>(`/orgs/${orgId}/personal-data?q=${encodeURIComponent(q)}`),
+  erasePerson: (
+    orgId: string,
+    body: { feedback_ids: string[]; submission_ids: string[]; reason: string },
+  ) =>
+    request<{ feedback: number; submissions: number }>(
+      `/orgs/${orgId}/personal-data/erase`,
+      json("POST", body),
+    ),
 };
 
 // --- Projets (étape 2) -----------------------------------------------------
@@ -780,6 +834,8 @@ export interface Evidence {
   latitude: string | null;
   longitude: string | null;
   consent_given: boolean;
+  consent_method: ConsentMethod | "";
+  consent_recorded_at: string | null;
   has_thumbnail: boolean;
   page_count: number;
   faces: number;
@@ -802,10 +858,15 @@ export interface ExecutionDetail extends Execution {
   planned: string;
 }
 
+/** Façon dont le consentement a été recueilli (preuve en cas de contrôle). */
+export type ConsentMethod = "oral" | "written" | "guardian" | "community";
+export const CONSENT_METHODS: ConsentMethod[] = ["oral", "written", "guardian", "community"];
+
 export interface EvidenceInput {
   kind: EvidenceKind;
   caption: string;
   consent_given: boolean;
+  consent_method?: ConsentMethod;
   client_uuid: string;
   // Lus sur le téléphone avant compression (la photo envoyée n'a plus d'EXIF).
   taken_at?: string;
@@ -847,6 +908,8 @@ export const executionsApi = {
     body.append("kind", meta.kind);
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
+    if (meta.consent_given && meta.consent_method)
+      body.append("consent_method", meta.consent_method);
     body.append("client_uuid", meta.client_uuid);
     if (meta.taken_at) body.append("taken_at", meta.taken_at);
     if (meta.latitude !== undefined && meta.longitude !== undefined) {
@@ -862,7 +925,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given">> & {
+    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given" | "consent_method">> & {
       blur_faces?: boolean;
     },
   ) =>
