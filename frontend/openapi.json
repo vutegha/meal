@@ -4330,6 +4330,7 @@
             "type": "string"
           },
           "password": {
+            "maxLength": 128,
             "title": "Password",
             "type": "string"
           }
@@ -7267,6 +7268,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "Trop de tentatives, réessayer plus tard"
           }
         },
         "summary": "Login",
