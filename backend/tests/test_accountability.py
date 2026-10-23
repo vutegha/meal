@@ -133,6 +133,40 @@ async def test_sensitive_feedback_is_confidential(client: AsyncClient) -> None:
     assert r.status_code == 422
 
 
+async def test_sensitive_category_cannot_be_made_public(client: AsyncClient) -> None:
+    ctx, base, _ = await setup(client)
+    await add_member(client, ctx, "terrain@example.org", "field_agent")
+    field = await login(client, "terrain@example.org")
+    await add_member(client, ctx, "meal@example.org", "meal_officer")
+    meal = await login(client, "meal@example.org")
+
+    body = {
+        "channel": "hotline",
+        "category": "fraud",
+        "description": "Des bénéficiaires paient pour figurer sur la liste.",
+        "sensitive": False,
+        "client_uuid": str(uuid4()),
+    }
+    r = await client.post(f"{base}/feedback", headers=field, json=body)
+    assert r.status_code == 201, r.text
+    entry = r.json()
+    assert entry["sensitive"] is True
+    assert (await client.get(f"{base}/feedback", headers=meal)).json() == []
+    # Un renvoi du même identifiant par une autre personne ne révèle pas l'entrée.
+    r = await client.post(f"{base}/feedback", headers=meal, json=body)
+    assert r.status_code == 409 and "description" not in r.json()
+
+    # Même le chef de projet ne la rend pas publique tant que la catégorie reste sensible.
+    url = f"{base}/feedback/{entry['id']}"
+    r = await client.patch(url, headers=ctx["headers"], json={"sensitive": False})
+    assert r.status_code == 200 and r.json()["sensitive"] is True
+    # Requalifiée en catégorie ordinaire, elle peut l'être.
+    r = await client.patch(
+        url, headers=ctx["headers"], json={"category": "complaint", "sensitive": False}
+    )
+    assert r.json()["sensitive"] is False
+
+
 async def test_lessons_register(client: AsyncClient) -> None:
     ctx, base, nodes = await setup(client)
     h = ctx["headers"]
@@ -223,3 +257,35 @@ async def test_feedback_classification_error(client: AsyncClient, fake_llm: Fake
     )
     assert r.status_code == 503
     assert "injoignable" in r.json()["detail"]
+
+
+async def test_viewing_sensitive_feedback_is_audited(client: AsyncClient) -> None:
+    ctx, base, _ = await setup(client)
+    h = ctx["headers"]
+    audit_url = f"/api/v1/orgs/{ctx['org_id']}/audit"
+    await add_member(client, ctx, "terrain@example.org", "field_agent")
+    field = await login(client, "terrain@example.org")
+    r = await client.post(
+        f"{base}/feedback",
+        headers=h,
+        json={
+            "channel": "hotline",
+            "category": "sexual_exploitation",
+            "description": "Signalement",
+            "contact": "+243990000002",
+        },
+    )
+    reference = r.json()["reference"]
+
+    def viewed(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [e for e in entries if e["action"] == "feedback.viewed"]
+
+    # La personne de terrain ne voit ni l'entrée sensible ni de contact : rien à inscrire.
+    assert (await client.get(f"{base}/feedback", headers=field)).status_code == 200
+    assert viewed((await client.get(audit_url, headers=h)).json()) == []
+
+    # Le responsable la voit : une seule inscription malgré deux affichages rapprochés.
+    for _ in range(2):
+        assert (await client.get(f"{base}/feedback", headers=h)).status_code == 200
+    [entry] = viewed((await client.get(audit_url, headers=h)).json())
+    assert entry["data"] == {"sensitive": [reference], "contacts": 1}

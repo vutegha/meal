@@ -31,6 +31,10 @@ export const fr = {
     trialNote:
       "Essai gratuit de {{days}} jours, sans paiement. Vous choisirez ensuite depuis la page Abonnement.",
     usageNote: "{{count}} crédits IA offerts pour commencer.",
+    logoutPending_one:
+      "{{count}} saisie n'a pas encore été envoyée. Elle sera supprimée de ce téléphone si vous vous déconnectez. Se déconnecter quand même ?",
+    logoutPending_other:
+      "{{count}} saisies n'ont pas encore été envoyées. Elles seront supprimées de ce téléphone si vous vous déconnectez. Se déconnecter quand même ?",
   },
   orgs: {
     switch: "Organisation",
@@ -800,6 +804,10 @@ export const fr = {
     "feedback.recorded": "Retour enregistré",
     "feedback.updated": "Retour traité",
     "feedback.deleted": "Retour supprimé",
+    "feedback.viewed": "Plaintes sensibles ou contacts consultés",
+    "feedback.messages_viewed": "Échanges SMS ou WhatsApp consultés",
+    "evidence.original_viewed": "Photo originale (visages non floutés) consultée",
+    "form.exported": "Réponses d'un formulaire exportées",
     "lesson.created": "Leçon ajoutée",
     "lesson.updated": "Leçon modifiée",
     "lesson.deleted": "Leçon supprimée",

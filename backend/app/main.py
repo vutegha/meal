@@ -23,8 +23,10 @@ settings = get_settings()
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/api/docs",
+    # Documentation interactive fermée en production : elle décrit toute la surface de l'API.
+    openapi_url=None if settings.is_production else "/api/v1/openapi.json",
+    docs_url=None if settings.is_production else "/api/docs",
+    redoc_url=None,
 )
 app.add_middleware(
     CORSMiddleware,

@@ -37,7 +37,7 @@ from app.schemas.accountability import (
     SmsSendIn,
     SmsSimulateIn,
 )
-from app.services import billing, sms
+from app.services import audit, billing, sms
 from app.services import feedback as fb
 from app.services import projects as svc
 from app.services.ai import call_structured
@@ -99,6 +99,8 @@ async def list_feedback(
     )
     threads = await sms.summaries(session, project.id)
     result = []
+    sensitive: list[str] = []
+    contacts = 0
     for entry in rows:
         if not fb.can_see(member, entry):
             continue
@@ -107,6 +109,22 @@ async def list_feedback(
             count, awaiting = threads[entry.id]
             item = item.model_copy(update={"sms_count": count, "sms_awaiting_reply": awaiting})
         result.append(item)
+        if entry.sensitive:
+            sensitive.append(entry.reference)
+        if item.contact:
+            contacts += 1
+    # Qui a vu les plaintes sensibles et les contacts : journalisé (références, pas de contenu).
+    if sensitive or contacts:
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="feedback.viewed",
+            entity_type="project",
+            entity_id=project.id,
+            data={"sensitive": sensitive, "contacts": contacts},
+        )
+        await session.commit()
     return result
 
 
@@ -140,12 +158,15 @@ async def create_feedback(
             )
         )
         if existing is not None:
+            # Renvoi d'une saisie hors ligne : seul qui peut voir l'entrée la récupère.
+            if not fb.can_see(member, existing):
+                raise HTTPException(status.HTTP_409_CONFLICT, "Identifiant de saisie déjà utilisé")
             response.status_code = status.HTTP_200_OK
             return fb.out(member, existing)
     await _check_activity(session, project, body.activity_id)
     data = body.model_dump()
-    if data["sensitive"] is None:
-        data["sensitive"] = body.category in fb.SENSITIVE_CATEGORIES
+    # Une catégorie sensible est toujours confidentielle, quoi que demande le client.
+    data["sensitive"] = bool(data["sensitive"]) or body.category in fb.SENSITIVE_CATEGORIES
     if body.anonymous:
         data["contact"] = ""
     entry = FeedbackEntry(
@@ -222,6 +243,8 @@ async def update_feedback(
         if key == "sensitive" and value is None:
             continue
         setattr(entry, key, value)
+    if entry.category in fb.SENSITIVE_CATEGORIES:
+        entry.sensitive = True
     if entry.anonymous:
         entry.contact = ""
 
@@ -282,7 +305,19 @@ async def list_feedback_sms(
     entry = await _get_feedback(session, project, member, feedback_id)
     if not fb.can_read_contact(member, entry):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Échanges réservés à qui traite ce retour")
-    return await _sms_thread(session, entry)
+    thread = await _sms_thread(session, entry)
+    if thread:
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="feedback.messages_viewed",
+            entity_type="feedback",
+            entity_id=entry.id,
+            data={"reference": entry.reference},
+        )
+        await session.commit()
+    return thread
 
 
 @router.post(f"{PROJECT}/feedback/{{feedback_id}}/sms", response_model=SmsOut, status_code=201)

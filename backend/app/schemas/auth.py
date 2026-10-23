@@ -25,7 +25,8 @@ class RegisterIn(BaseModel):
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    # Même plafond qu'à l'inscription : un mot de passe démesuré coûterait cher à vérifier.
+    password: str = Field(max_length=128)
 
 
 class RefreshIn(BaseModel):

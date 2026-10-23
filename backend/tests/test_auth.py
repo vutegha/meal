@@ -1,5 +1,8 @@
+import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
 
+from app.core.config import Settings, get_settings
 from tests.conftest import register
 
 
@@ -59,3 +62,40 @@ async def test_me_requires_auth(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/auth/me")).status_code == 401
     r = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer nimportequoi"})
     assert r.status_code == 401
+
+
+async def test_login_attempts_are_limited(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await register(client, "c@example.org")
+    url = "/api/v1/auth/login"
+    wrong = {"email": "c@example.org", "password": "mauvais-mdp"}
+    good = {"email": "c@example.org", "password": "motdepasse1"}
+
+    # Une réussite remet le compteur de l'adresse à zéro.
+    for _ in range(4):
+        assert (await client.post(url, json=wrong)).status_code == 401
+    assert (await client.post(url, json=good)).status_code == 200
+    for _ in range(5):
+        assert (await client.post(url, json=wrong)).status_code == 401
+    # Cinq échecs : même le bon mot de passe est refusé jusqu'à la fin de la fenêtre.
+    r = await client.post(url, json=good)
+    assert r.status_code == 429 and r.headers["retry-after"] == "900"
+
+    # Compteur par adresse IP : une autre adresse e-mail ne contourne pas la limite.
+    monkeypatch.setattr(get_settings(), "login_max_failures_per_ip", 11)
+    for i in range(2):
+        other = {"email": f"inconnu{i}@example.org", "password": "x"}
+        assert (await client.post(url, json=other)).status_code == 401
+    assert (await client.post(url, json=other)).status_code == 429
+
+    assert (await client.post(url, json={**good, "password": "x" * 129})).status_code == 422
+
+
+def test_weak_secret_key_refused_in_production() -> None:
+    with pytest.raises(ValidationError, match="SECRET_KEY"):
+        Settings(environment="production", secret_key="remplacer-par-une-longue-valeur-aleatoire")
+    with pytest.raises(ValidationError, match="SECRET_KEY"):
+        Settings(environment="production", secret_key="trop-courte")
+    Settings(environment="production", secret_key="x" * 48)
+    Settings(environment="development", secret_key="change-me-in-production")

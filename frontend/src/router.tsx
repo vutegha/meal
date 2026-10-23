@@ -24,7 +24,7 @@ import { HomePage } from "@/features/site/HomePage";
 import { PricingPage } from "@/features/site/PricingPage";
 import type { AccountType } from "@/lib/api";
 import { type Cycle, CYCLES } from "@/lib/billing";
-import { meQuery } from "@/lib/queries";
+import { loadProfile } from "@/lib/session";
 import { tokenStore } from "@/lib/tokens";
 
 interface RouterContext {
@@ -38,12 +38,10 @@ const requireAuth = () => {
 };
 
 async function loadMe(queryClient: QueryClient) {
-  try {
-    return await queryClient.ensureQueryData(meQuery);
-  } catch {
-    tokenStore.set(null);
-    throw redirect({ to: "/login" });
-  }
+  // Hors ligne, le profil gardé sur l'appareil suffit : l'agent garde accès à sa saisie.
+  const me = await loadProfile(queryClient).catch(() => null);
+  if (!me) throw redirect({ to: "/login" });
+  return me;
 }
 
 // Accueil du site public ; une personne connectée va directement à son espace.

@@ -4421,6 +4421,13 @@ export interface operations {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
+      /** @description Trop de tentatives, réessayer plus tard */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
   me_api_v1_auth_me_get: {

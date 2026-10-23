@@ -10,12 +10,39 @@ Application web pour faciliter les activités MEAL (suivi, évaluation, redevabi
 ## Démarrer avec Docker
 
 ```bash
-cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et MINIO_ROOT_PASSWORD
+cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et BACKUP_PASSPHRASE
 docker compose up --build
 ```
 
-L'application est servie sur https://localhost (API sous `/api/v1`, documentation sous `/api/docs`).
-Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed`.
+Les fichiers importés sont gardés dans le volume Docker `files`. Pour les stocker dans MinIO
+(compatible S3) : `STORAGE_BACKEND=s3`, `MINIO_ROOT_PASSWORD` et, MinIO ne publiant plus
+d'image sur Docker Hub, une image disponible dans `MINIO_IMAGE`, puis
+`docker compose --profile s3 up --build`.
+
+`SECRET_KEY` doit faire au moins 32 caractères aléatoires, sinon l'API refuse de démarrer :
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+
+L'application est servie sur https://localhost (API sous `/api/v1`). La documentation
+`/api/docs` n'est ouverte qu'avec `ENVIRONMENT=development`.
+Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed` (le mot de passe du compte `demo@wemeal.org` est affiché).
+
+## Sauvegardes
+
+Le service `backup` sauvegarde chaque jour, à `BACKUP_HOUR` heure UTC, la base et les fichiers
+dans `BACKUP_DIR` (`./backups` par défaut). Chaque sauvegarde est chiffrée (AES-256) avec
+`BACKUP_PASSPHRASE` et gardée `BACKUP_KEEP_DAYS` jours. Copiez ce dossier hors du serveur, et
+gardez la phrase de passe ailleurs : sans elle, la sauvegarde est illisible.
+
+```bash
+docker compose run --rm backup now     # une sauvegarde tout de suite
+docker compose run --rm backup list    # les sauvegardes présentes
+# Restauration (remplace la base et les fichiers)
+docker compose stop api worker
+docker compose run --rm --entrypoint /ops/restore.sh backup wemeal-AAAAMMJJ-HHMMSS.tar.gpg
+docker compose start api worker
+```
+
+Testez une restauration au moins une fois par trimestre.
 
 ## Développement local
 

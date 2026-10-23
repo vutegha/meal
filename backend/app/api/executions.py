@@ -40,6 +40,7 @@ from app.schemas.execution import (
     ExecutionUpdate,
     Participants,
 )
+from app.services import audit
 from app.services import projects as svc
 from app.services.evidence import UnsupportedFile, media_type, process, render_thumbnail
 
@@ -478,6 +479,18 @@ async def download_evidence(
     if not key:
         raise svc.not_found("Vignette")
     data = await get_storage().get(key)
+    # Original d'une photo avec visages (non flouté) : la consultation est journalisée.
+    if variant == "file" and (evidence.extra or {}).get("faces"):
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="evidence.original_viewed",
+            entity_type="evidence",
+            entity_id=evidence.id,
+            data={"filename": evidence.filename},
+        )
+        await session.commit()
     media_type = evidence.content_type if variant == "file" else "image/webp"
     ascii_name = evidence.filename.encode("ascii", "ignore").decode() or "piece"
     return Response(

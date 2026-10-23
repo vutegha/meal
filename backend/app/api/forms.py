@@ -310,11 +310,22 @@ def _workbook(form: CollectionForm, rows: list[tuple[FormSubmission, str]]) -> b
 
 @router.get("/{form_id}/export.xlsx", response_class=Response)
 async def export_submissions(
-    org_id: UUID, project_id: UUID, form_id: UUID, _: Planner, session: SessionDep
+    org_id: UUID, project_id: UUID, form_id: UUID, member: Planner, session: SessionDep
 ) -> Response:
     project = await svc.get_project(session, org_id, project_id)
     form = await _get(session, project, form_id)
-    content = await asyncio.to_thread(_workbook, form, await _submissions(session, form))
+    submissions = await _submissions(session, form)
+    content = await asyncio.to_thread(_workbook, form, submissions)
+    # Un export emporte les réponses hors de l'application : il est toujours journalisé.
+    _log(
+        session,
+        member,
+        "form.exported",
+        "form",
+        form.id,
+        {"title": form.title, "rows": len(submissions)},
+    )
+    await session.commit()
     return Response(
         content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.config import get_settings
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.models import Membership, User
 from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenPair
 from app.schemas.organization import MeOut, my_organization
-from app.services import billing
+from app.services import billing, ratelimit
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -40,11 +41,34 @@ async def register(body: RegisterIn, session: SessionDep) -> TokenPair:
     return _tokens(user)
 
 
-@router.post("/login", response_model=TokenPair)
-async def login(body: LoginIn, session: SessionDep) -> TokenPair:
-    user = await session.scalar(select(User).where(User.email == body.email.lower()))
+@router.post(
+    "/login",
+    response_model=TokenPair,
+    responses={429: {"description": "Trop de tentatives, réessayer plus tard"}},
+)
+async def login(body: LoginIn, request: Request, session: SessionDep) -> TokenPair:
+    settings = get_settings()
+    email = body.email.lower()
+    keys = {
+        f"email:{email}": settings.login_max_failures,
+        f"ip:{request.client.host if request.client else 'inconnue'}": (
+            settings.login_max_failures_per_ip
+        ),
+    }
+    for key, limit in keys.items():
+        if await ratelimit.failures(key) >= limit:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Trop de tentatives de connexion. Réessayez dans "
+                f"{settings.login_window_minutes} minutes.",
+                headers={"Retry-After": str(settings.login_window_minutes * 60)},
+            )
+    user = await session.scalar(select(User).where(User.email == email))
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
+        for key in keys:
+            await ratelimit.add_failure(key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Identifiants invalides")
+    await ratelimit.reset(f"email:{email}")
     return _tokens(user)
 
 
