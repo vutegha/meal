@@ -10,6 +10,7 @@ from app.api import (
     forms,
     organizations,
     periodic,
+    personal_data,
     projects,
     reports,
     sms,
@@ -50,6 +51,7 @@ api.include_router(periodic.router)
 api.include_router(templates.router)
 api.include_router(forms.router)
 api.include_router(sms.router)
+api.include_router(personal_data.router)
 app.include_router(api)
 
 
