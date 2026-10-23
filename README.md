@@ -53,6 +53,9 @@ Testez une restauration au moins une fois par trimestre.
   anonymisés, SMS non rattachés effacés après 30 jours, liens de réinitialisation et sessions
   expirés après 30 jours, journal des consultations après 365 jours. À la main :
   `docker compose exec api python -m app.scripts.purge`.
+- **Photos** : la date et la position sont lues puis retirées du fichier gardé, avec le reste
+  des métadonnées (appareil, auteur, logiciel). Pour les photos déposées avant :
+  `docker compose exec api python -m app.scripts.strip_metadata`.
 - **Demande d'une personne** : recherche par nom, numéro ou e-mail, copie JSON et effacement
   motivé, tracé dans le journal sans les termes recherchés.
 - **Comptes** : sessions révocables, double authentification (conseillée aux administrateurs),

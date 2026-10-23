@@ -339,7 +339,8 @@ async def upload_evidence(
     storage = get_storage()
     prefix = f"{org_id}/{project.id}/executions/{execution.id}/{uuid4()}"
     key = f"{prefix}-{filename[-120:]}"
-    await storage.put(key, data, processed.content_type)
+    stored = processed.stored or data
+    await storage.put(key, stored, processed.content_type)
     thumbnail_key = ""
     if processed.thumbnail:
         thumbnail_key = f"{prefix}-vignette.webp"
@@ -355,7 +356,7 @@ async def upload_evidence(
         kind=kind,
         filename=filename[:300],
         content_type=processed.content_type,
-        size_bytes=len(data),
+        size_bytes=len(stored),
         sha256=processed.sha256,
         storage_key=key,
         thumbnail_key=thumbnail_key,
