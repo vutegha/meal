@@ -28,6 +28,10 @@ def _client() -> Redis:
     return _redis
 
 
+async def ping() -> None:
+    await _client().ping()
+
+
 def _use_memory() -> bool:
     return get_settings().login_rate_limit_storage == "memory"
 

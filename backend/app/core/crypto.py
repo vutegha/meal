@@ -1,7 +1,8 @@
 """Chiffrement des secrets gardés en base (secret de double authentification).
 
 Clé dérivée de SECRET_KEY : changer SECRET_KEY rend ces secrets illisibles, et chaque personne
-doit alors réactiver sa double authentification.
+doit alors réactiver sa double authentification (`app.scripts.revoke_sessions --unreadable-totp`
+retire les secrets devenus illisibles).
 """
 
 import base64

@@ -16922,6 +16922,32 @@
           "système"
         ]
       }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker.",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "système"
+        ]
+      }
     }
   }
 }

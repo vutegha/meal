@@ -8,6 +8,8 @@ from tests.conftest import register
 
 async def test_health(client: AsyncClient) -> None:
     assert (await client.get("/health")).json() == {"status": "ok"}
+    ready = await client.get("/health/ready")
+    assert ready.status_code == 200 and ready.json()["database"] == "ok"
 
 
 async def test_register_creates_user_and_admin_org(client: AsyncClient) -> None:

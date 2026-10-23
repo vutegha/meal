@@ -71,6 +71,16 @@ services:
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
+    # Base et Redis joignables (GET /health/ready) : `docker compose ps` signale une panne.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   worker:
     build: ./backend

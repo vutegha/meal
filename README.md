@@ -46,6 +46,9 @@ Testez une restauration au moins une fois par trimestre.
 
 ## Données personnelles (RGPD)
 
+Registre des traitements, sous-traitants et procédure en cas de violation de données :
+[docs/rgpd](docs/rgpd/README.md). Contrôle de santé : `GET /health/ready` (base et Redis).
+
 - **Réglages par espace** (page *Données personnelles*, administrateurs) : IA activable ou non,
   accusé de réception des SMS avec la phrase d'information, durée de conservation des retours
   clôturés (36 mois par défaut), contact pour exercer ses droits.
