@@ -115,6 +115,8 @@ async def test_form_lifecycle_and_summary(client: AsyncClient) -> None:
     assert sheet is not None
     assert [c.value for c in sheet[1]][5:7] == ["Taille du ménage", "Kit reçu complet ?"]
     assert [c.value for c in sheet[2]][5:9] == [6, "Oui", "Vente", "Distance, Attente"]
+    audit = (await client.get(f"/api/v1/orgs/{ctx['org_id']}/audit", headers=h)).json()
+    assert [e["data"]["rows"] for e in audit if e["action"] == "form.exported"] == [len(rows)]
 
     await client.patch(url, headers=h, json={"status": "closed"})
     r = await client.post(f"{url}/submissions", headers=agent, json={"answers": answer})

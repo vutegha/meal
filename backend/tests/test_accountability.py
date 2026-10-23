@@ -257,3 +257,35 @@ async def test_feedback_classification_error(client: AsyncClient, fake_llm: Fake
     )
     assert r.status_code == 503
     assert "injoignable" in r.json()["detail"]
+
+
+async def test_viewing_sensitive_feedback_is_audited(client: AsyncClient) -> None:
+    ctx, base, _ = await setup(client)
+    h = ctx["headers"]
+    audit_url = f"/api/v1/orgs/{ctx['org_id']}/audit"
+    await add_member(client, ctx, "terrain@example.org", "field_agent")
+    field = await login(client, "terrain@example.org")
+    r = await client.post(
+        f"{base}/feedback",
+        headers=h,
+        json={
+            "channel": "hotline",
+            "category": "sexual_exploitation",
+            "description": "Signalement",
+            "contact": "+243990000002",
+        },
+    )
+    reference = r.json()["reference"]
+
+    def viewed(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [e for e in entries if e["action"] == "feedback.viewed"]
+
+    # La personne de terrain ne voit ni l'entrée sensible ni de contact : rien à inscrire.
+    assert (await client.get(f"{base}/feedback", headers=field)).status_code == 200
+    assert viewed((await client.get(audit_url, headers=h)).json()) == []
+
+    # Le responsable la voit : une seule inscription malgré deux affichages rapprochés.
+    for _ in range(2):
+        assert (await client.get(f"{base}/feedback", headers=h)).status_code == 200
+    [entry] = viewed((await client.get(audit_url, headers=h)).json())
+    assert entry["data"] == {"sensitive": [reference], "contacts": 1}

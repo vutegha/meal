@@ -280,6 +280,9 @@ async def test_faces_are_blurred(client: AsyncClient) -> None:
     assert (await client.get(f"{url}/file", headers=other_agent)).status_code == 403
     assert (await client.get(f"{url}/file", headers=agent)).status_code == 200
     assert (await client.get(f"{url}/file", headers=h)).status_code == 200
+    # Chaque personne qui a vu l'original non flouté est inscrite au journal.
+    audit = (await client.get(f"/api/v1/orgs/{ctx['org_id']}/audit", headers=h)).json()
+    assert len([e for e in audit if e["action"] == "evidence.original_viewed"]) == 2
 
     # Montrer les visages : un responsable, et seulement avec le consentement.
     r = await client.patch(url, headers=agent, json={"blur_faces": False})
