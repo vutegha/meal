@@ -34,7 +34,7 @@ test("l'application se rouvre sans réseau puis vide la file à la déconnexion"
   await page.context().setOffline(true);
   await page.reload();
   await expect(page).not.toHaveURL(/\/login/);
-  await expect(page.getByText("Jean Bahati")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projet de terrain" })).toBeVisible();
 
   await page.getByRole("button", { name: "+ Enregistrer un retour" }).click();
   await page.getByLabel("Ce qui a été dit").fill("Signalement recueilli sans réseau.");
