@@ -140,12 +140,15 @@ async def create_feedback(
             )
         )
         if existing is not None:
+            # Renvoi d'une saisie hors ligne : seul qui peut voir l'entrée la récupère.
+            if not fb.can_see(member, existing):
+                raise HTTPException(status.HTTP_409_CONFLICT, "Identifiant de saisie déjà utilisé")
             response.status_code = status.HTTP_200_OK
             return fb.out(member, existing)
     await _check_activity(session, project, body.activity_id)
     data = body.model_dump()
-    if data["sensitive"] is None:
-        data["sensitive"] = body.category in fb.SENSITIVE_CATEGORIES
+    # Une catégorie sensible est toujours confidentielle, quoi que demande le client.
+    data["sensitive"] = bool(data["sensitive"]) or body.category in fb.SENSITIVE_CATEGORIES
     if body.anonymous:
         data["contact"] = ""
     entry = FeedbackEntry(
@@ -222,6 +225,8 @@ async def update_feedback(
         if key == "sensitive" and value is None:
             continue
         setattr(entry, key, value)
+    if entry.category in fb.SENSITIVE_CATEGORIES:
+        entry.sensitive = True
     if entry.anonymous:
         entry.contact = ""
 

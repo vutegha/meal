@@ -33,6 +33,10 @@ export const en: Messages = {
     trialNote:
       "{{days}}-day free trial, no payment. You will choose later from the Subscription page.",
     usageNote: "{{count}} free AI credits to get started.",
+    logoutPending_one:
+      "{{count}} entry has not been sent yet. It will be deleted from this phone if you sign out. Sign out anyway?",
+    logoutPending_other:
+      "{{count}} entries have not been sent yet. They will be deleted from this phone if you sign out. Sign out anyway?",
   },
   orgs: {
     switch: "Organisation",
