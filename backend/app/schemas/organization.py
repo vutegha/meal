@@ -46,6 +46,9 @@ class UserOut(ORMModel):
 
 class MeOut(UserOut):
     organizations: list[MyOrganizationOut]
+    must_change_password: bool = False
+    totp_enabled: bool = False
+    mfa_recommended: bool = False
 
 
 class MemberIn(BaseModel):

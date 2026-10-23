@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import AnyMember, CurrentUser, OrgAdmin, SessionDep
 from app.core.security import hash_password
 from app.models import AuditLog, Membership, Organization, Role, User
+from app.schemas.auth import ResetLinkOut
 from app.schemas.organization import (
     AuditLogOut,
     MemberIn,
@@ -18,7 +19,7 @@ from app.schemas.organization import (
     OrganizationUpdate,
     my_organization,
 )
-from app.services import audit, billing
+from app.services import audit, billing, passwords
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/orgs", tags=["organisations"])
@@ -107,6 +108,8 @@ async def add_member(
             email=email,
             full_name=body.full_name,
             password_hash=hash_password(body.initial_password),
+            # Mot de passe connu de l'administrateur : la personne en choisit un à la connexion.
+            must_change_password=True,
         )
         session.add(user)
         await session.flush()
@@ -197,6 +200,41 @@ async def remove_member(
     )
     await session.delete(membership)
     await session.commit()
+
+
+@router.post("/{org_id}/members/{member_id}/reset-link", response_model=ResetLinkOut)
+async def member_reset_link(
+    org_id: UUID, member_id: UUID, admin: OrgAdmin, session: SessionDep
+) -> ResetLinkOut:
+    """Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.
+
+    Seulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur
+    pourrait prendre la main sur un compte qui a des droits ailleurs.
+    """
+    membership = await _get_member(session, org_id, member_id)
+    others = await session.scalar(
+        select(func.count())
+        .select_from(Membership)
+        .where(Membership.user_id == membership.user_id, Membership.organization_id != org_id)
+    )
+    if others:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cette personne appartient aussi à un autre espace : elle doit utiliser "
+            "« Mot de passe oublié »",
+        )
+    token, expires = await passwords.create_reset(session, membership.user, admin.user_id)
+    audit.record(
+        session,
+        organization_id=org_id,
+        actor_id=admin.user_id,
+        action="member.reset_link_created",
+        entity_type="membership",
+        entity_id=membership.id,
+        data={"email": membership.user.email},
+    )
+    await session.commit()
+    return ResetLinkOut(path=passwords.reset_path(token), expires_at=expires)
 
 
 @router.get("/{org_id}/audit", response_model=list[AuditLogOut])

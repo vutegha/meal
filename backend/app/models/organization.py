@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,8 +45,44 @@ class User(IdMixin, TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Mot de passe fixé par un administrateur : à changer à la première connexion.
+    must_change_password: Mapped[bool] = mapped_column(default=False, server_default=false())
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Double authentification (TOTP) : secret chiffré (core/crypto.py), actif une fois confirmé.
+    totp_secret: Mapped[str | None] = mapped_column(String(255))
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="user")
+
+
+class UserSession(IdMixin, TimestampMixin, Base):
+    """Session ouverte par une connexion, révocable (déconnexion, mot de passe changé).
+
+    Le jeton de rafraîchissement porte l'identifiant de la session et sa génération : chaque
+    rafraîchissement passe à la génération suivante. Rejouer un jeton déjà remplacé (vol
+    probable) révoque la session.
+    """
+
+    __tablename__ = "user_sessions"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    generation: Mapped[int] = mapped_column(default=0)
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_agent: Mapped[str] = mapped_column(String(200), default="")
+
+
+class PasswordReset(IdMixin, TimestampMixin, Base):
+    """Lien de réinitialisation à usage unique ; seule l'empreinte du jeton est gardée."""
+
+    __tablename__ = "password_resets"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class Membership(IdMixin, TimestampMixin, Base):
