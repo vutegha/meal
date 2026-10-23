@@ -58,6 +58,9 @@ Testez une restauration au moins une fois par trimestre.
   `docker compose exec api python -m app.scripts.strip_metadata`.
 - **Demande d'une personne** : recherche par nom, numéro ou e-mail, copie JSON et effacement
   motivé, tracé dans le journal sans les termes recherchés.
+- **Suppression et fermeture** : chacun peut supprimer son compte (*Mon compte*), qui est alors
+  anonymisé ; un administrateur peut fermer l'espace (page *Données personnelles*), ce qui
+  efface ses données et ses fichiers. Supprimer un projet efface aussi ses fichiers.
 - **Comptes** : sessions révocables, double authentification (conseillée aux administrateurs),
   mot de passe oublié par e-mail si `SMTP_HOST` est renseigné, sinon lien remis par un
   administrateur.

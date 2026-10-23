@@ -88,6 +88,13 @@ export const fr = {
     erase_one: "Effacer {{count}} élément",
     erase_other: "Effacer {{count}} éléments",
     erased: "Effacé : {{feedback}} retour(s), {{submissions}} réponse(s).",
+    close: "Fermer l'espace",
+    closeIntro:
+      "Projets, preuves, photos, plaintes, réponses, rapports et journal sont effacés définitivement, fichiers compris. Exportez d'abord ce que vous devez garder. Les sauvegardes chiffrées les conservent encore quelques jours, le temps de leur rotation.",
+    closeName: "Recopiez le nom de l'espace : {{name}}",
+    closeDeleteAccount: "Supprimer aussi mon compte (c'est mon seul espace)",
+    closeConfirm: "Effacer définitivement l'espace « {{name}} » et toutes ses données ?",
+    closeAction: "Fermer et tout effacer",
   },
   account: {
     title: "Mon compte",
@@ -103,6 +110,12 @@ export const fr = {
     passwordHint: "8 caractères au moins. Vos autres appareils seront déconnectés.",
     changePassword: "Changer le mot de passe",
     passwordChanged: "Mot de passe changé. Vos autres sessions ont été fermées.",
+    confirmPassword: "Votre mot de passe, pour confirmer",
+    delete: "Supprimer mon compte",
+    deleteIntro:
+      "Votre nom et votre adresse e-mail sont effacés et vous ne pourrez plus vous connecter. Ce que vous avez saisi reste dans les espaces de vos organisations, sans votre nom. Si vous êtes le seul administrateur d'un espace, nommez-en un autre ou fermez l'espace d'abord.",
+    deleteConfirm: "Supprimer définitivement votre compte ?",
+    deleteAction: "Supprimer mon compte",
     totp: "Double authentification",
     totpIntro:
       "À chaque connexion, un code à 6 chiffres vous sera demandé en plus du mot de passe (Google Authenticator, Microsoft Authenticator, FreeOTP…).",
@@ -906,6 +919,7 @@ export const fr = {
     "feedback.updated": "Retour traité",
     "feedback.deleted": "Retour supprimé",
     "member.reset_link_created": "Lien de réinitialisation créé",
+    "member.account_deleted": "Compte supprimé par son titulaire",
     "feedback.anonymized": "Retours anciens effacés (délai de conservation)",
     "personal_data.erased": "Données d'une personne effacées",
     "personal_data.searched": "Recherche des données d'une personne",

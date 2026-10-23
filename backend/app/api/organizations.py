@@ -14,6 +14,7 @@ from app.schemas.organization import (
     MemberOut,
     MemberUpdate,
     MyOrganizationOut,
+    OrganizationCloseIn,
     OrganizationIn,
     OrganizationOut,
     OrganizationUpdate,
@@ -21,7 +22,7 @@ from app.schemas.organization import (
     PrivacyUpdate,
     my_organization,
 )
-from app.services import audit, billing, passwords
+from app.services import accounts, audit, billing, passwords
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/orgs", tags=["organisations"])
@@ -79,6 +80,24 @@ async def update(
     await session.commit()
     await session.refresh(org)
     return org
+
+
+@router.post("/{org_id}/close", status_code=status.HTTP_204_NO_CONTENT)
+async def close(
+    org_id: UUID, body: OrganizationCloseIn, admin: OrgAdmin, user: CurrentUser, session: SessionDep
+) -> None:
+    """Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés."""
+    organization = await session.get_one(Organization, org_id)
+    if body.name.strip() != organization.name:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Recopiez exactement le nom de l'espace"
+        )
+    if error := accounts.confirmation_error(user, body.password, body.code):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, error)
+    await accounts.close_organization(session, org_id)
+    if body.delete_account and not await accounts.blocking_organizations(session, user):
+        await accounts.delete_account(session, user)
+        await session.commit()
 
 
 @router.get("/{org_id}/members", response_model=list[MemberOut])

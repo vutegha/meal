@@ -227,6 +227,13 @@ export const api = {
   totpSetup: () => request<TotpSetup>("/auth/totp/setup", { method: "POST" }),
   totpEnable: (code: string) => request<void>("/auth/totp/enable", json("POST", { code })),
   totpDisable: (code: string) => request<void>("/auth/totp/disable", json("POST", { code })),
+  deleteAccount: (password: string, code?: string) =>
+    request<void>("/auth/me/delete", json("POST", { password, code: code || undefined })),
+  closeOrganization: (
+    orgId: string,
+    body: { name: string; password: string; code?: string; delete_account: boolean },
+  ) =>
+    request<void>(`/orgs/${orgId}/close`, json("POST", { ...body, code: body.code || undefined })),
   memberResetLink: (orgId: string, memberId: string) =>
     request<{ path: string; expires_at: string }>(`/orgs/${orgId}/members/${memberId}/reset-link`, {
       method: "POST",

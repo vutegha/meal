@@ -31,6 +31,15 @@ class PrivacySettings(ORMModel):
     privacy_contact: str = Field(max_length=200)
 
 
+class OrganizationCloseIn(BaseModel):
+    # Nom de l'espace recopié et mot de passe : deux confirmations pour un geste définitif.
+    name: str = Field(max_length=200)
+    password: str = Field(max_length=128)
+    code: str | None = Field(default=None, max_length=10)
+    # Supprimer aussi son compte quand cet espace était le seul.
+    delete_account: bool = False
+
+
 class PrivacyUpdate(BaseModel):
     ai_enabled: bool | None = None
     feedback_retention_months: int | None = Field(default=None, ge=0, le=240)

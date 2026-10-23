@@ -23,6 +23,7 @@ export function AccountPage() {
       <PasswordCard />
       <TotpCard enabled={me.totp_enabled} />
       <SessionsCard />
+      <DeleteAccountCard totp={me.totp_enabled} />
     </div>
   );
 }
@@ -143,6 +144,56 @@ function TotpCard({ enabled }: { enabled: boolean }) {
           </Button>
         </>
       )}
+    </Card>
+  );
+}
+
+function DeleteAccountCard({ totp }: { totp: boolean }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const remove = useMutation({
+    mutationFn: () => api.deleteAccount(password, code),
+    onSuccess: async () => {
+      await endSession(queryClient);
+      await navigate({ to: "/" });
+    },
+  });
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (window.confirm(t("account.deleteConfirm"))) remove.mutate();
+  };
+  return (
+    <Card title={t("account.delete")}>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-slate-600">{t("account.deleteIntro")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label={t("account.confirmPassword")}
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {totp && (
+            <Field
+              label={t("auth.otpCode")}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          )}
+        </div>
+        <ErrorText error={remove.error} />
+        <Button type="submit" variant="danger" disabled={remove.isPending}>
+          {t("account.deleteAction")}
+        </Button>
+      </form>
     </Card>
   );
 }

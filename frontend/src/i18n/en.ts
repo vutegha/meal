@@ -89,6 +89,13 @@ export const en: Messages = {
     erase_one: "Erase {{count}} item",
     erase_other: "Erase {{count}} items",
     erased: "Erased: {{feedback}} feedback entry(ies), {{submissions}} response(s).",
+    close: "Close this workspace",
+    closeIntro:
+      "Projects, evidence, photos, complaints, responses, reports and the log are permanently erased, files included. Export what you need to keep first. Encrypted backups still hold them for a few days, until they rotate.",
+    closeName: "Type the workspace name: {{name}}",
+    closeDeleteAccount: "Also delete my account (this is my only workspace)",
+    closeConfirm: "Permanently erase the workspace “{{name}}” and all its data?",
+    closeAction: "Close and erase everything",
   },
   account: {
     title: "My account",
@@ -103,6 +110,12 @@ export const en: Messages = {
     passwordHint: "At least 8 characters. Your other devices will be signed out.",
     changePassword: "Change password",
     passwordChanged: "Password changed. Your other sessions have been closed.",
+    confirmPassword: "Your password, to confirm",
+    delete: "Delete my account",
+    deleteIntro:
+      "Your name and email address are erased and you can no longer sign in. What you entered stays in your organisations' workspaces, without your name. If you are the only administrator of a workspace, appoint another one or close the workspace first.",
+    deleteConfirm: "Permanently delete your account?",
+    deleteAction: "Delete my account",
     totp: "Two-factor authentication",
     totpIntro:
       "Each time you sign in, a 6-digit code will be asked for in addition to your password (Google Authenticator, Microsoft Authenticator, FreeOTP…).",
@@ -892,6 +905,7 @@ export const en: Messages = {
     "feedback.updated": "Feedback handled",
     "feedback.deleted": "Feedback deleted",
     "member.reset_link_created": "Password reset link created",
+    "member.account_deleted": "Account deleted by its owner",
     "feedback.anonymized": "Old feedback erased (retention period)",
     "personal_data.erased": "A person's data erased",
     "personal_data.searched": "Search for a person's data",

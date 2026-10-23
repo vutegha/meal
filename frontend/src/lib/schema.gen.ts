@@ -78,6 +78,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/me/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Me
+     * @description Supprime son propre compte : il est anonymisé et ne peut plus se connecter.
+     */
+    post: operations["delete_me_api_v1_auth_me_delete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/password": {
     parameters: {
       query?: never;
@@ -392,6 +412,26 @@ export interface paths {
     get: operations["list_payments_api_v1_orgs__org_id__billing_payments_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/close": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Close
+     * @description Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés.
+     */
+    post: operations["close_api_v1_orgs__org_id__close_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1904,6 +1944,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AccountDeleteIn */
+    AccountDeleteIn: {
+      /** Code */
+      code?: string | null;
+      /** Password */
+      password: string;
+    };
     /**
      * AccountType
      * @enum {string}
@@ -3782,6 +3829,20 @@ export interface components {
       /** Title */
       title?: string | null;
     };
+    /** OrganizationCloseIn */
+    OrganizationCloseIn: {
+      /** Code */
+      code?: string | null;
+      /**
+       * Delete Account
+       * @default false
+       */
+      delete_account: boolean;
+      /** Name */
+      name: string;
+      /** Password */
+      password: string;
+    };
     /** OrganizationIn */
     OrganizationIn: {
       /**
@@ -4971,6 +5032,37 @@ export interface operations {
       };
     };
   };
+  delete_me_api_v1_auth_me_delete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   change_password_api_v1_auth_password_post: {
     parameters: {
       query?: never;
@@ -5554,6 +5646,39 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["PaymentOut"][];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  close_api_v1_orgs__org_id__close_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OrganizationCloseIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

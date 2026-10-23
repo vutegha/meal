@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.security import decode_token, hash_password, verify_password
 from app.models import Membership, Role, User, UserSession
 from app.schemas.auth import (
+    AccountDeleteIn,
     LoginIn,
     PasswordChangeIn,
     PasswordForgotIn,
@@ -24,7 +25,7 @@ from app.schemas.auth import (
     TotpSetupOut,
 )
 from app.schemas.organization import MeOut, my_organization
-from app.services import billing, mailer, passwords, ratelimit, sessions
+from app.services import accounts, billing, mailer, passwords, ratelimit, sessions
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -240,6 +241,23 @@ async def totp_disable(body: TotpCodeIn, user: CurrentUser, session: SessionDep)
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Code incorrect")
     user.totp_secret = None
     user.totp_enabled_at = None
+    await session.commit()
+
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(body: AccountDeleteIn, user: CurrentUser, session: SessionDep) -> None:
+    """Supprime son propre compte : il est anonymisé et ne peut plus se connecter."""
+    if error := accounts.confirmation_error(user, body.password, body.code):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, error)
+    if blocking := await accounts.blocking_organizations(session, user):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Vous êtes le seul administrateur de : "
+            + ", ".join(blocking)
+            + ". Nommez un autre administrateur ou fermez l'espace avant de supprimer "
+            "votre compte.",
+        )
+    await accounts.delete_account(session, user)
     await session.commit()
 
 

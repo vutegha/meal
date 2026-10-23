@@ -1,6 +1,7 @@
 """Stockage des fichiers déposés : dossier local ou stockage objet compatible S3."""
 
 import asyncio
+import shutil
 from pathlib import Path
 from typing import Protocol
 
@@ -11,6 +12,7 @@ class Storage(Protocol):
     async def put(self, key: str, data: bytes, content_type: str) -> None: ...
     async def get(self, key: str) -> bytes: ...
     async def delete(self, key: str) -> None: ...
+    async def delete_prefix(self, prefix: str) -> int: ...
 
 
 class LocalStorage:
@@ -33,6 +35,15 @@ class LocalStorage:
 
     async def delete(self, key: str) -> None:
         self._path(key).unlink(missing_ok=True)
+
+    async def delete_prefix(self, prefix: str) -> int:
+        """Efface tous les fichiers d'un dossier (« org/ » ou « org/projet/ »)."""
+        folder = self._path(prefix.rstrip("/"))
+        if folder == self.root.resolve() or not folder.is_dir():
+            return 0
+        files = [p for p in folder.rglob("*") if p.is_file()]
+        await asyncio.to_thread(shutil.rmtree, folder, True)
+        return len(files)
 
 
 class S3Storage:
@@ -73,6 +84,21 @@ class S3Storage:
 
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self.client.delete_object, Bucket=self.bucket, Key=key)
+
+    async def delete_prefix(self, prefix: str) -> int:
+        def run() -> int:
+            count = 0
+            pages = self.client.get_paginator("list_objects_v2").paginate(
+                Bucket=self.bucket, Prefix=prefix
+            )
+            for page in pages:
+                keys = [{"Key": item["Key"]} for item in page.get("Contents", [])]
+                if keys:
+                    self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys})
+                    count += len(keys)
+            return count
+
+        return await asyncio.to_thread(run)
 
 
 _storage: Storage | None = None

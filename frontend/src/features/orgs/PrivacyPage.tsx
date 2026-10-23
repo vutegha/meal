@@ -1,9 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText, Field } from "@/components/ui";
 import { api, type PersonalData, type PrivacySettings } from "@/lib/api";
+import { meQuery } from "@/lib/queries";
+import { endSession } from "@/lib/session";
 
 import { useCurrentOrg } from "./useCurrentOrg";
 
@@ -17,6 +20,7 @@ export function PrivacyPage() {
       <h1 className="text-xl font-semibold">{t("privacy.title")}</h1>
       <SettingsCard orgId={orgId} />
       <PersonCard orgId={orgId} />
+      <CloseCard orgId={orgId} />
     </div>
   );
 }
@@ -290,6 +294,92 @@ function PersonCard({ orgId }: { orgId: string }) {
           )}
         </div>
       )}
+    </Card>
+  );
+}
+
+/** Fermer l'espace : tout est effacé, fichiers compris. Deux confirmations. */
+function CloseCard({ orgId }: { orgId: string }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: me } = useSuspenseQuery(meQuery);
+  const org = me.organizations.find((o) => o.id === orgId);
+  const others = me.organizations.filter((o) => o.id !== orgId);
+  const [form, setForm] = useState({ name: "", password: "", code: "", deleteAccount: true });
+  const close = useMutation({
+    mutationFn: () =>
+      api.closeOrganization(orgId, {
+        name: form.name,
+        password: form.password,
+        code: form.code,
+        delete_account: others.length === 0 && form.deleteAccount,
+      }),
+    onSuccess: async () => {
+      const next = others[0];
+      if (next) {
+        await queryClient.invalidateQueries({ queryKey: ["me"] });
+        await navigate({ to: "/orgs/$orgId", params: { orgId: next.id } });
+      } else {
+        await endSession(queryClient);
+        await navigate({ to: "/" });
+      }
+    },
+  });
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (window.confirm(t("privacy.closeConfirm", { name: org?.name ?? "" }))) close.mutate();
+  };
+  return (
+    <Card title={t("privacy.close")}>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-slate-600">{t("privacy.closeIntro")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label={t("privacy.closeName", { name: org?.name ?? "" })}
+            required
+            autoComplete="off"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Field
+            label={t("account.confirmPassword")}
+            type="password"
+            autoComplete="current-password"
+            required
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+          {me.totp_enabled && (
+            <Field
+              label={t("auth.otpCode")}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value })}
+            />
+          )}
+        </div>
+        {others.length === 0 && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.deleteAccount}
+              onChange={(e) => setForm({ ...form, deleteAccount: e.target.checked })}
+            />
+            {t("privacy.closeDeleteAccount")}
+          </label>
+        )}
+        <ErrorText error={close.error} />
+        <Button
+          type="submit"
+          variant="danger"
+          disabled={close.isPending || form.name.trim() !== org?.name}
+        >
+          {t("privacy.closeAction")}
+        </Button>
+      </form>
     </Card>
   );
 }

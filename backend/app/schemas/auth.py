@@ -72,6 +72,12 @@ class TotpSetupOut(BaseModel):
     qr_svg: str
 
 
+class AccountDeleteIn(BaseModel):
+    password: str = Field(max_length=128)
+    # Code de double authentification, quand elle est active.
+    code: str | None = Field(default=None, max_length=10)
+
+
 class TotpCodeIn(BaseModel):
     code: str = Field(min_length=6, max_length=10)
 
