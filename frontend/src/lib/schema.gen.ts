@@ -3113,6 +3113,11 @@ export interface components {
       mean?: number | null;
       /** Min */
       min?: number | null;
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /** Samples */
       samples?: string[];
       /** Total */
@@ -3136,6 +3141,11 @@ export interface components {
       label: string;
       /** Options */
       options?: string[];
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /**
        * Required
        * @default false
@@ -7551,7 +7561,10 @@ export interface operations {
   };
   export_submissions_api_v1_orgs__org_id__projects__project_id__forms__form_id__export_xlsx_get: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Inclure les questions personnelles */
+        personal?: boolean;
+      };
       header?: never;
       path: {
         org_id: string;

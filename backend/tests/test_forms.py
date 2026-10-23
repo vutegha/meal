@@ -129,3 +129,46 @@ async def test_forms_are_isolated(client: AsyncClient) -> None:
     other = await register(client, "x@other.org", "Autre ONG")
     r = await client.get(f"{base}/{form['id']}", headers=other["headers"])
     assert r.status_code == 404
+
+
+async def test_personal_questions_stay_out_of_summary_and_export(client: AsyncClient) -> None:
+    ctx, base = await setup(client)
+    h = ctx["headers"]
+    fields = [
+        {"key": "nom", "label": "Nom du chef de ménage", "type": "text", "personal": True},
+        {"key": "age", "label": "Âge", "type": "integer", "personal": True},
+        {"key": "handicap", "label": "Handicap", "type": "yesno", "personal": True},
+        {"key": "remarque", "label": "Remarques", "type": "text"},
+    ]
+    form = (await client.post(base, headers=h, json={"title": "Enquête", "fields": fields})).json()
+    url = f"{base}/{form['id']}"
+    await client.patch(url, headers=h, json={"status": "published"})
+    for nom, age in (("Amani Furaha", 71), ("Neema Kahindo", 34)):
+        answers = {"nom": nom, "age": age, "handicap": age > 60, "remarque": "RAS"}
+        r = await client.post(f"{url}/submissions", headers=h, json={"answers": answers})
+        assert r.status_code == 201, r.text
+
+    by_key = {f["key"]: f for f in (await client.get(f"{url}/summary", headers=h)).json()["fields"]}
+    assert by_key["nom"]["personal"] and by_key["nom"]["samples"] == []
+    assert by_key["nom"]["answered"] == 2
+    assert by_key["age"]["max"] is None and by_key["age"]["mean"] is None
+    # Un effectif reste utile pour ventiler les résultats.
+    assert by_key["handicap"]["counts"] == {"yes": 1, "no": 1}
+    assert by_key["remarque"]["samples"] == ["RAS", "RAS"]
+
+    sheet = load_workbook(BytesIO((await client.get(f"{url}/export.xlsx", headers=h)).content))
+    assert sheet.active is not None
+    assert [c.value for c in sheet.active[1]][5:] == ["Remarques"]
+    full = await client.get(f"{url}/export.xlsx", headers=h, params={"personal": "true"})
+    sheet = load_workbook(BytesIO(full.content))
+    assert sheet.active is not None
+    assert "Amani Furaha" in [c.value for c in sheet.active[2]]
+    audit = (await client.get(f"/api/v1/orgs/{ctx['org_id']}/audit", headers=h)).json()
+    exported = [e["data"]["personal"] for e in audit if e["action"] == "form.exported"]
+    assert sorted(exported) == [False, True]
+
+    # Après les premières réponses, on peut encore marquer une question comme personnelle.
+    fields[3]["personal"] = True
+    assert (await client.patch(url, headers=h, json={"fields": fields})).status_code == 200
+    fields[3]["label"] = "Autres remarques"
+    assert (await client.patch(url, headers=h, json={"fields": fields})).status_code == 409

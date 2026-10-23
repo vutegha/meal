@@ -792,6 +792,13 @@ export const en: Messages = {
     collectedBy: "Recorded by",
     yes: "Yes",
     no: "No",
+    personal: "Personal data",
+    personalHint:
+      "Name, phone, ID number, health… Answers are left out of the summary and the plain export.",
+    personalSummary: "Personal data: answers are not shown in the summary.",
+    exportPersonal: "Export with personal data",
+    exportPersonalConfirm:
+      "The file will contain respondents' names and personal data. The export is logged. Continue?",
     requiredMissing: "“{{label}}”: an answer is required",
     waiting: "{{count}} form answer(s) waiting to be sent.",
   },

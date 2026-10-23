@@ -1409,6 +1409,8 @@ export interface FormField {
   required: boolean;
   options: string[];
   hint: string;
+  /** Identifie une personne ou la concerne de près : hors synthèse et hors export par défaut. */
+  personal: boolean;
 }
 
 export interface CollectionForm {
@@ -1446,6 +1448,7 @@ export interface FieldSummary {
   label: string;
   type: FieldType;
   answered: number;
+  personal: boolean;
   counts: Record<string, number>;
   total: number | null;
   mean: number | null;
@@ -1459,5 +1462,9 @@ export interface FormSummary {
   fields: FieldSummary[];
 }
 
-export const formExportPath = (orgId: string, projectId: string, formId: string) =>
-  `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;
+export const formExportPath = (
+  orgId: string,
+  projectId: string,
+  formId: string,
+  personal = false,
+) => `${project(orgId, projectId)}/forms/${formId}/export.xlsx${personal ? "?personal=true" : ""}`;

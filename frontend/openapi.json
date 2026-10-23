@@ -3280,6 +3280,11 @@
             ],
             "title": "Min"
           },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
+          },
           "samples": {
             "items": {
               "type": "string"
@@ -3347,6 +3352,11 @@
             "maxItems": 50,
             "title": "Options",
             "type": "array"
+          },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
           },
           "required": {
             "default": false,
@@ -12684,6 +12694,18 @@
               "format": "uuid",
               "title": "Form Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Inclure les questions personnelles",
+            "in": "query",
+            "name": "personal",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inclure les questions personnelles",
+              "title": "Personal",
+              "type": "boolean"
             }
           }
         ],

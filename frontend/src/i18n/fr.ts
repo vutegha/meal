@@ -807,6 +807,13 @@ export const fr = {
     yes: "Oui",
     no: "Non",
     requiredMissing: "« {{label}} » : réponse obligatoire",
+    personal: "Donnée personnelle",
+    personalHint:
+      "Nom, téléphone, numéro de carte, santé… Réponses absentes de la synthèse et de l'export simple.",
+    personalSummary: "Donnée personnelle : réponses non affichées dans la synthèse.",
+    exportPersonal: "Exporter avec les données personnelles",
+    exportPersonalConfirm:
+      "Le fichier contiendra les noms et données personnelles des répondants. L'export est inscrit au journal. Continuer ?",
     waiting: "{{count}} réponse(s) de formulaire en attente d'envoi.",
   },
   templates: {
