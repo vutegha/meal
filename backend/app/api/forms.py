@@ -5,7 +5,6 @@ coupure réseau n'est enregistrée qu'une fois.
 """
 
 import asyncio
-from io import BytesIO
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +14,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import AnyMember, SessionDep
 from app.api.projects import Collector, Planner, ProjectAdmin, _log
+from app.documents.spreadsheet import save_as_text
 from app.models import CollectionForm, FormSubmission, Project, User
 from app.schemas.form import (
     FormField,
@@ -303,9 +303,7 @@ def _workbook(form: CollectionForm, rows: list[tuple[FormSubmission, str]]) -> b
             ]
         )
     _wrap(ws)
-    buffer = BytesIO()
-    wb.save(buffer)
-    return buffer.getvalue()
+    return save_as_text(wb)
 
 
 @router.get("/{form_id}/export.xlsx", response_class=Response)
