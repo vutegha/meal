@@ -14,7 +14,7 @@ import hmac
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal, Protocol
 from uuid import UUID, uuid4
 
@@ -27,6 +27,7 @@ from app.models import (
     FeedbackCategory,
     FeedbackChannel,
     FeedbackEntry,
+    FeedbackStatus,
     Project,
     SmsDirection,
     SmsMessage,
@@ -344,6 +345,10 @@ def _whatsapp_gateway(settings: Settings) -> SmsGateway:
 # --- Réception ---------------------------------------------------------------------------
 
 
+# Délai pendant lequel une réponse rejoint le dernier échange avec ce numéro.
+REPLY_WINDOW_DAYS = 30
+
+
 async def next_reference(session: AsyncSession, project_id: UUID) -> str:
     count = await session.scalar(select(func.count()).where(FeedbackEntry.project_id == project_id))
     return f"RET-{(count or 0) + 1:04d}"
@@ -355,9 +360,10 @@ async def route_inbound(
     """Range un SMS ou message WhatsApp reçu (session système : on ne sait pas encore de quelle
     organisation il vient).
 
-    1. Le numéro a déjà reçu un message (SMS ou WhatsApp) au sujet d'un retour : la réponse
-       rejoint cet échange.
-    2. Sinon, un message qui commence par le code d'un projet crée un nouveau retour.
+    1. Le numéro a reçu un message (SMS ou WhatsApp) depuis moins de REPLY_WINDOW_DAYS jours
+       au sujet d'un retour non clôturé : la réponse rejoint cet échange.
+    2. Sinon, un message qui commence par le code d'un projet crée un nouveau retour,
+       confidentiel jusqu'à sa qualification.
     3. Sinon il est conservé sans organisation, invisible des utilisateurs.
     """
     if inbound.provider_message_id:
@@ -383,12 +389,16 @@ async def route_inbound(
         provider=provider,
         provider_message_id=inbound.provider_message_id[:100],
     )
+    # Une réponse ne rejoint qu'un échange récent sur un retour encore ouvert : un numéro
+    # partagé ou réattribué ne doit pas verser un nouveau message dans un ancien dossier.
     last = await session.scalar(
         select(SmsMessage)
+        .join(FeedbackEntry, FeedbackEntry.id == SmsMessage.feedback_id)
         .where(
             SmsMessage.phone == phone,
             SmsMessage.direction == SmsDirection.OUTBOUND,
-            SmsMessage.feedback_id.is_not(None),
+            SmsMessage.created_at >= datetime.now(UTC) - timedelta(days=REPLY_WINDOW_DAYS),
+            FeedbackEntry.status != FeedbackStatus.CLOSED,
         )
         .order_by(SmsMessage.created_at.desc())
         .limit(1)
@@ -417,9 +427,10 @@ async def route_inbound(
                 reference=await next_reference(session, project.id),
                 received_on=date.today(),
                 channel=FeedbackChannel.SMS,
-                # À qualifier par l'équipe, comme tout retour reçu sans saisie.
+                # À qualifier par l'équipe, comme tout retour reçu sans saisie. Confidentiel
+                # tant qu'un responsable ne l'a pas lu : il peut signaler un abus ou une fraude.
                 category=FeedbackCategory.OTHER,
-                sensitive=False,
+                sensitive=True,
                 description=rest.strip() or text,
                 contact=phone,
             )
