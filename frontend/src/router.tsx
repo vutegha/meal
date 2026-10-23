@@ -8,8 +8,11 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { AccountPage } from "@/features/account/AccountPage";
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
+import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
@@ -75,6 +78,21 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
+  component: ResetPasswordPage,
+});
+
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
@@ -135,6 +153,12 @@ const templatesRoute = createRoute({
   ),
 });
 
+const accountRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/account",
+  component: AccountPage,
+});
+
 const billingRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/billing",
@@ -170,6 +194,8 @@ const routeTree = rootRoute.addChildren([
   featuresRoute,
   pricingRoute,
   loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   registerRoute,
   orgRoute.addChildren([
     orgIndexRoute,
@@ -177,6 +203,7 @@ const routeTree = rootRoute.addChildren([
     templatesRoute,
     membersRoute,
     billingRoute,
+    accountRoute,
     projectRoute,
   ]),
 ]);

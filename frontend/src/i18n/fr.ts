@@ -12,6 +12,19 @@ export const fr = {
     error: "Une erreur est survenue. Réessayez.",
   },
   auth: {
+    otpCode: "Code de vérification",
+    otpHint: "Les 6 chiffres affichés par votre application d'authentification.",
+    forgotLink: "Mot de passe oublié ?",
+    forgotTitle: "Mot de passe oublié",
+    forgotIntro:
+      "Indiquez votre adresse : si elle correspond à un compte, vous recevrez un lien par e-mail. Sans e-mail, demandez un lien à l'administrateur de votre organisation.",
+    forgotSubmit: "Recevoir un lien",
+    forgotSent:
+      "Si cette adresse correspond à un compte, un lien vient d'être envoyé. Il est valable 24 heures. Sans e-mail reçu, demandez un lien à l'administrateur de votre organisation.",
+    backToLogin: "Retour à la connexion",
+    resetTitle: "Choisir un nouveau mot de passe",
+    resetSubmit: "Enregistrer et se connecter",
+    resetMissingToken: "Ce lien est incomplet : demandez-en un nouveau.",
     loginTitle: "Connexion",
     loginSubmit: "Se connecter",
     noAccount: "Pas encore de compte ?",
@@ -36,7 +49,40 @@ export const fr = {
     logoutPending_other:
       "{{count}} saisies n'ont pas encore été envoyées. Elles seront supprimées de ce téléphone si vous vous déconnectez. Se déconnecter quand même ?",
   },
+  account: {
+    title: "Mon compte",
+    nav: "Mon compte",
+    mustChange:
+      "Votre mot de passe a été fixé par un administrateur. Choisissez-en un que vous seul connaissez.",
+    mfaRecommended:
+      "Vous êtes administrateur : activez la double authentification pour protéger les données de votre organisation.",
+    goToAccount: "Mon compte",
+    password: "Mot de passe",
+    currentPassword: "Mot de passe actuel",
+    newPassword: "Nouveau mot de passe",
+    passwordHint: "8 caractères au moins. Vos autres appareils seront déconnectés.",
+    changePassword: "Changer le mot de passe",
+    passwordChanged: "Mot de passe changé. Vos autres sessions ont été fermées.",
+    totp: "Double authentification",
+    totpIntro:
+      "À chaque connexion, un code à 6 chiffres vous sera demandé en plus du mot de passe (Google Authenticator, Microsoft Authenticator, FreeOTP…).",
+    totpOn: "Active : un code vous est demandé à chaque connexion.",
+    totpEnable: "Activer",
+    totpScan: "Scannez ce code avec votre application, puis saisissez le code affiché.",
+    totpQr: "QR code de la double authentification",
+    totpManual: "Ou saisissez cette clé :",
+    totpConfirm: "Confirmer",
+    totpDisable: "Désactiver",
+    sessions: "Sessions ouvertes",
+    unknownDevice: "Appareil inconnu",
+    thisDevice: "cet appareil",
+    openedOn: "Ouverte le {{date}}",
+    logoutAll: "Déconnecter tous mes appareils",
+  },
   orgs: {
+    resetLink: "Lien de réinitialisation",
+    resetLinkReady:
+      "Lien à transmettre à {{name}}, valable 24 heures et utilisable une seule fois :",
     switch: "Organisation",
     newOrganization: "Nouvelle organisation",
     create: "Créer",

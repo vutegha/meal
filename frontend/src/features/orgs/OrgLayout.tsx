@@ -117,8 +117,15 @@ export function OrgLayout() {
             + {t("orgs.newOrganization")}
           </Button>
           {/* Le nom cède la place au menu sur les écrans moyens. */}
-          <span className="ml-auto hidden text-sm text-slate-600 2xl:inline">{me.full_name}</span>
-          <Button variant="ghost" className="ml-auto 2xl:ml-0" onClick={logout}>
+          <Link
+            to="/orgs/$orgId/account"
+            params={{ orgId }}
+            className="ml-auto rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 [&.active]:font-semibold"
+          >
+            <span className="hidden 2xl:inline">{me.full_name}</span>
+            <span className="2xl:hidden">{t("account.nav")}</span>
+          </Link>
+          <Button variant="ghost" onClick={logout}>
             {t("common.logout")}
           </Button>
         </div>
@@ -138,10 +145,35 @@ export function OrgLayout() {
           </form>
         )}
       </header>
+      <SecurityBanner orgId={orgId} width={width} />
       <SubscriptionBanner orgId={orgId} width={width} />
       <main className={`mx-auto ${width} space-y-6 px-4 py-6`}>
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+/** Mot de passe initial à remplacer, ou double authentification conseillée à un administrateur. */
+function SecurityBanner({ orgId, width }: { orgId: string; width: string }) {
+  const { t } = useTranslation();
+  const { data: me } = useSuspenseQuery(meQuery);
+  const onAccount = useRouterState({ select: (s) => s.location.pathname.endsWith("/account") });
+  if (onAccount || !(me.must_change_password || me.mfa_recommended)) return null;
+  return (
+    <div className="bg-amber-50 text-amber-900">
+      <div className={`mx-auto flex ${width} flex-wrap items-center gap-3 px-4 py-2 text-sm`}>
+        <span>
+          {me.must_change_password ? t("account.mustChange") : t("account.mfaRecommended")}
+        </span>
+        <Link
+          to="/orgs/$orgId/account"
+          params={{ orgId }}
+          className="font-medium underline underline-offset-2"
+        >
+          {t("account.goToAccount")}
+        </Link>
+      </div>
     </div>
   );
 }

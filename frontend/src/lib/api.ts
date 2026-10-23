@@ -37,6 +37,25 @@ export interface User {
 
 export interface Me extends User {
   organizations: Organization[];
+  /** Mot de passe initial fixé par un administrateur : à remplacer. */
+  must_change_password: boolean;
+  totp_enabled: boolean;
+  /** Administrateur sans double authentification. */
+  mfa_recommended: boolean;
+}
+
+export interface UserSessionInfo {
+  id: string;
+  created_at: string;
+  rotated_at: string | null;
+  user_agent: string;
+  current: boolean;
+}
+
+export interface TotpSetup {
+  secret: string;
+  uri: string;
+  qr_svg: string;
 }
 
 export interface Member {
@@ -60,6 +79,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Mot de passe correct, mais le code de double authentification est attendu. */
+    public otpRequired = false,
   ) {
     super(message);
   }
@@ -138,7 +159,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fresh = await refreshTokens();
     if (fresh) response = await send(path, init, fresh.access_token);
   }
-  if (!response.ok) throw new ApiError(response.status, await errorMessage(response));
+  if (!response.ok) {
+    const otpRequired = response.headers.get("X-OTP-Required") === "1";
+    throw new ApiError(response.status, await errorMessage(response), otpRequired);
+  }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
@@ -148,8 +172,24 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<Tokens>("/auth/login", json("POST", { email, password })),
+  login: (email: string, password: string, otp?: string) =>
+    request<Tokens>("/auth/login", json("POST", { email, password, otp: otp || undefined })),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  logoutAll: () => request<void>("/auth/logout-all", { method: "POST" }),
+  sessions: () => request<UserSessionInfo[]>("/auth/sessions"),
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>("/auth/password", json("POST", { current_password, new_password })),
+  forgotPassword: (email: string) =>
+    request<void>("/auth/password/forgot", json("POST", { email })),
+  resetPassword: (token: string, new_password: string) =>
+    request<Tokens>("/auth/password/reset", json("POST", { token, new_password })),
+  totpSetup: () => request<TotpSetup>("/auth/totp/setup", { method: "POST" }),
+  totpEnable: (code: string) => request<void>("/auth/totp/enable", json("POST", { code })),
+  totpDisable: (code: string) => request<void>("/auth/totp/disable", json("POST", { code })),
+  memberResetLink: (orgId: string, memberId: string) =>
+    request<{ path: string; expires_at: string }>(`/orgs/${orgId}/members/${memberId}/reset-link`, {
+      method: "POST",
+    }),
   register: (body: {
     email: string;
     full_name: string;
