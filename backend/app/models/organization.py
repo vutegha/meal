@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,15 @@ class Organization(IdMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str] = mapped_column(String(80), unique=True)
     default_language: Mapped[str] = mapped_column(String(8), default="fr")
+    # Protection des données (page Données personnelles de l'espace).
+    # Désactivée : aucun texte de l'espace n'est envoyé aux fournisseurs d'IA.
+    ai_enabled: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # Retours clôturés depuis plus de N mois : contact, description et SMS effacés (0 = jamais).
+    feedback_retention_months: Mapped[int] = mapped_column(default=36, server_default="36")
+    # Accusé de réception envoyé à qui écrit par SMS ou WhatsApp, avec la notice d'information.
+    sms_acknowledgement: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # Personne ou service à contacter pour exercer ses droits (repris dans l'accusé).
+    privacy_contact: Mapped[str] = mapped_column(String(200), default="", server_default="")
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"

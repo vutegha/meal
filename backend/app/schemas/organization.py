@@ -22,6 +22,22 @@ class OrganizationUpdate(BaseModel):
     default_language: str | None = Field(default=None, pattern="^(fr|en)$")
 
 
+class PrivacySettings(ORMModel):
+    """Réglages de protection des données de l'espace."""
+
+    ai_enabled: bool
+    feedback_retention_months: int = Field(ge=0, le=240)
+    sms_acknowledgement: bool
+    privacy_contact: str = Field(max_length=200)
+
+
+class PrivacyUpdate(BaseModel):
+    ai_enabled: bool | None = None
+    feedback_retention_months: int | None = Field(default=None, ge=0, le=240)
+    sms_acknowledgement: bool | None = None
+    privacy_contact: str | None = Field(default=None, max_length=200)
+
+
 class OrganizationOut(ORMModel):
     id: UUID
     name: str

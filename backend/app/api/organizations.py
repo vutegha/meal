@@ -17,6 +17,8 @@ from app.schemas.organization import (
     OrganizationIn,
     OrganizationOut,
     OrganizationUpdate,
+    PrivacySettings,
+    PrivacyUpdate,
     my_organization,
 )
 from app.services import audit, billing, passwords
@@ -200,6 +202,33 @@ async def remove_member(
     )
     await session.delete(membership)
     await session.commit()
+
+
+@router.get("/{org_id}/privacy", response_model=PrivacySettings)
+async def get_privacy(org_id: UUID, _: AnyMember, session: SessionDep) -> Organization:
+    return await session.get_one(Organization, org_id)
+
+
+@router.patch("/{org_id}/privacy", response_model=PrivacySettings)
+async def update_privacy(
+    org_id: UUID, body: PrivacyUpdate, admin: OrgAdmin, session: SessionDep
+) -> Organization:
+    organization = await session.get_one(Organization, org_id)
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    for field, value in changes.items():
+        setattr(organization, field, value)
+    audit.record(
+        session,
+        organization_id=org_id,
+        actor_id=admin.user_id,
+        action="organization.privacy_updated",
+        entity_type="organization",
+        entity_id=org_id,
+        data=changes,
+    )
+    await session.commit()
+    await session.refresh(organization)
+    return organization
 
 
 @router.post("/{org_id}/members/{member_id}/reset-link", response_model=ResetLinkOut)

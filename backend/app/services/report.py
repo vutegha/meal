@@ -207,6 +207,10 @@ async def build_sources(
     for evidence in execution.evidence:
         if evidence.kind == EvidenceKind.PHOTO or not evidence.text.strip():
             continue
+        # Une liste de présence ne contient que des noms, numéros et signatures : elle reste dans
+        # le dossier, sans être envoyée au modèle. Les effectifs viennent de la saisie (S1).
+        if evidence.kind == EvidenceKind.ATTENDANCE:
+            continue
         ref = f"S{len(sources) + 1}"
         label = f"{evidence.filename}"
         sources.append({"ref": ref, "label": label, "evidence_id": str(evidence.id)})

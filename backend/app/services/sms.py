@@ -28,6 +28,7 @@ from app.models import (
     FeedbackChannel,
     FeedbackEntry,
     FeedbackStatus,
+    Organization,
     Project,
     SmsDirection,
     SmsMessage,
@@ -403,6 +404,7 @@ async def route_inbound(
         .order_by(SmsMessage.created_at.desc())
         .limit(1)
     )
+    acknowledge: FeedbackEntry | None = None
     if last is not None:
         message.organization_id = last.organization_id
         message.project_id = last.project_id
@@ -448,22 +450,78 @@ async def route_inbound(
             message.organization_id = project.organization_id
             message.project_id = project.id
             message.feedback_id = entry.id
+            acknowledge = entry
     session.add(message)
     await session.flush()
+    if acknowledge is not None:
+        await _acknowledge(session, acknowledge, phone, channel)
     return message
+
+
+async def _acknowledge(
+    session: AsyncSession, entry: FeedbackEntry, phone: str, channel: str
+) -> None:
+    """Accusé de réception et information de la personne (RGPD, art. 13), si l'espace l'a
+    activé. Un échec d'envoi est enregistré dans l'échange, sans bloquer la réception."""
+    organization = await session.get(Organization, entry.organization_id)
+    if organization is None or not organization.sms_acknowledgement:
+        return
+    text = acknowledgement_text(organization, entry.reference)
+    reply = SmsMessage(
+        organization_id=entry.organization_id,
+        project_id=entry.project_id,
+        feedback_id=entry.id,
+        channel=channel,
+        direction=SmsDirection.OUTBOUND,
+        phone=phone,
+        body=text,
+        status="queued",
+        provider="",
+        # Après le message reçu, même dans la même transaction (now() y est figé).
+        created_at=datetime.now(UTC) + timedelta(milliseconds=1),
+    )
+    try:
+        gateway = get_gateway(channel=channel)
+        reply.provider = gateway.name
+        result = await gateway.send(phone, text)
+        reply.status = result.status
+        reply.provider_message_id = result.provider_message_id[:100]
+    except SmsError as exc:
+        reply.status = "failed"
+        reply.error = str(exc)
+    session.add(reply)
+    await session.flush()
+
+
+def acknowledgement_text(organization: Organization, reference: str) -> str:
+    rights = (
+        f" Pour consulter ou faire effacer vos données : {organization.privacy_contact}."
+        if organization.privacy_contact
+        else ""
+    )
+    return (
+        f"{organization.name} : message reçu (réf. {reference}). Il sera traité de façon "
+        f"confidentielle ; vos données ne servent qu'à y répondre.{rights} "
+        "Répondez à ce numéro pour ajouter des précisions."
+    )
 
 
 async def summaries(session: AsyncSession, project_id: UUID) -> dict[UUID, tuple[int, bool]]:
     """Par retour : nombre de messages, et si le dernier vient de la personne (réponse attendue)."""
     rows = await session.execute(
-        select(SmsMessage.feedback_id, SmsMessage.direction)
+        select(SmsMessage.feedback_id, SmsMessage.direction, SmsMessage.sent_by)
         .where(SmsMessage.project_id == project_id, SmsMessage.feedback_id.is_not(None))
         .order_by(SmsMessage.created_at)
     )
     result: dict[UUID, tuple[int, bool]] = {}
-    for feedback_id, direction in rows:
+    for feedback_id, direction, sent_by in rows:
         if feedback_id is None:
             continue
-        count, _ = result.get(feedback_id, (0, False))
-        result[feedback_id] = (count + 1, direction == SmsDirection.INBOUND)
+        count, awaiting = result.get(feedback_id, (0, False))
+        # L'accusé de réception automatique (sans auteur) ne répond pas à la personne.
+        if direction == SmsDirection.INBOUND:
+            awaiting = True
+        elif sent_by is not None:
+            awaiting = False
+        result[feedback_id] = (count + 1, awaiting)
     return result
