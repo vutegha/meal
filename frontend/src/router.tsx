@@ -8,12 +8,16 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { AccountPage } from "@/features/account/AccountPage";
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
+import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
+import { PrivacyPage } from "@/features/orgs/PrivacyPage";
 import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
@@ -73,6 +77,21 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
+  component: ResetPasswordPage,
 });
 
 const registerRoute = createRoute({
@@ -135,6 +154,18 @@ const templatesRoute = createRoute({
   ),
 });
 
+const privacyRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/privacy",
+  component: PrivacyPage,
+});
+
+const accountRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/account",
+  component: AccountPage,
+});
+
 const billingRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/billing",
@@ -170,6 +201,8 @@ const routeTree = rootRoute.addChildren([
   featuresRoute,
   pricingRoute,
   loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   registerRoute,
   orgRoute.addChildren([
     orgIndexRoute,
@@ -177,6 +210,8 @@ const routeTree = rootRoute.addChildren([
     templatesRoute,
     membersRoute,
     billingRoute,
+    accountRoute,
+    privacyRoute,
     projectRoute,
   ]),
 ]);

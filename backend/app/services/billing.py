@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal
-from app.models import AccountType, Membership, Payment, Project, Subscription
+from app.models import AccountType, Membership, Organization, Payment, Project, Subscription
 
 CURRENCY = "USD"
 TRIAL_DAYS = 14
@@ -247,7 +247,16 @@ async def ai_cap(session: AsyncSession, org_id: UUID) -> Decimal | None:
 
 
 async def ai_block_reason(session: AsyncSession, org_id: UUID, purpose: str) -> str | None:
-    """Pourquoi un appel IA n'est pas permis (abonnement expiré, plus de crédits), sinon None."""
+    """Pourquoi un appel IA n'est pas permis (IA désactivée, abonnement expiré, plus de
+    crédits), sinon None."""
+    if (
+        await session.scalar(select(Organization.ai_enabled).where(Organization.id == org_id))
+        is False
+    ):
+        return (
+            "L'IA est désactivée pour cet espace (page Données personnelles) : aucun texte "
+            "n'est envoyé aux fournisseurs d'IA."
+        )
     sub = await session.scalar(select(Subscription).where(Subscription.organization_id == org_id))
     if sub is None:
         return None

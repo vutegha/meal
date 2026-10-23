@@ -5,7 +5,7 @@ même saisie (après une coupure réseau) renvoie l'élément existant au lieu d
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -30,6 +30,7 @@ from app.models import (
     Role,
 )
 from app.schemas.execution import (
+    ConsentMethod,
     EvidenceOut,
     EvidenceUpdate,
     ExecutionDetail,
@@ -300,6 +301,7 @@ async def upload_evidence(
     kind: Annotated[EvidenceKind, Form()] = EvidenceKind.OTHER,
     caption: Annotated[str, Form(max_length=2000)] = "",
     consent_given: Annotated[bool, Form()] = False,
+    consent_method: Annotated[ConsentMethod | None, Form()] = None,
     client_uuid: Annotated[UUID | None, Form()] = None,
     # Date et position lues sur le téléphone : la photo compressée avant envoi a perdu son EXIF,
     # et les vidéos n'en ont pas. Celles du fichier priment.
@@ -337,7 +339,8 @@ async def upload_evidence(
     storage = get_storage()
     prefix = f"{org_id}/{project.id}/executions/{execution.id}/{uuid4()}"
     key = f"{prefix}-{filename[-120:]}"
-    await storage.put(key, data, processed.content_type)
+    stored = processed.stored or data
+    await storage.put(key, stored, processed.content_type)
     thumbnail_key = ""
     if processed.thumbnail:
         thumbnail_key = f"{prefix}-vignette.webp"
@@ -353,7 +356,7 @@ async def upload_evidence(
         kind=kind,
         filename=filename[:300],
         content_type=processed.content_type,
-        size_bytes=len(data),
+        size_bytes=len(stored),
         sha256=processed.sha256,
         storage_key=key,
         thumbnail_key=thumbnail_key,
@@ -362,6 +365,9 @@ async def upload_evidence(
         latitude=processed.latitude if processed.latitude is not None else latitude,
         longitude=processed.longitude if processed.longitude is not None else longitude,
         consent_given=consent_given,
+        consent_method=(consent_method or "") if consent_given else "",
+        consent_recorded_by=member.user_id if consent_given else None,
+        consent_recorded_at=datetime.now(UTC) if consent_given else None,
         text=processed.text,
         page_count=processed.page_count,
         uploaded_by=member.user_id,
@@ -389,8 +395,17 @@ async def update_evidence(
     evidence = await _get_evidence(session, project, evidence_id)
     changes = body.model_dump(exclude_unset=True, exclude_none=True)
     blur = changes.pop("blur_faces", None)
+    consent_before = evidence.consent_given
     for field, value in changes.items():
         setattr(evidence, field, value)
+    # Qui a enregistré le consentement, et quand ; effacé s'il est retiré.
+    if evidence.consent_given and (not consent_before or "consent_method" in changes):
+        evidence.consent_recorded_by = member.user_id
+        evidence.consent_recorded_at = datetime.now(UTC)
+    elif not evidence.consent_given:
+        evidence.consent_method = ""
+        evidence.consent_recorded_by = None
+        evidence.consent_recorded_at = None
     # Consentement retiré : les visages redeviennent floutés.
     if not evidence.consent_given and not (evidence.extra or {}).get("blur_faces", True):
         await _set_blur(evidence, True, member, force=True)

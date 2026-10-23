@@ -1,6 +1,32 @@
 {
   "components": {
     "schemas": {
+      "AccountDeleteIn": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "AccountDeleteIn",
+        "type": "object"
+      },
       "AccountType": {
         "enum": [
           "individual",
@@ -540,6 +566,23 @@
             "default": false,
             "title": "Consent Given",
             "type": "boolean"
+          },
+          "consent_method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "oral",
+                  "written",
+                  "guardian",
+                  "community"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Method"
           },
           "file": {
             "contentMediaType": "application/octet-stream",
@@ -1193,6 +1236,57 @@
         "title": "DocumentStatus",
         "type": "string"
       },
+      "ErasureIn": {
+        "properties": {
+          "feedback_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Feedback Ids",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "submission_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Submission Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ErasureIn",
+        "type": "object"
+      },
+      "ErasureOut": {
+        "properties": {
+          "feedback": {
+            "title": "Feedback",
+            "type": "integer"
+          },
+          "submissions": {
+            "title": "Submissions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "feedback",
+          "submissions"
+        ],
+        "title": "ErasureOut",
+        "type": "object"
+      },
       "EvidenceKind": {
         "enum": [
           "report",
@@ -1205,6 +1299,46 @@
         ],
         "title": "EvidenceKind",
         "type": "string"
+      },
+      "EvidenceMatch": {
+        "description": "Preuve qui cite la personne (légende ou texte) : à vérifier, jamais effacée d'office.",
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "filename",
+          "kind",
+          "caption",
+          "excerpt"
+        ],
+        "title": "EvidenceMatch",
+        "type": "object"
       },
       "EvidenceOut": {
         "properties": {
@@ -1220,6 +1354,23 @@
           "consent_given": {
             "title": "Consent Given",
             "type": "boolean"
+          },
+          "consent_method": {
+            "default": "",
+            "title": "Consent Method",
+            "type": "string"
+          },
+          "consent_recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Recorded At"
           },
           "content_type": {
             "title": "Content Type",
@@ -1355,6 +1506,23 @@
               }
             ],
             "title": "Consent Given"
+          },
+          "consent_method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "oral",
+                  "written",
+                  "guardian",
+                  "community"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Method"
           },
           "kind": {
             "anyOf": [
@@ -2535,6 +2703,80 @@
         "title": "FeedbackIn",
         "type": "object"
       },
+      "FeedbackMatch": {
+        "properties": {
+          "anonymized": {
+            "title": "Anonymized",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "contact": {
+            "title": "Contact",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          },
+          "sensitive": {
+            "title": "Sensitive",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "reference",
+          "received_on",
+          "category",
+          "status",
+          "sensitive",
+          "contact",
+          "description",
+          "response",
+          "anonymized",
+          "messages"
+        ],
+        "title": "FeedbackMatch",
+        "type": "object"
+      },
       "FeedbackOut": {
         "properties": {
           "activity_id": {
@@ -3064,6 +3306,11 @@
             ],
             "title": "Min"
           },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
+          },
           "samples": {
             "items": {
               "type": "string"
@@ -3131,6 +3378,11 @@
             "maxItems": 50,
             "title": "Options",
             "type": "array"
+          },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
           },
           "required": {
             "default": false,
@@ -4329,6 +4581,18 @@
             "title": "Email",
             "type": "string"
           },
+          "otp": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Otp"
+          },
           "password": {
             "maxLength": 128,
             "title": "Password",
@@ -4361,12 +4625,27 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "mfa_recommended": {
+            "default": false,
+            "title": "Mfa Recommended",
+            "type": "boolean"
+          },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "organizations": {
             "items": {
               "$ref": "#/components/schemas/MyOrganizationOut"
             },
             "title": "Organizations",
             "type": "array"
+          },
+          "totp_enabled": {
+            "default": false,
+            "title": "Totp Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4876,6 +5155,43 @@
         "title": "NodeUpdate",
         "type": "object"
       },
+      "OrganizationCloseIn": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "delete_account": {
+            "default": false,
+            "title": "Delete Account",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "password"
+        ],
+        "title": "OrganizationCloseIn",
+        "type": "object"
+      },
       "OrganizationIn": {
         "properties": {
           "default_language": {
@@ -4997,6 +5313,62 @@
           }
         },
         "title": "Participants",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "properties": {
+          "current_password": {
+            "maxLength": 128,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
+        "type": "object"
+      },
+      "PasswordForgotIn": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordForgotIn",
+        "type": "object"
+      },
+      "PasswordResetIn": {
+        "properties": {
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 200,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetIn",
         "type": "object"
       },
       "PaymentOut": {
@@ -5385,6 +5757,43 @@
         "title": "PeriodicSummary",
         "type": "object"
       },
+      "PersonalDataResult": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMatch"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackMatch"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "submissions": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionMatch"
+            },
+            "title": "Submissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "feedback",
+          "submissions",
+          "evidence"
+        ],
+        "title": "PersonalDataResult",
+        "type": "object"
+      },
       "PlanLimits": {
         "properties": {
           "ai_monthly_budget_usd": {
@@ -5480,6 +5889,91 @@
           "credit"
         ],
         "title": "PlanPrices",
+        "type": "object"
+      },
+      "PrivacySettings": {
+        "description": "Réglages de protection des données de l'espace.",
+        "properties": {
+          "ai_enabled": {
+            "title": "Ai Enabled",
+            "type": "boolean"
+          },
+          "feedback_retention_months": {
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Feedback Retention Months",
+            "type": "integer"
+          },
+          "privacy_contact": {
+            "maxLength": 200,
+            "title": "Privacy Contact",
+            "type": "string"
+          },
+          "sms_acknowledgement": {
+            "title": "Sms Acknowledgement",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ai_enabled",
+          "feedback_retention_months",
+          "sms_acknowledgement",
+          "privacy_contact"
+        ],
+        "title": "PrivacySettings",
+        "type": "object"
+      },
+      "PrivacyUpdate": {
+        "properties": {
+          "ai_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Enabled"
+          },
+          "feedback_retention_months": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Retention Months"
+          },
+          "privacy_contact": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacy Contact"
+          },
+          "sms_acknowledgement": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms Acknowledgement"
+          }
+        },
+        "title": "PrivacyUpdate",
         "type": "object"
       },
       "ProjectIn": {
@@ -6167,6 +6661,25 @@
         "title": "ReportSummary",
         "type": "object"
       },
+      "ResetLinkOut": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "expires_at"
+        ],
+        "title": "ResetLinkOut",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "admin",
@@ -6216,6 +6729,49 @@
           "rank"
         ],
         "title": "SearchHit",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rotated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotated At"
+          },
+          "user_agent": {
+            "title": "User Agent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "rotated_at",
+          "user_agent",
+          "current"
+        ],
+        "title": "SessionOut",
         "type": "object"
       },
       "SmsConfig": {
@@ -6464,6 +7020,47 @@
           "answers"
         ],
         "title": "SubmissionIn",
+        "type": "object"
+      },
+      "SubmissionMatch": {
+        "properties": {
+          "answers": {
+            "additionalProperties": true,
+            "title": "Answers",
+            "type": "object"
+          },
+          "collected_at": {
+            "format": "date-time",
+            "title": "Collected At",
+            "type": "string"
+          },
+          "form_title": {
+            "title": "Form Title",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "form_title",
+          "collected_at",
+          "location",
+          "answers"
+        ],
+        "title": "SubmissionMatch",
         "type": "object"
       },
       "SubmissionOut": {
@@ -6866,6 +7463,11 @@
             "title": "Access Token",
             "type": "string"
           },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "refresh_token": {
             "title": "Refresh Token",
             "type": "string"
@@ -7152,6 +7754,44 @@
         "title": "TorVersionOut",
         "type": "object"
       },
+      "TotpCodeIn": {
+        "properties": {
+          "code": {
+            "maxLength": 10,
+            "minLength": 6,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TotpCodeIn",
+        "type": "object"
+      },
+      "TotpSetupOut": {
+        "properties": {
+          "qr_svg": {
+            "title": "Qr Svg",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri",
+          "qr_svg"
+        ],
+        "title": "TotpSetupOut",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "email": {
@@ -7279,6 +7919,46 @@
         ]
       }
     },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Ferme la session en cours : ses jetons ne sont plus acceptés, même volés.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "description": "Ferme toutes les sessions de la personne, sur tous ses appareils.",
+        "operationId": "logout_all_api_v1_auth_logout_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout All",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "operationId": "me_api_v1_auth_me_get",
@@ -7300,6 +7980,161 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/delete": {
+      "post": {
+        "description": "Supprime son propre compte : il est anonymisé et ne peut plus se connecter.",
+        "operationId": "delete_me_api_v1_auth_me_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "change_password_api_v1_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "description": "Envoie un lien par e-mail si l'adresse existe ; la réponse ne dit jamais si elle existe.",
+        "operationId": "forgot_password_api_v1_auth_password_forgot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordForgotIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "reset_password_api_v1_auth_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
         "tags": [
           "auth"
         ]
@@ -7382,6 +8217,141 @@
           }
         },
         "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "list_sessions_api_v1_auth_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions Api V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/disable": {
+      "post": {
+        "operationId": "totp_disable_api_v1_auth_totp_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Disable",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/enable": {
+      "post": {
+        "operationId": "totp_enable_api_v1_auth_totp_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Enable",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/setup": {
+      "post": {
+        "description": "Prépare un nouveau secret ; il n'est actif qu'une fois confirmé par un code.",
+        "operationId": "totp_setup_api_v1_auth_totp_setup_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Setup",
         "tags": [
           "auth"
         ]
@@ -7917,6 +8887,58 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/close": {
+      "post": {
+        "description": "Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés.",
+        "operationId": "close_api_v1_orgs__org_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCloseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/jobs/{job_id}": {
       "get": {
         "operationId": "get_job_api_v1_orgs__org_id__jobs__job_id__get",
@@ -8268,6 +9290,288 @@
           }
         ],
         "summary": "Update Member",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/members/{member_id}/reset-link": {
+      "post": {
+        "description": "Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.\n\nSeulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur\npourrait prendre la main sur un compte qui a des droits ailleurs.",
+        "operationId": "member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Member Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Member Reset Link",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/personal-data": {
+      "get": {
+        "description": "Tout ce qui mentionne une personne : nom, numéro de téléphone ou adresse e-mail.",
+        "operationId": "search_person_api_v1_orgs__org_id__personal_data_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 3,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDataResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Person",
+        "tags": [
+          "données personnelles"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/personal-data/erase": {
+      "post": {
+        "description": "Efface le contenu des retours choisis (et leurs SMS) et supprime les réponses choisies.",
+        "operationId": "erase_person_api_v1_orgs__org_id__personal_data_erase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErasureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Erase Person",
+        "tags": [
+          "données personnelles"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/privacy": {
+      "get": {
+        "operationId": "get_privacy_api_v1_orgs__org_id__privacy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Privacy",
+        "tags": [
+          "organisations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_privacy_api_v1_orgs__org_id__privacy_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Privacy",
         "tags": [
           "organisations"
         ]
@@ -11545,6 +12849,18 @@
               "format": "uuid",
               "title": "Form Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Inclure les questions personnelles",
+            "in": "query",
+            "name": "personal",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inclure les questions personnelles",
+              "title": "Personal",
+              "type": "boolean"
             }
           }
         ],
@@ -15602,6 +16918,32 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "système"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker.",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
         "tags": [
           "système"
         ]

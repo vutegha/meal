@@ -28,7 +28,15 @@ from app.models.execution import (
     ExecutionStatus,
 )
 from app.models.form import FIELD_TYPES, FORM_STATUSES, CollectionForm, FormSubmission
-from app.models.organization import AuditLog, Membership, Organization, Role, User
+from app.models.organization import (
+    AuditLog,
+    Membership,
+    Organization,
+    PasswordReset,
+    Role,
+    User,
+    UserSession,
+)
 from app.models.project import (
     PARENT_LEVEL,
     Aggregation,
@@ -99,4 +107,6 @@ __all__ = [
     "ProjectStatus",
     "Role",
     "User",
+    "UserSession",
+    "PasswordReset",
 ]

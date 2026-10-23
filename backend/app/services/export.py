@@ -2,7 +2,6 @@
 
 from datetime import date
 from decimal import Decimal
-from io import BytesIO
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -11,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.documents.render import RenderedDocument, Section
+from app.documents.spreadsheet import save_as_text
 from app.models import BudgetLine, Project
 from app.schemas.project import NodeTree
 from app.services import projects as svc
@@ -170,9 +170,7 @@ async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
         sheet.cell(sheet.max_row, 8).number_format = "0%"
     _wrap(sheet)
 
-    buffer = BytesIO()
-    wb.save(buffer)
-    return buffer.getvalue()
+    return save_as_text(wb)
 
 
 # --- PDF (et Word) ------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { ApiError, type Me } from "./api";
+import { ApiError, api, type Me } from "./api";
 import { purgeOutbox } from "./outbox";
 import { meQuery } from "./queries";
 import { type Tokens, tokenStore, userIdOf } from "./tokens";
@@ -73,6 +73,9 @@ export async function startSession(queryClient: QueryClient, tokens: Tokens) {
 
 /** Ferme la session et efface de l'appareil tout ce qui appartient à l'utilisateur. */
 export async function endSession(queryClient: QueryClient) {
+  // Fermée aussi côté serveur : un jeton copié depuis ce téléphone ne servira plus.
+  // Sans réseau, la session expirera d'elle-même ; l'appareil est vidé dans tous les cas.
+  if (tokenStore.get()) await api.logout().catch(() => undefined);
   tokenStore.set(null);
   writeProfile(null);
   queryClient.clear();

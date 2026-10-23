@@ -7,18 +7,22 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import AnyMember, CurrentUser, OrgAdmin, SessionDep
 from app.core.security import hash_password
 from app.models import AuditLog, Membership, Organization, Role, User
+from app.schemas.auth import ResetLinkOut
 from app.schemas.organization import (
     AuditLogOut,
     MemberIn,
     MemberOut,
     MemberUpdate,
     MyOrganizationOut,
+    OrganizationCloseIn,
     OrganizationIn,
     OrganizationOut,
     OrganizationUpdate,
+    PrivacySettings,
+    PrivacyUpdate,
     my_organization,
 )
-from app.services import audit, billing
+from app.services import accounts, audit, billing, passwords
 from app.services.organizations import create_organization
 
 router = APIRouter(prefix="/orgs", tags=["organisations"])
@@ -78,6 +82,24 @@ async def update(
     return org
 
 
+@router.post("/{org_id}/close", status_code=status.HTTP_204_NO_CONTENT)
+async def close(
+    org_id: UUID, body: OrganizationCloseIn, admin: OrgAdmin, user: CurrentUser, session: SessionDep
+) -> None:
+    """Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés."""
+    organization = await session.get_one(Organization, org_id)
+    if body.name.strip() != organization.name:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Recopiez exactement le nom de l'espace"
+        )
+    if error := accounts.confirmation_error(user, body.password, body.code):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, error)
+    await accounts.close_organization(session, org_id)
+    if body.delete_account and not await accounts.blocking_organizations(session, user):
+        await accounts.delete_account(session, user)
+        await session.commit()
+
+
 @router.get("/{org_id}/members", response_model=list[MemberOut])
 async def list_members(org_id: UUID, _: AnyMember, session: SessionDep) -> list[Membership]:
     members = await session.scalars(
@@ -107,6 +129,8 @@ async def add_member(
             email=email,
             full_name=body.full_name,
             password_hash=hash_password(body.initial_password),
+            # Mot de passe connu de l'administrateur : la personne en choisit un à la connexion.
+            must_change_password=True,
         )
         session.add(user)
         await session.flush()
@@ -197,6 +221,68 @@ async def remove_member(
     )
     await session.delete(membership)
     await session.commit()
+
+
+@router.get("/{org_id}/privacy", response_model=PrivacySettings)
+async def get_privacy(org_id: UUID, _: AnyMember, session: SessionDep) -> Organization:
+    return await session.get_one(Organization, org_id)
+
+
+@router.patch("/{org_id}/privacy", response_model=PrivacySettings)
+async def update_privacy(
+    org_id: UUID, body: PrivacyUpdate, admin: OrgAdmin, session: SessionDep
+) -> Organization:
+    organization = await session.get_one(Organization, org_id)
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    for field, value in changes.items():
+        setattr(organization, field, value)
+    audit.record(
+        session,
+        organization_id=org_id,
+        actor_id=admin.user_id,
+        action="organization.privacy_updated",
+        entity_type="organization",
+        entity_id=org_id,
+        data=changes,
+    )
+    await session.commit()
+    await session.refresh(organization)
+    return organization
+
+
+@router.post("/{org_id}/members/{member_id}/reset-link", response_model=ResetLinkOut)
+async def member_reset_link(
+    org_id: UUID, member_id: UUID, admin: OrgAdmin, session: SessionDep
+) -> ResetLinkOut:
+    """Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.
+
+    Seulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur
+    pourrait prendre la main sur un compte qui a des droits ailleurs.
+    """
+    membership = await _get_member(session, org_id, member_id)
+    others = await session.scalar(
+        select(func.count())
+        .select_from(Membership)
+        .where(Membership.user_id == membership.user_id, Membership.organization_id != org_id)
+    )
+    if others:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cette personne appartient aussi à un autre espace : elle doit utiliser "
+            "« Mot de passe oublié »",
+        )
+    token, expires = await passwords.create_reset(session, membership.user, admin.user_id)
+    audit.record(
+        session,
+        organization_id=org_id,
+        actor_id=admin.user_id,
+        action="member.reset_link_created",
+        entity_type="membership",
+        entity_id=membership.id,
+        data={"email": membership.user.email},
+    )
+    await session.commit()
+    return ResetLinkOut(path=passwords.reset_path(token), expires_at=expires)
 
 
 @router.get("/{org_id}/audit", response_model=list[AuditLogOut])

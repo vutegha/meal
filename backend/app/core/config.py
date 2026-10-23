@@ -29,6 +29,17 @@ class Settings(BaseSettings):
     login_max_failures_per_ip: int = 20
     login_window_minutes: int = 15
     login_rate_limit_storage: str = "redis"
+    # Lien de réinitialisation du mot de passe : valable 24 heures, à usage unique.
+    password_reset_hours: int = 24
+    # Adresse publique de l'interface, pour les liens envoyés par e-mail.
+    public_url: str = "https://localhost"
+    # E-mails (mot de passe oublié). Sans SMTP_HOST, aucun e-mail ne part : un administrateur
+    # de l'organisation crée alors le lien depuis la page Membres.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
 
     # Stockage des fichiers : "local" (dossier) ou "s3" (MinIO, S3, R2…)
     storage_backend: str = "local"

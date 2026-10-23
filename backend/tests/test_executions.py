@@ -125,7 +125,10 @@ async def test_evidence_photo_and_document(client: AsyncClient) -> None:
     assert max(Image.open(BytesIO(thumb.content)).size) == 800
     assert not Image.open(BytesIO(thumb.content)).getexif()  # aucune métadonnée GPS
     original = await client.get(f"{base}/evidence/{picture['id']}/file", headers=h)
-    assert original.content == photo()
+    # L'original garde ses pixels mais plus sa date ni sa position, gardées en base.
+    kept = Image.open(BytesIO(original.content))
+    assert not kept.getexif() and kept.tobytes() == Image.open(BytesIO(photo())).tobytes()
+    assert int(original.headers["content-length"]) == picture["size_bytes"]
 
     minutes = "Compte rendu : 36 participants, dont 22 femmes. Les AVEC ont élu leurs comités."
     r = await client.post(

@@ -1,6 +1,7 @@
 export interface Tokens {
   access_token: string;
   refresh_token: string;
+  must_change_password?: boolean;
 }
 
 const KEY = "wemeal.tokens";

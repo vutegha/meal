@@ -44,6 +44,30 @@ docker compose start api worker
 
 Testez une restauration au moins une fois par trimestre.
 
+## Données personnelles (RGPD)
+
+Registre des traitements, sous-traitants et procédure en cas de violation de données :
+[docs/rgpd](docs/rgpd/README.md). Contrôle de santé : `GET /health/ready` (base et Redis).
+
+- **Réglages par espace** (page *Données personnelles*, administrateurs) : IA activable ou non,
+  accusé de réception des SMS avec la phrase d'information, durée de conservation des retours
+  clôturés (36 mois par défaut), contact pour exercer ses droits.
+- **Purge nocturne** (tâche du `worker`, 3 h UTC) : retours clôturés au-delà de la durée choisie
+  anonymisés, SMS non rattachés effacés après 30 jours, liens de réinitialisation et sessions
+  expirés après 30 jours, journal des consultations après 365 jours. À la main :
+  `docker compose exec api python -m app.scripts.purge`.
+- **Photos** : la date et la position sont lues puis retirées du fichier gardé, avec le reste
+  des métadonnées (appareil, auteur, logiciel). Pour les photos déposées avant :
+  `docker compose exec api python -m app.scripts.strip_metadata`.
+- **Demande d'une personne** : recherche par nom, numéro ou e-mail, copie JSON et effacement
+  motivé, tracé dans le journal sans les termes recherchés.
+- **Suppression et fermeture** : chacun peut supprimer son compte (*Mon compte*), qui est alors
+  anonymisé ; un administrateur peut fermer l'espace (page *Données personnelles*), ce qui
+  efface ses données et ses fichiers. Supprimer un projet efface aussi ses fichiers.
+- **Comptes** : sessions révocables, double authentification (conseillée aux administrateurs),
+  mot de passe oublié par e-mail si `SMTP_HOST` est renseigné, sinon lien remis par un
+  administrateur.
+
 ## Développement local
 
 Prérequis : Python 3.11+ avec [uv](https://docs.astral.sh/uv/), Node 22, PostgreSQL 16 et Redis.

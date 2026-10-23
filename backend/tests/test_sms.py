@@ -94,7 +94,14 @@ async def test_inbound_sms_with_project_code_creates_feedback(
     created = next(e for e in entries if e["channel"] == "sms")
     assert created["reference"] == "RET-0002" and created["category"] == "other"
     assert created["description"] == "Personne n'est venu au point d'eau"
-    assert created["contact"] == "+24381000000" and created["sms_count"] == 1
+    # Message reçu, puis accusé de réception avec la notice d'information.
+    assert created["contact"] == "+24381000000" and created["sms_count"] == 2
+    thread = (
+        await client.get(f"{base}/feedback/{created['id']}/sms", headers=ctx["headers"])
+    ).json()
+    assert [m["direction"] for m in thread] == ["inbound", "outbound"]
+    assert "RET-0002" in thread[1]["body"] and "confidentielle" in thread[1]["body"]
+    assert created["sms_awaiting_reply"] is True  # l'accusé automatique ne compte pas
     # Confidentiel jusqu'à sa qualification : il peut signaler un abus.
     assert created["sensitive"] is True
     await add_member(client, ctx, "suivi@example.org", "meal_officer")

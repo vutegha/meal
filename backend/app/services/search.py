@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.llm.embeddings import EmbeddingError, Embeddings, Kind, get_embedder
-from app.models import AiCall, DocumentPage, Project, SourceDocument
+from app.models import AiCall, DocumentPage, Organization, Project, SourceDocument
 from app.services import billing
 from app.services.ai import log_call, month_cost
 
@@ -51,6 +51,11 @@ async def _embed(
 ) -> Embeddings | None:
     embedder = get_embedder()
     if embedder is None:
+        return None
+    # IA désactivée pour l'espace : aucun texte ne part chez le fournisseur d'embeddings.
+    if not await session.scalar(
+        select(Organization.ai_enabled).where(Organization.id == project.organization_id)
+    ):
         return None
     cap = await billing.ai_cap(session, project.organization_id)
     if cap is not None and await month_cost(session, project.organization_id) >= cap:
