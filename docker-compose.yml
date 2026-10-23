@@ -1,6 +1,8 @@
 name: wemeal
 
 x-backend-env: &backend-env
+  # production : SECRET_KEY faible refusée, documentation de l'API fermée.
+  ENVIRONMENT: ${ENVIRONMENT:-production}
   DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
