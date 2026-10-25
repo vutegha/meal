@@ -30,7 +30,15 @@ function Bar({ rate, tone = "brand" }: { rate: number | null; tone?: "brand" | "
   );
 }
 
-function Kpi({ label, value, children }: { label: string; value: string; children?: ReactNode }) {
+export function Kpi({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</p>

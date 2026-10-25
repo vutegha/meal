@@ -1306,6 +1306,35 @@
         "title": "Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post",
         "type": "object"
       },
+      "Breakdown": {
+        "description": "Une ligne de ventilation : un mois, un lieu, une zone ou un projet.",
+        "properties": {
+          "executions": {
+            "default": 0,
+            "title": "Executions",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "people": {
+            "default": 0,
+            "title": "People",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "Breakdown",
+        "type": "object"
+      },
       "BudgetLineIn": {
         "properties": {
           "activity_id": {
@@ -1845,6 +1874,70 @@
           "subscription"
         ],
         "title": "CheckoutOut",
+        "type": "object"
+      },
+      "DashboardOptions": {
+        "properties": {
+          "locations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          },
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "zones",
+          "locations",
+          "projects"
+        ],
+        "title": "DashboardOptions",
+        "type": "object"
+      },
+      "DashboardProject": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "title"
+        ],
+        "title": "DashboardProject",
         "type": "object"
       },
       "DocumentOut": {
@@ -5835,6 +5928,82 @@
         "title": "NodeUpdate",
         "type": "object"
       },
+      "OrgDashboard": {
+        "properties": {
+          "active_projects": {
+            "title": "Active Projects",
+            "type": "integer"
+          },
+          "by_location": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Location",
+            "type": "array"
+          },
+          "by_month": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Month",
+            "type": "array"
+          },
+          "by_project": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Project",
+            "type": "array"
+          },
+          "by_zone": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Zone",
+            "type": "array"
+          },
+          "completed_executions": {
+            "title": "Completed Executions",
+            "type": "integer"
+          },
+          "executions": {
+            "title": "Executions",
+            "type": "integer"
+          },
+          "options": {
+            "$ref": "#/components/schemas/DashboardOptions"
+          },
+          "people": {
+            "$ref": "#/components/schemas/People"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          },
+          "spending": {
+            "items": {
+              "$ref": "#/components/schemas/Spending"
+            },
+            "title": "Spending",
+            "type": "array"
+          }
+        },
+        "required": [
+          "options",
+          "projects",
+          "active_projects",
+          "executions",
+          "completed_executions",
+          "people",
+          "spending",
+          "by_month",
+          "by_location",
+          "by_zone",
+          "by_project"
+        ],
+        "title": "OrgDashboard",
+        "type": "object"
+      },
       "OrganizationCloseIn": {
         "properties": {
           "code": {
@@ -6182,6 +6351,42 @@
           "created_at"
         ],
         "title": "PaymentOut",
+        "type": "object"
+      },
+      "People": {
+        "properties": {
+          "boys": {
+            "default": 0,
+            "title": "Boys",
+            "type": "integer"
+          },
+          "girls": {
+            "default": 0,
+            "title": "Girls",
+            "type": "integer"
+          },
+          "men": {
+            "default": 0,
+            "title": "Men",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "with_disability": {
+            "default": 0,
+            "title": "With Disability",
+            "type": "integer"
+          },
+          "women": {
+            "default": 0,
+            "title": "Women",
+            "type": "integer"
+          }
+        },
+        "title": "People",
         "type": "object"
       },
       "PeriodProgress": {
@@ -7696,6 +7901,25 @@
           "body"
         ],
         "title": "SmsSimulateIn",
+        "type": "object"
+      },
+      "Spending": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "title": "Spending",
         "type": "object"
       },
       "SubmissionIn": {
@@ -10238,6 +10462,150 @@
         "summary": "Close",
         "tags": [
           "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/dashboard": {
+      "get": {
+        "operationId": "org_dashboard_api_v1_orgs__org_id__dashboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2100,
+                  "minimum": 2000,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 12,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zone",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Zone",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "location",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Location",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beneficiary",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "women",
+                    "men",
+                    "girls",
+                    "boys",
+                    "with_disability"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Beneficiary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Org Dashboard",
+        "tags": [
+          "tableau de bord"
         ]
       }
     },

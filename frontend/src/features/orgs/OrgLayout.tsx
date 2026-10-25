@@ -96,6 +96,7 @@ export function OrgLayout() {
             </Link>
             {(
               [
+                ["/orgs/$orgId/dashboard", "nav.dashboard", null],
                 ["/orgs/$orgId/lessons", "nav.lessons", "org_lessons"],
                 ["/orgs/$orgId/templates", "nav.templates", "templates"],
                 ["/orgs/$orgId/members", "nav.members", "team"],

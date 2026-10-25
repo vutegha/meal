@@ -17,6 +17,7 @@ import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
+import { OrgDashboardPage } from "@/features/orgs/OrgDashboardPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
 import { PrivacyPage } from "@/features/orgs/PrivacyPage";
 import { TemplatesPage } from "@/features/orgs/TemplatesPage";
@@ -137,6 +138,12 @@ const orgIndexRoute = createRoute({
   component: ProjectsPage,
 });
 
+const orgDashboardRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/dashboard",
+  component: OrgDashboardPage,
+});
+
 const membersRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/members",
@@ -220,6 +227,7 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   orgRoute.addChildren([
     orgIndexRoute,
+    orgDashboardRoute,
     lessonsRoute,
     templatesRoute,
     membersRoute,

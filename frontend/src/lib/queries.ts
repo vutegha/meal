@@ -4,6 +4,8 @@ import {
   accountabilityApi,
   aiApi,
   api,
+  dashboardApi,
+  type DashboardFilters,
   executionsApi,
   periodicApi,
   projectsApi,
@@ -228,6 +230,12 @@ export const paymentsQuery = (orgId: string) =>
   queryOptions({
     queryKey: ["orgs", orgId, "billing", "payments"],
     queryFn: () => billingApi.payments(orgId),
+  });
+
+export const orgDashboardQuery = (orgId: string, filters: DashboardFilters) =>
+  queryOptions({
+    queryKey: ["orgs", orgId, "dashboard", filters],
+    queryFn: () => dashboardApi.org(orgId, filters),
   });
 
 export const adminSubscriptionsQuery = (filters: AdminFilters) =>

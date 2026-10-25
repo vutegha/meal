@@ -1,12 +1,14 @@
 """Client IA. L'interface `LLMClient` permet de changer de fournisseur ou d'utiliser un faux
 client dans les tests, sans toucher au code métier."""
 
+import json
 import time
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Protocol, TypeVar
 
 import anthropic
-from pydantic import BaseModel
+from anthropic.types import TextBlockParam
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
 
@@ -59,18 +61,39 @@ class AnthropicClient:
         max_tokens: int = 64000,
     ) -> LLMResult[T]:
         started = time.monotonic()
+        params: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": content}],
+            # Les modèles légers n'acceptent pas le réglage d'effort.
+            "output_config": {"effort": effort} if effort else anthropic.omit,
+        }
+        cached_system: list[TextBlockParam] = [
+            {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+        ]
         try:
-            # Streaming : les générations longues ne heurtent pas les délais HTTP.
-            async with self.client.messages.stream(
-                model=model,
-                max_tokens=max_tokens,
-                system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": content}],  # type: ignore[typeddict-item]
-                output_format=output_type,
-                # Les modèles légers n'acceptent pas le réglage d'effort.
-                output_config={"effort": effort} if effort else anthropic.omit,
-            ) as stream:
-                message = await stream.get_final_message()
+            try:
+                # Streaming : les générations longues ne heurtent pas les délais HTTP.
+                async with self.client.messages.stream(
+                    system=cached_system, output_format=output_type, **params
+                ) as stream:
+                    message = await stream.get_final_message()
+                output = message.parsed_output
+            except anthropic.BadRequestError as exc:
+                if not _grammar_too_large(exc):
+                    raise
+                # Schéma trop riche pour les sorties structurées : on le donne en consigne
+                # et on valide nous-mêmes le JSON renvoyé.
+                fallback_system: list[TextBlockParam] = [
+                    *cached_system,
+                    {"type": "text", "text": _json_instructions(output_type)},
+                ]
+                async with self.client.messages.stream(system=fallback_system, **params) as stream:
+                    message = await stream.get_final_message()
+                output = None
+                if message.stop_reason not in ("refusal", "max_tokens"):
+                    text = "".join(b.text for b in message.content if b.type == "text")
+                    output = parse_json_output(text, output_type)
         except anthropic.AuthenticationError as exc:
             raise LLMError("Clé API Anthropic absente ou invalide.") from exc
         except anthropic.RateLimitError as exc:
@@ -88,7 +111,6 @@ class AnthropicClient:
             raise LLMError("Le modèle a refusé de traiter ce document.")
         if message.stop_reason == "max_tokens":
             raise LLMError("La réponse du modèle a été tronquée : le document est trop volumineux.")
-        output = message.parsed_output
         if output is None:
             raise LLMError("Le modèle n'a pas renvoyé de réponse structurée exploitable.")
         usage = message.usage
@@ -100,8 +122,32 @@ class AnthropicClient:
             cache_read_tokens=usage.cache_read_input_tokens or 0,
             cache_write_tokens=usage.cache_creation_input_tokens or 0,
             duration_ms=int((time.monotonic() - started) * 1000),
-            request_id=message._request_id or "",
+            request_id=getattr(message, "_request_id", None) or "",
         )
+
+
+def _grammar_too_large(exc: anthropic.BadRequestError) -> bool:
+    return "grammar is too large" in str(exc.message)
+
+
+def _json_instructions(output_type: type[BaseModel]) -> str:
+    schema = json.dumps(output_type.model_json_schema(), ensure_ascii=False)
+    return (
+        "Réponds uniquement par un objet JSON valide conforme au schéma JSON ci-dessous, "
+        "sans texte avant ni après et sans bloc de code. Tous les champs sont obligatoires "
+        f"(utilise null quand une valeur est inconnue).\n\n{schema}"
+    )
+
+
+def parse_json_output(text: str, output_type: type[T]) -> T | None:
+    """Valide le JSON renvoyé hors sorties structurées ; None s'il est inexploitable."""
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end < start:
+        return None
+    try:
+        return output_type.model_validate_json(text[start : end + 1])
+    except ValidationError:
+        return None
 
 
 _client: LLMClient | None = None
