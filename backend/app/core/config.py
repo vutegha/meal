@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     # IA
     anthropic_api_key: str | None = None
     llm_model_extraction: str = "claude-opus-5-5"
-    llm_model_drafting: str = "claude-sonnet-5"
-    llm_model_light: str = "claude-haiku-4-5"
+    llm_model_drafting: str = "claude-sonnet-5-5"
+    llm_model_light: str = "claude-haiku-5-5"
     # Lecture des pages scannées (images) : un modèle capable de lire l'écriture manuscrite.
-    llm_model_ocr: str = "claude-sonnet-5"
+    llm_model_ocr: str = "claude-sonnet-5-5"
     ocr_max_pages: int = 40
     # Plafond mensuel des dépenses IA de chaque formule (services/billing.py). Ce réglage ajoute
     # un plafond commun à toutes les organisations, en USD (0 = seulement celui de la formule).

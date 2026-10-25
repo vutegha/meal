@@ -236,7 +236,7 @@ async def test_feedback_classification(client: AsyncClient, fake_llm: FakeLLM) -
     assert suggestion["urgency"] == "high"
     call = fake_llm.calls[-1]
     assert "Canal de réception : hotline" in call["content"][0]["text"]
-    assert call["model"] == "claude-haiku-4-5"
+    assert call["model"] == "claude-haiku-5-5"
 
     # Un agent de terrain peut demander un classement ; un autre projet ou org, non.
     other = await register(client, "autre@ong.org", "Autre ONG")
