@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
-from app.api.deps import AnyMember, SessionDep
+from app.api.deps import AnyMember, SessionDep, plan_feature
 from app.api.projects import Planner, ProjectAdmin, _log
 from app.documents.render import to_docx, to_pdf
 from app.models import Job, PeriodicReport, PeriodicReportVersion, ReportStatus
@@ -42,7 +42,12 @@ async def list_periodic(
     return list(rows)
 
 
-@router.post("/periodic-reports", response_model=PeriodicOut, status_code=201)
+@router.post(
+    "/periodic-reports",
+    response_model=PeriodicOut,
+    status_code=201,
+    dependencies=[plan_feature("periodic_reports")],
+)
 async def create_periodic(
     org_id: UUID, project_id: UUID, body: PeriodicIn, member: Planner, session: SessionDep
 ) -> PeriodicReport:
@@ -79,6 +84,7 @@ async def create_periodic(
     "/periodic-reports/{report_id}/generate",
     response_model=JobOut,
     status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[plan_feature("periodic_reports")],
 )
 async def generate_periodic(
     org_id: UUID, project_id: UUID, report_id: UUID, member: Planner, session: SessionDep
@@ -114,7 +120,11 @@ async def get_periodic(
     return await periodic_svc.get_periodic(session, project, report_id)
 
 
-@router.put("/periodic-reports/{report_id}", response_model=PeriodicOut)
+@router.put(
+    "/periodic-reports/{report_id}",
+    response_model=PeriodicOut,
+    dependencies=[plan_feature("periodic_reports")],
+)
 async def update_periodic(
     org_id: UUID,
     project_id: UUID,
@@ -141,7 +151,11 @@ async def update_periodic(
     return report
 
 
-@router.post("/periodic-reports/{report_id}/refresh", response_model=PeriodicOut)
+@router.post(
+    "/periodic-reports/{report_id}/refresh",
+    response_model=PeriodicOut,
+    dependencies=[plan_feature("periodic_reports")],
+)
 async def refresh_tables(
     org_id: UUID, project_id: UUID, report_id: UUID, member: Planner, session: SessionDep
 ) -> PeriodicReport:
@@ -173,7 +187,11 @@ async def refresh_tables(
     return report
 
 
-@router.post("/periodic-reports/{report_id}/{action}", response_model=PeriodicOut)
+@router.post(
+    "/periodic-reports/{report_id}/{action}",
+    response_model=PeriodicOut,
+    dependencies=[plan_feature("periodic_reports")],
+)
 async def transition_periodic(
     org_id: UUID,
     project_id: UUID,
@@ -192,7 +210,11 @@ async def transition_periodic(
     return report
 
 
-@router.delete("/periodic-reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/periodic-reports/{report_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[plan_feature("periodic_reports")],
+)
 async def delete_periodic(
     org_id: UUID, project_id: UUID, report_id: UUID, member: ProjectAdmin, session: SessionDep
 ) -> None:

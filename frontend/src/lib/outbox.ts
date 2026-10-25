@@ -11,15 +11,22 @@ import {
   type SubmissionInput,
 } from "./api";
 import { formsApi } from "./formsApi";
+import { tokenStore } from "./tokens";
 
 /**
  * File d'envoi hors ligne. Toute saisie terrain y est d'abord enregistrée, puis envoyée dès que
  * le réseau le permet. Chaque élément porte un client_uuid : l'API reconnaît un renvoi et ne
  * crée pas de doublon, même si une réponse s'est perdue en route.
+ *
+ * Chaque élément appartient à l'utilisateur qui l'a saisi (`userId`) : il n'est envoyé et
+ * montré qu'à lui, jamais avec le compte d'une autre personne qui se connecte sur le même
+ * téléphone. La file est vidée à la déconnexion (données personnelles des plaintes).
  */
 
 export interface PendingExecution {
   client_uuid: string;
+  /** Absent sur les éléments mis en file avant cette règle : envoyés par qui se connecte. */
+  userId?: string;
   orgId: string;
   projectId: string;
   body: ExecutionInput;
@@ -29,6 +36,8 @@ export interface PendingExecution {
 
 export interface PendingEvidence {
   client_uuid: string;
+  /** Absent sur les éléments mis en file avant cette règle : envoyés par qui se connecte. */
+  userId?: string;
   orgId: string;
   projectId: string;
   // L'une ou l'autre : l'exécution peut elle-même attendre d'être envoyée.
@@ -46,6 +55,8 @@ export interface PendingEvidence {
 
 export interface PendingFeedback {
   client_uuid: string;
+  /** Absent sur les éléments mis en file avant cette règle : envoyés par qui se connecte. */
+  userId?: string;
   orgId: string;
   projectId: string;
   body: FeedbackIn;
@@ -55,6 +66,8 @@ export interface PendingFeedback {
 
 export interface PendingSubmission {
   client_uuid: string;
+  /** Absent sur les éléments mis en file avant cette règle : envoyés par qui se connecte. */
+  userId?: string;
   orgId: string;
   projectId: string;
   formId: string;
@@ -79,12 +92,39 @@ class OutboxDb extends Dexie {
     this.version(2).stores({ feedback: "client_uuid, projectId" });
     // Réponses aux formulaires de collecte (enquêtes, suivi post-distribution).
     this.version(3).stores({ submissions: "client_uuid, projectId, formId" });
+    // Chaque saisie est liée à la personne qui l'a faite.
+    this.version(4).stores({
+      executions: "client_uuid, projectId, userId",
+      evidence: "client_uuid, projectId, execution_client_uuid, execution_id, userId",
+      feedback: "client_uuid, projectId, userId",
+      submissions: "client_uuid, projectId, formId, userId",
+    });
   }
 }
 
 export const outbox = new OutboxDb();
 
 export const newId = () => crypto.randomUUID();
+
+const owner = () => tokenStore.userId() ?? undefined;
+
+/** Élément saisi par l'utilisateur connecté (ou ancien élément sans propriétaire). */
+const isMine = (item: { userId?: string }) => !item.userId || item.userId === owner();
+
+const TABLES = ["executions", "evidence", "feedback", "submissions"] as const;
+
+/** Nombre d'éléments en attente sur l'appareil, tous utilisateurs confondus. */
+export async function countPending(): Promise<number> {
+  const counts = await Promise.all(TABLES.map((table) => outbox[table].count()));
+  return counts.reduce((a, b) => a + b, 0);
+}
+
+/** Efface toute la file d'envoi de l'appareil. */
+export async function purgeOutbox(): Promise<void> {
+  await outbox.transaction("rw", [...TABLES.map((table) => outbox[table])], async () => {
+    await Promise.all(TABLES.map((table) => outbox[table].clear()));
+  });
+}
 
 export interface FileToSend {
   file: Blob;
@@ -120,10 +160,12 @@ export async function queueExecution(
   files: FileToSend[],
 ): Promise<void> {
   const createdAt = Date.now();
+  const userId = owner();
   const stored = await Promise.all(files.map(toStored));
   await outbox.transaction("rw", outbox.executions, outbox.evidence, async () => {
     await outbox.executions.put({
       client_uuid: body.client_uuid,
+      userId,
       orgId,
       projectId,
       body,
@@ -132,6 +174,7 @@ export async function queueExecution(
     await outbox.evidence.bulkPut(
       stored.map((item) => ({
         ...item,
+        userId,
         orgId,
         projectId,
         execution_client_uuid: body.client_uuid,
@@ -150,13 +193,21 @@ export async function queueEvidence(
   const createdAt = Date.now();
   const stored = await Promise.all(files.map(toStored));
   await outbox.evidence.bulkPut(
-    stored.map((item) => ({ ...item, orgId, projectId, execution_id: executionId, createdAt })),
+    stored.map((item) => ({
+      ...item,
+      userId: owner(),
+      orgId,
+      projectId,
+      execution_id: executionId,
+      createdAt,
+    })),
   );
 }
 
 export async function queueFeedback(orgId: string, projectId: string, body: FeedbackIn) {
   await outbox.feedback.put({
     client_uuid: body.client_uuid,
+    userId: owner(),
     orgId,
     projectId,
     body,
@@ -172,6 +223,7 @@ export async function queueSubmission(
 ) {
   await outbox.submissions.put({
     client_uuid: body.client_uuid,
+    userId: owner(),
     orgId,
     projectId,
     formId,
@@ -218,7 +270,7 @@ async function runSync(): Promise<SyncResult> {
     items.sort((a, b) => a.createdAt - b.createdAt);
 
   for (const item of byAge(await outbox.feedback.toArray())) {
-    if (item.error) continue;
+    if (item.error || !isMine(item)) continue;
     const ok = await attempt(
       async () => {
         await accountabilityApi.addFeedback(item.orgId, item.projectId, item.body);
@@ -230,7 +282,7 @@ async function runSync(): Promise<SyncResult> {
   }
 
   for (const item of byAge(await outbox.submissions.toArray())) {
-    if (item.error) continue;
+    if (item.error || !isMine(item)) continue;
     const ok = await attempt(
       async () => {
         await formsApi.submit(item.orgId, item.projectId, item.formId, item.body);
@@ -242,7 +294,7 @@ async function runSync(): Promise<SyncResult> {
   }
 
   for (const item of byAge(await outbox.executions.toArray())) {
-    if (item.error) continue;
+    if (item.error || !isMine(item)) continue;
     const ok = await attempt(
       async () => {
         const created = await executionsApi.create(item.orgId, item.projectId, item.body);
@@ -260,7 +312,7 @@ async function runSync(): Promise<SyncResult> {
   }
 
   for (const item of byAge(await outbox.evidence.toArray())) {
-    if (item.error || !item.execution_id) continue;
+    if (item.error || !item.execution_id || !isMine(item)) continue;
     const executionId = item.execution_id;
     const ok = await attempt(
       async () => {
@@ -322,10 +374,18 @@ export function usePending(projectId: string): Pending {
   });
   useEffect(() => {
     const subscription = liveQuery(async () => ({
-      executions: await outbox.executions.where("projectId").equals(projectId).toArray(),
-      evidence: await outbox.evidence.where("projectId").equals(projectId).toArray(),
-      feedback: await outbox.feedback.where("projectId").equals(projectId).toArray(),
-      submissions: await outbox.submissions.where("projectId").equals(projectId).toArray(),
+      executions: (await outbox.executions.where("projectId").equals(projectId).toArray()).filter(
+        isMine,
+      ),
+      evidence: (await outbox.evidence.where("projectId").equals(projectId).toArray()).filter(
+        isMine,
+      ),
+      feedback: (await outbox.feedback.where("projectId").equals(projectId).toArray()).filter(
+        isMine,
+      ),
+      submissions: (await outbox.submissions.where("projectId").equals(projectId).toArray()).filter(
+        isMine,
+      ),
     })).subscribe({ next: setPending, error: () => undefined });
     return () => subscription.unsubscribe();
   }, [projectId]);

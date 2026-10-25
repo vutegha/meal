@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Literal, Self
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
@@ -25,7 +27,10 @@ class RegisterIn(BaseModel):
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    # Même plafond qu'à l'inscription : un mot de passe démesuré coûterait cher à vérifier.
+    password: str = Field(max_length=128)
+    # Code de l'application d'authentification, quand la double authentification est active.
+    otp: str | None = Field(default=None, max_length=10)
 
 
 class RefreshIn(BaseModel):
@@ -36,3 +41,50 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    # Mot de passe initial fixé par un administrateur : l'interface demande d'en choisir un.
+    must_change_password: bool = False
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str = Field(max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetIn(BaseModel):
+    token: str = Field(max_length=200)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetLinkOut(BaseModel):
+    # Chemin de l'interface à transmettre à la personne : /reset-password?token=…
+    path: str
+    expires_at: datetime
+
+
+class TotpSetupOut(BaseModel):
+    secret: str
+    uri: str
+    # QR code à scanner avec l'application d'authentification (image SVG en data: URL).
+    qr_svg: str
+
+
+class AccountDeleteIn(BaseModel):
+    password: str = Field(max_length=128)
+    # Code de double authentification, quand elle est active.
+    code: str | None = Field(default=None, max_length=10)
+
+
+class TotpCodeIn(BaseModel):
+    code: str = Field(min_length=6, max_length=10)
+
+
+class SessionOut(BaseModel):
+    id: UUID
+    created_at: datetime
+    rotated_at: datetime | None
+    user_agent: str
+    current: bool

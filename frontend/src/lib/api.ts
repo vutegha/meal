@@ -36,7 +36,28 @@ export interface User {
 }
 
 export interface Me extends User {
+  /** Équipe qui exploite la plateforme : accès à /admin. */
+  is_platform_admin: boolean;
   organizations: Organization[];
+  /** Mot de passe initial fixé par un administrateur : à remplacer. */
+  must_change_password: boolean;
+  totp_enabled: boolean;
+  /** Administrateur sans double authentification. */
+  mfa_recommended: boolean;
+}
+
+export interface UserSessionInfo {
+  id: string;
+  created_at: string;
+  rotated_at: string | null;
+  user_agent: string;
+  current: boolean;
+}
+
+export interface TotpSetup {
+  secret: string;
+  uri: string;
+  qr_svg: string;
 }
 
 export interface Member {
@@ -56,10 +77,53 @@ export interface AuditEntry {
   created_at: string;
 }
 
+export interface PrivacySettings {
+  ai_enabled: boolean;
+  feedback_retention_months: number;
+  sms_acknowledgement: boolean;
+  privacy_contact: string;
+}
+
+export interface PersonalData {
+  query: string;
+  feedback: {
+    id: string;
+    project_code: string;
+    reference: string;
+    received_on: string;
+    category: string;
+    status: string;
+    sensitive: boolean;
+    contact: string;
+    description: string;
+    response: string;
+    anonymized: boolean;
+    messages: { date: string; direction: string; channel: string; phone: string; body: string }[];
+  }[];
+  submissions: {
+    id: string;
+    project_code: string;
+    form_title: string;
+    collected_at: string;
+    location: string;
+    answers: Record<string, unknown>;
+  }[];
+  evidence: {
+    id: string;
+    project_code: string;
+    filename: string;
+    kind: string;
+    caption: string;
+    excerpt: string;
+  }[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Mot de passe correct, mais le code de double authentification est attendu. */
+    public otpRequired = false,
   ) {
     super(message);
   }
@@ -76,6 +140,11 @@ async function send(path: string, init: RequestInit, token?: string): Promise<Re
 
 let refreshing: Promise<Tokens | null> | null = null;
 
+/**
+ * Renouvelle le jeton d'accès. Seul un refus du serveur met fin à la session (renvoie null) ;
+ * une coupure réseau ou un serveur indisponible lève une erreur et garde la session, pour que
+ * l'agent sur le terrain reste connecté et réessaie plus tard.
+ */
 async function refreshTokens(): Promise<Tokens | null> {
   const tokens = tokenStore.get();
   if (!tokens) return null;
@@ -83,13 +152,17 @@ async function refreshTokens(): Promise<Tokens | null> {
     method: "POST",
     body: JSON.stringify({ refresh_token: tokens.refresh_token }),
   })
-    .then(async (r) => (r.ok ? ((await r.json()) as Tokens) : null))
-    .catch(() => null)
+    .then(async (r) => {
+      if (r.ok) return (await r.json()) as Tokens;
+      if (r.status >= 500) throw new ApiError(r.status, await errorMessage(r));
+      return null;
+    })
     .finally(() => {
       refreshing = null;
     });
   const fresh = await refreshing;
-  tokenStore.set(fresh);
+  // Une autre requête a pu fermer ou ouvrir une session entre-temps : on ne l'écrase pas.
+  if (tokenStore.get()?.refresh_token === tokens.refresh_token) tokenStore.set(fresh);
   return fresh;
 }
 
@@ -129,7 +202,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fresh = await refreshTokens();
     if (fresh) response = await send(path, init, fresh.access_token);
   }
-  if (!response.ok) throw new ApiError(response.status, await errorMessage(response));
+  if (!response.ok) {
+    const otpRequired = response.headers.get("X-OTP-Required") === "1";
+    throw new ApiError(response.status, await errorMessage(response), otpRequired);
+  }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
@@ -139,8 +215,31 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<Tokens>("/auth/login", json("POST", { email, password })),
+  login: (email: string, password: string, otp?: string) =>
+    request<Tokens>("/auth/login", json("POST", { email, password, otp: otp || undefined })),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  logoutAll: () => request<void>("/auth/logout-all", { method: "POST" }),
+  sessions: () => request<UserSessionInfo[]>("/auth/sessions"),
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>("/auth/password", json("POST", { current_password, new_password })),
+  forgotPassword: (email: string) =>
+    request<void>("/auth/password/forgot", json("POST", { email })),
+  resetPassword: (token: string, new_password: string) =>
+    request<Tokens>("/auth/password/reset", json("POST", { token, new_password })),
+  totpSetup: () => request<TotpSetup>("/auth/totp/setup", { method: "POST" }),
+  totpEnable: (code: string) => request<void>("/auth/totp/enable", json("POST", { code })),
+  totpDisable: (code: string) => request<void>("/auth/totp/disable", json("POST", { code })),
+  deleteAccount: (password: string, code?: string) =>
+    request<void>("/auth/me/delete", json("POST", { password, code: code || undefined })),
+  closeOrganization: (
+    orgId: string,
+    body: { name: string; password: string; code?: string; delete_account: boolean },
+  ) =>
+    request<void>(`/orgs/${orgId}/close`, json("POST", { ...body, code: body.code || undefined })),
+  memberResetLink: (orgId: string, memberId: string) =>
+    request<{ path: string; expires_at: string }>(`/orgs/${orgId}/members/${memberId}/reset-link`, {
+      method: "POST",
+    }),
   register: (body: {
     email: string;
     full_name: string;
@@ -162,6 +261,19 @@ export const api = {
   removeMember: (orgId: string, memberId: string) =>
     request<void>(`/orgs/${orgId}/members/${memberId}`, { method: "DELETE" }),
   audit: (orgId: string) => request<AuditEntry[]>(`/orgs/${orgId}/audit`),
+  privacy: (orgId: string) => request<PrivacySettings>(`/orgs/${orgId}/privacy`),
+  updatePrivacy: (orgId: string, body: Partial<PrivacySettings>) =>
+    request<PrivacySettings>(`/orgs/${orgId}/privacy`, json("PATCH", body)),
+  searchPerson: (orgId: string, q: string) =>
+    request<PersonalData>(`/orgs/${orgId}/personal-data?q=${encodeURIComponent(q)}`),
+  erasePerson: (
+    orgId: string,
+    body: { feedback_ids: string[]; submission_ids: string[]; reason: string },
+  ) =>
+    request<{ feedback: number; submissions: number }>(
+      `/orgs/${orgId}/personal-data/erase`,
+      json("POST", body),
+    ),
 };
 
 // --- Projets (étape 2) -----------------------------------------------------
@@ -736,6 +848,8 @@ export interface Evidence {
   latitude: string | null;
   longitude: string | null;
   consent_given: boolean;
+  consent_method: ConsentMethod | "";
+  consent_recorded_at: string | null;
   has_thumbnail: boolean;
   page_count: number;
   faces: number;
@@ -758,10 +872,15 @@ export interface ExecutionDetail extends Execution {
   planned: string;
 }
 
+/** Façon dont le consentement a été recueilli (preuve en cas de contrôle). */
+export type ConsentMethod = "oral" | "written" | "guardian" | "community";
+export const CONSENT_METHODS: ConsentMethod[] = ["oral", "written", "guardian", "community"];
+
 export interface EvidenceInput {
   kind: EvidenceKind;
   caption: string;
   consent_given: boolean;
+  consent_method?: ConsentMethod;
   client_uuid: string;
   // Lus sur le téléphone avant compression (la photo envoyée n'a plus d'EXIF).
   taken_at?: string;
@@ -803,6 +922,8 @@ export const executionsApi = {
     body.append("kind", meta.kind);
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
+    if (meta.consent_given && meta.consent_method)
+      body.append("consent_method", meta.consent_method);
     body.append("client_uuid", meta.client_uuid);
     if (meta.taken_at) body.append("taken_at", meta.taken_at);
     if (meta.latitude !== undefined && meta.longitude !== undefined) {
@@ -818,7 +939,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given">> & {
+    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given" | "consent_method">> & {
       blur_faces?: boolean;
     },
   ) =>
@@ -1302,6 +1423,8 @@ export interface FormField {
   required: boolean;
   options: string[];
   hint: string;
+  /** Identifie une personne ou la concerne de près : hors synthèse et hors export par défaut. */
+  personal: boolean;
 }
 
 export interface CollectionForm {
@@ -1339,6 +1462,7 @@ export interface FieldSummary {
   label: string;
   type: FieldType;
   answered: number;
+  personal: boolean;
   counts: Record<string, number>;
   total: number | null;
   mean: number | null;
@@ -1352,8 +1476,12 @@ export interface FormSummary {
   fields: FieldSummary[];
 }
 
-export const formExportPath = (orgId: string, projectId: string, formId: string) =>
-  `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;
+export const formExportPath = (
+  orgId: string,
+  projectId: string,
+  formId: string,
+  personal = false,
+) => `${project(orgId, projectId)}/forms/${formId}/export.xlsx${personal ? "?personal=true" : ""}`;
 
 // --- Tableau de bord de l'organisation ------------------------------------------------
 

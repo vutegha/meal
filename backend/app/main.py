@@ -1,8 +1,12 @@
-from fastapi import APIRouter, FastAPI
+import logging
+
+from fastapi import APIRouter, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api import (
     accountability,
+    admin,
     ai,
     auth,
     billing,
@@ -11,6 +15,7 @@ from app.api import (
     forms,
     organizations,
     periodic,
+    personal_data,
     projects,
     reports,
     sms,
@@ -18,14 +23,19 @@ from app.api import (
     tor,
 )
 from app.core.config import get_settings
+from app.core.db import SessionLocal
+from app.services import ratelimit
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/api/docs",
+    # Documentation interactive fermée en production : elle décrit toute la surface de l'API.
+    openapi_url=None if settings.is_production else "/api/v1/openapi.json",
+    docs_url=None if settings.is_production else "/api/docs",
+    redoc_url=None,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -50,9 +60,34 @@ api.include_router(periodic.router)
 api.include_router(templates.router)
 api.include_router(forms.router)
 api.include_router(sms.router)
+api.include_router(admin.router)
+api.include_router(personal_data.router)
 app.include_router(api)
 
 
 @app.get("/health", tags=["système"])
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["système"])
+async def ready(response: Response) -> dict[str, str]:
+    """Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker."""
+    checks = {"database": "ok", "redis": "ok"}
+    try:
+        async with SessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001 - toute panne de la base rend le service indisponible
+        logger.exception("Base de données injoignable")
+        checks["database"] = "error"
+    if settings.login_rate_limit_storage != "memory":
+        try:
+            await ratelimit.ping()
+        except Exception:  # noqa: BLE001
+            logger.exception("Redis injoignable")
+            checks["redis"] = "error"
+    else:
+        checks["redis"] = "skipped"
+    if "error" in checks.values():
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return checks

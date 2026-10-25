@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
 from app.api.deps import AnyMember, OrgAdmin, SessionDep
-from app.models import Payment, Subscription
+from app.models import Organization, Payment, PaymentStatus, Subscription
 from app.schemas.billing import (
     BillingUsage,
     Catalog,
@@ -16,9 +16,8 @@ from app.schemas.billing import (
     PlanPrices,
     SubscriptionOut,
 )
-from app.services import audit
+from app.services import audit, receipts
 from app.services import billing as svc
-from app.services.ai import month_cost
 
 router = APIRouter(tags=["abonnements"])
 
@@ -27,7 +26,7 @@ def _limits(plan: svc.Plan) -> PlanLimits:
     return PlanLimits(
         projects=plan.max_projects,
         members=plan.max_members,
-        ai_monthly_budget_usd=plan.ai_monthly_budget_usd,
+        monthly_credits=plan.monthly_credits,
     )
 
 
@@ -39,6 +38,7 @@ async def catalog() -> Catalog:
         trial_days=svc.TRIAL_DAYS,
         welcome_credits=svc.WELCOME_CREDITS,
         credit_packs=list(svc.CREDIT_PACKS),
+        payment_instructions=svc.payment_instructions(),
         plans=[
             PlanOut(
                 id=plan.id,
@@ -69,7 +69,7 @@ async def _out(session: SessionDep, sub: Subscription) -> SubscriptionOut:
         usage=BillingUsage(
             projects=await svc.count_projects(session, org_id),
             members=await svc.count_members(session, org_id),
-            ai_month_cost_usd=await month_cost(session, org_id),
+            credits_used_this_month=await svc.credits_used_this_month(session, org_id),
         ),
     )
 
@@ -88,19 +88,26 @@ async def checkout(
 ) -> CheckoutOut:
     sub = await svc.get_subscription(session, org_id)
     payment = await svc.checkout(
-        session, sub, plan_id=body.plan, cycle=body.cycle, pack=body.pack, user_id=admin.user_id
+        session,
+        sub,
+        plan_id=body.plan,
+        cycle=body.cycle,
+        pack=body.pack,
+        user_id=admin.user_id,
+        method=body.method,
     )
     audit.record(
         session,
         organization_id=org_id,
         actor_id=admin.user_id,
-        action="subscription.paid",
+        action="subscription.paid" if payment.status == PaymentStatus.PAID else "payment.announced",
         entity_type="payment",
         entity_id=payment.id,
         data={
             "plan": payment.plan,
             "cycle": payment.cycle,
             "amount": str(payment.amount),
+            "method": payment.method,
             "reference": payment.reference,
         },
     )
@@ -140,3 +147,44 @@ async def list_payments(org_id: UUID, _: OrgAdmin, session: SessionDep) -> list[
         .order_by(Payment.created_at.desc(), Payment.id)
     )
     return list(rows)
+
+
+async def _payment(session: SessionDep, org_id: UUID, payment_id: UUID) -> Payment:
+    payment = await session.get(Payment, payment_id)
+    if payment is None or payment.organization_id != org_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paiement introuvable")
+    return payment
+
+
+@router.post("/orgs/{org_id}/billing/payments/{payment_id}/cancel", response_model=PaymentOut)
+async def cancel_payment(
+    org_id: UUID, payment_id: UUID, admin: OrgAdmin, session: SessionDep
+) -> Payment:
+    """Annule un virement ou un envoi mobile money annoncé et pas encore reçu."""
+    payment = await _payment(session, org_id, payment_id)
+    if payment.status != PaymentStatus.PENDING:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ce paiement n'est plus en attente")
+    payment.status = PaymentStatus.CANCELED
+    audit.record(
+        session,
+        organization_id=org_id,
+        actor_id=admin.user_id,
+        action="payment.canceled",
+        entity_type="payment",
+        entity_id=payment.id,
+        data={"reference": payment.reference},
+    )
+    await session.commit()
+    await session.refresh(payment)
+    return payment
+
+
+@router.get("/orgs/{org_id}/billing/payments/{payment_id}/receipt.pdf")
+async def payment_receipt(
+    org_id: UUID, payment_id: UUID, _: OrgAdmin, session: SessionDep
+) -> Response:
+    payment = await _payment(session, org_id, payment_id)
+    organization = await session.get(Organization, org_id)
+    assert organization is not None
+    content = await receipts.pdf(payment, organization)
+    return Response(content, media_type="application/pdf", headers=receipts.headers(payment))

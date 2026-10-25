@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText } from "@/components/ui";
 import { download, projectsApi } from "@/lib/api";
+import { FeatureGate } from "@/features/orgs/FeatureGate";
+import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
+import { hasFeature } from "@/lib/billing";
 import { projectQuery } from "@/lib/queries";
 
 import { BudgetTab } from "./BudgetTab";
@@ -19,7 +22,7 @@ import { PeriodicTab } from "./PeriodicTab";
 import { ScheduleTab } from "./ScheduleTab";
 import { StatusBadge } from "./StatusBadge";
 import { TorTab } from "./TorTab";
-import { TAB_GROUPS } from "./tabs";
+import { TAB_FEATURES, TAB_GROUPS } from "./tabs";
 
 export function ProjectPage() {
   const { t, i18n } = useTranslation();
@@ -27,6 +30,11 @@ export function ProjectPage() {
   const { orgId, projectId } = useParams({ from: "/orgs/$orgId/projects/$projectId" });
   const { tab } = useSearch({ from: "/orgs/$orgId/projects/$projectId" });
   const project = useQuery(projectQuery(orgId, projectId));
+  const { org } = useCurrentOrg();
+  const locked = (key: keyof typeof TAB_FEATURES) => {
+    const feature = TAB_FEATURES[key];
+    return !!feature && !!org && !hasFeature(org, feature);
+  };
   const exportFile = useMutation({
     mutationFn: (format: "xlsx" | "pdf" | "docx") =>
       download(
@@ -116,6 +124,11 @@ export function ProjectPage() {
                     }`}
                   >
                     {t(`projects.tabs.${key}`)}
+                    {locked(key) && (
+                      <span className="ml-1.5 text-xs" title={t("billing.locked.tab")}>
+                        🔒
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -131,8 +144,16 @@ export function ProjectPage() {
           {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
           {tab === "tor" && <TorTab orgId={orgId} project={p} />}
           {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
-          {tab === "forms" && <FormsTab orgId={orgId} projectId={projectId} />}
-          {tab === "reports" && <PeriodicTab project={p} />}
+          {tab === "forms" && (
+            <FeatureGate feature="forms">
+              <FormsTab orgId={orgId} projectId={projectId} />
+            </FeatureGate>
+          )}
+          {tab === "reports" && (
+            <FeatureGate feature="periodic_reports">
+              <PeriodicTab project={p} />
+            </FeatureGate>
+          )}
           {tab === "feedback" && <FeedbackTab orgId={orgId} projectId={projectId} />}
           {tab === "lessons" && <LessonsTab orgId={orgId} projectId={projectId} />}
           {tab === "documents" && <DocumentsTab orgId={orgId} project={p} />}

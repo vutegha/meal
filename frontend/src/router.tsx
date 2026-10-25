@@ -8,13 +8,18 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { AccountPage } from "@/features/account/AccountPage";
+import { AdminPage } from "@/features/admin/AdminPage";
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
+import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { MembersPage } from "@/features/orgs/MembersPage";
 import { OrgDashboardPage } from "@/features/orgs/OrgDashboardPage";
 import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
+import { PrivacyPage } from "@/features/orgs/PrivacyPage";
 import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
 import { ProjectPage } from "@/features/projects/ProjectPage";
@@ -25,7 +30,7 @@ import { HomePage } from "@/features/site/HomePage";
 import { PricingPage } from "@/features/site/PricingPage";
 import type { AccountType } from "@/lib/api";
 import { type Cycle, CYCLES } from "@/lib/billing";
-import { meQuery } from "@/lib/queries";
+import { loadProfile } from "@/lib/session";
 import { tokenStore } from "@/lib/tokens";
 
 interface RouterContext {
@@ -39,12 +44,10 @@ const requireAuth = () => {
 };
 
 async function loadMe(queryClient: QueryClient) {
-  try {
-    return await queryClient.ensureQueryData(meQuery);
-  } catch {
-    tokenStore.set(null);
-    throw redirect({ to: "/login" });
-  }
+  // Hors ligne, le profil gardé sur l'appareil suffit : l'agent garde accès à sa saisie.
+  const me = await loadProfile(queryClient).catch(() => null);
+  if (!me) throw redirect({ to: "/login" });
+  return me;
 }
 
 // Accueil du site public ; une personne connectée va directement à son espace.
@@ -78,6 +81,21 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
+  component: ResetPasswordPage,
+});
+
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
@@ -90,6 +108,18 @@ const registerRoute = createRoute({
     cycle: CYCLES.includes(search.cycle as Cycle) ? (search.cycle as Cycle) : undefined,
   }),
   component: RegisterPage,
+});
+
+// Administration de la plateforme ; l'API répond 404 aux autres comptes.
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  beforeLoad: async ({ context }) => {
+    requireAuth();
+    const me = await loadMe(context.queryClient);
+    if (!me.is_platform_admin) throw redirect({ to: "/" });
+  },
+  component: AdminPage,
 });
 
 const orgRoute = createRoute({
@@ -144,6 +174,18 @@ const templatesRoute = createRoute({
   ),
 });
 
+const privacyRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/privacy",
+  component: PrivacyPage,
+});
+
+const accountRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/account",
+  component: AccountPage,
+});
+
 const billingRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/billing",
@@ -179,7 +221,10 @@ const routeTree = rootRoute.addChildren([
   featuresRoute,
   pricingRoute,
   loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   registerRoute,
+  adminRoute,
   orgRoute.addChildren([
     orgIndexRoute,
     orgDashboardRoute,
@@ -187,6 +232,8 @@ const routeTree = rootRoute.addChildren([
     templatesRoute,
     membersRoute,
     billingRoute,
+    accountRoute,
+    privacyRoute,
     projectRoute,
   ]),
 ]);

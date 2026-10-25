@@ -130,6 +130,14 @@ function FieldEditor({
           />
           {t("forms.required")}
         </label>
+        <label className="flex items-center gap-2" title={t("forms.personalHint")}>
+          <input
+            type="checkbox"
+            checked={field.personal}
+            onChange={(e) => onChange({ personal: e.target.checked })}
+          />
+          {t("forms.personal")}
+        </label>
         <span className="flex-1" />
         {!locked && (
           <>
@@ -499,6 +507,9 @@ function SummaryItem({ field, total }: { field: FieldSummary; total: number }) {
           · {t("forms.answered", { count: field.answered, total })}
         </span>
       </p>
+      {field.personal && (
+        <p className="mt-1 text-xs text-slate-500">{t("forms.personalSummary")}</p>
+      )}
       {counts.length > 0 && (
         <ul className="mt-1 space-y-1">
           {counts.map(([label, count]) => (
@@ -641,8 +652,11 @@ function FormView({
     },
   });
   const exportFile = useMutation({
-    mutationFn: () =>
-      download(formsApi.exportPath(orgId, projectId, formId), `formulaire-${formId}.xlsx`),
+    mutationFn: (personal: boolean) =>
+      download(
+        formsApi.exportPath(orgId, projectId, formId, personal),
+        `formulaire-${formId}.xlsx`,
+      ),
   });
 
   if (form.isPending) return <p className="text-sm text-slate-500">{t("common.loading")}</p>;
@@ -702,10 +716,21 @@ function FormView({
             {canPlan && f.submissions > 0 && (
               <Button
                 variant="ghost"
-                onClick={() => exportFile.mutate()}
+                onClick={() => exportFile.mutate(false)}
                 disabled={exportFile.isPending}
               >
                 ⬇ {t("projects.export")}
+              </Button>
+            )}
+            {canPlan && f.submissions > 0 && f.fields.some((field) => field.personal) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (window.confirm(t("forms.exportPersonalConfirm"))) exportFile.mutate(true);
+                }}
+                disabled={exportFile.isPending}
+              >
+                ⬇ {t("forms.exportPersonal")}
               </Button>
             )}
             {canDelete && (
@@ -768,7 +793,8 @@ function FormView({
                 {field.label}{" "}
                 <span className="text-xs text-slate-500">
                   ({t(`forms.types.${field.type}`)}
-                  {field.required && `, ${t("forms.required").toLowerCase()}`})
+                  {field.required && `, ${t("forms.required").toLowerCase()}`}
+                  {field.personal && `, ${t("forms.personal").toLowerCase()}`})
                 </span>
               </li>
             ))}

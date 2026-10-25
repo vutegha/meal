@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import AnyMember, SessionDep, require_membership
 from app.documents.render import to_docx, to_pdf
+from app.documents.storage import get_storage
 from app.models import (
     PARENT_LEVEL,
     BudgetLine,
@@ -163,6 +164,8 @@ async def delete_project(
     _log(session, member, "project.deleted", "project", project.id, {"code": project.code})
     await session.delete(project)
     await session.commit()
+    # Documents, preuves et vignettes du projet : rien ne doit rester sur le disque.
+    await get_storage().delete_prefix(f"{org_id}/{project.id}/")
 
 
 @router.get("/{project_id}/export.xlsx", response_class=Response)

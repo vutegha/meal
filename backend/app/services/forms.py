@@ -72,8 +72,16 @@ def summarize(fields: list[FormField], submissions: list[FormSubmission]) -> For
     for field in fields:
         values = [s.answers[field.key] for s in submissions if field.key in s.answers]
         summary = FieldSummary(
-            key=field.key, label=field.label, type=field.type, answered=len(values)
+            key=field.key,
+            label=field.label,
+            type=field.type,
+            answered=len(values),
+            personal=field.personal,
         )
+        if field.personal and field.type not in ("select", "multiselect", "yesno"):
+            # Ni réponses citées, ni minimum ou maximum qui désigneraient une personne.
+            summaries.append(summary)
+            continue
         if field.type in ("select", "multiselect"):
             summary.counts = {o: 0 for o in field.options}
             for value in values:

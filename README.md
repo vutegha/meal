@@ -10,12 +10,63 @@ Application web pour faciliter les activités MEAL (suivi, évaluation, redevabi
 ## Démarrer avec Docker
 
 ```bash
-cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et MINIO_ROOT_PASSWORD
+cp .env.example .env   # puis renseigner POSTGRES_PASSWORD, SECRET_KEY et BACKUP_PASSPHRASE
 docker compose up --build
 ```
 
-L'application est servie sur https://localhost (API sous `/api/v1`, documentation sous `/api/docs`).
-Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed`.
+Les fichiers importés sont gardés dans le volume Docker `files`. Pour les stocker dans MinIO
+(compatible S3) : `STORAGE_BACKEND=s3`, `MINIO_ROOT_PASSWORD` et, MinIO ne publiant plus
+d'image sur Docker Hub, une image disponible dans `MINIO_IMAGE`, puis
+`docker compose --profile s3 up --build`.
+
+`SECRET_KEY` doit faire au moins 32 caractères aléatoires, sinon l'API refuse de démarrer :
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+
+L'application est servie sur https://localhost (API sous `/api/v1`). La documentation
+`/api/docs` n'est ouverte qu'avec `ENVIRONMENT=development`.
+Pour charger un projet de démonstration : `docker compose exec api python -m app.scripts.seed` (le mot de passe du compte `demo@wemeal.org` est affiché).
+
+## Sauvegardes
+
+Le service `backup` sauvegarde chaque jour, à `BACKUP_HOUR` heure UTC, la base et les fichiers
+dans `BACKUP_DIR` (`./backups` par défaut). Chaque sauvegarde est chiffrée (AES-256) avec
+`BACKUP_PASSPHRASE` et gardée `BACKUP_KEEP_DAYS` jours. Copiez ce dossier hors du serveur, et
+gardez la phrase de passe ailleurs : sans elle, la sauvegarde est illisible.
+
+```bash
+docker compose run --rm backup now     # une sauvegarde tout de suite
+docker compose run --rm backup list    # les sauvegardes présentes
+# Restauration (remplace la base et les fichiers)
+docker compose stop api worker
+docker compose run --rm --entrypoint /ops/restore.sh backup wemeal-AAAAMMJJ-HHMMSS.tar.gpg
+docker compose start api worker
+```
+
+Testez une restauration au moins une fois par trimestre.
+
+## Données personnelles (RGPD)
+
+Registre des traitements, sous-traitants et procédure en cas de violation de données :
+[docs/rgpd](docs/rgpd/README.md). Contrôle de santé : `GET /health/ready` (base et Redis).
+
+- **Réglages par espace** (page *Données personnelles*, administrateurs) : IA activable ou non,
+  accusé de réception des SMS avec la phrase d'information, durée de conservation des retours
+  clôturés (36 mois par défaut), contact pour exercer ses droits.
+- **Purge nocturne** (tâche du `worker`, 3 h UTC) : retours clôturés au-delà de la durée choisie
+  anonymisés, SMS non rattachés effacés après 30 jours, liens de réinitialisation et sessions
+  expirés après 30 jours, journal des consultations après 365 jours. À la main :
+  `docker compose exec api python -m app.scripts.purge`.
+- **Photos** : la date et la position sont lues puis retirées du fichier gardé, avec le reste
+  des métadonnées (appareil, auteur, logiciel). Pour les photos déposées avant :
+  `docker compose exec api python -m app.scripts.strip_metadata`.
+- **Demande d'une personne** : recherche par nom, numéro ou e-mail, copie JSON et effacement
+  motivé, tracé dans le journal sans les termes recherchés.
+- **Suppression et fermeture** : chacun peut supprimer son compte (*Mon compte*), qui est alors
+  anonymisé ; un administrateur peut fermer l'espace (page *Données personnelles*), ce qui
+  efface ses données et ses fichiers. Supprimer un projet efface aussi ses fichiers.
+- **Comptes** : sessions révocables, double authentification (conseillée aux administrateurs),
+  mot de passe oublié par e-mail si `SMTP_HOST` est renseigné, sinon lien remis par un
+  administrateur.
 
 ## Développement local
 
@@ -65,6 +116,22 @@ La passerelle WhatsApp se choisit avec `WHATSAPP_PROVIDER` :
 - `meta` (WhatsApp Cloud API) : `META_WHATSAPP_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID` et, conseillé, `META_APP_SECRET` pour contrôler la signature des notifications. Hors des 24 h qui suivent le dernier message de la personne, Meta n'accepte qu'un modèle de message approuvé : l'envoi libre est alors refusé et l'erreur s'affiche dans le fil.
 
 Pour recevoir les SMS, choisissez un secret `SMS_WEBHOOK_TOKEN` et déclarez chez le prestataire l'URL `https://<domaine>/api/v1/sms/inbound/<SMS_WEBHOOK_TOKEN>` ; pour WhatsApp, `https://<domaine>/api/v1/whatsapp/inbound/<SMS_WEBHOOK_TOKEN>` (chez Meta, le jeton de vérification est ce même secret). Un SMS ou message WhatsApp reçu d'un numéro à qui l'équipe a déjà écrit rejoint l'échange du retour concerné ; un SMS qui commence par le code d'un projet (ex. « RES-NK-01 Le point d'eau est en panne ») crée un nouveau retour dans ce projet, canal SMS, à qualifier. Les autres SMS sont conservés sans être rattachés à une organisation.
+
+## Formules et administration des abonnements
+
+Trois formules, définies dans `backend/app/services/billing.py` (tarifs indicatifs) : **Solo** (compte individuel), **Équipe** et **Institution** (organisations). Équipe ajoute les formulaires de collecte personnalisés, les rapports périodiques, les membres et rôles, les modèles, les leçons de l'organisation et le journal d'audit ; Institution ajoute les SMS et WhatsApp avec les communautés. L'API refuse avec 402 ce que la formule n'ouvre pas, l'interface affiche à la place une invitation à changer de formule. Le détail est dans `docs/architecture.md`.
+
+L'équipe qui exploite la plateforme gère les abonnements et les paiements de tous les espaces sur `/admin`.
+- Elle confirme les virements et envois mobile money annoncés par les clients.
+- Elle enregistre un paiement reçu hors de l'application, ou rembourse un paiement.
+- Elle ajuste une formule, une échéance ou des crédits.
+
+Chaque paiement encaissé reçoit un reçu PDF numéroté, et chaque changement est inscrit au journal de l'espace. Les coordonnées de paiement affichées aux clients se règlent avec `PAYMENT_INSTRUCTIONS`. Pour y donner accès à un compte existant :
+
+```bash
+cd backend
+uv run python -m app.scripts.platform_admin personne@exemple.org            # --revoke pour retirer
+```
 
 ## Tests et qualité
 

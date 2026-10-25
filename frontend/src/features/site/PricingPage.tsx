@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { buttonVariants } from "@/components/ui/button";
-import { type Cycle, FEATURES, formatPrice } from "@/lib/billing";
+import { type Cycle, FEATURES } from "@/lib/billing";
 import { catalogQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ import { SectionTitle, SiteLayout } from "./SiteLayout";
 const FAQ = ["credit", "trial", "switch", "cancel", "currency"] as const;
 
 export function PricingPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const { data: catalog, error } = useQuery(catalogQuery);
   const plans = catalog?.plans ?? [];
@@ -93,13 +93,7 @@ export function PricingPage() {
                     </th>
                     {plans.map((plan) => {
                       const value =
-                        limit === "ai"
-                          ? formatPrice(
-                              plan.limits.ai_monthly_budget_usd,
-                              catalog.currency,
-                              i18n.language,
-                            )
-                          : plan.limits[limit];
+                        limit === "ai" ? plan.limits.monthly_credits : plan.limits[limit];
                       return (
                         <td key={plan.id} className="p-3 text-center text-slate-900">
                           {value ?? t("site.pricing.unlimited")}

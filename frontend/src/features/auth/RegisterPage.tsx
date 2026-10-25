@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,7 @@ import { Button, ErrorText, Field, Select } from "@/components/ui";
 import { type AccountType, api } from "@/lib/api";
 import { type Cycle, CYCLES } from "@/lib/billing";
 import { catalogQuery } from "@/lib/queries";
-import { tokenStore } from "@/lib/tokens";
+import { startSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 import { AuthLayout } from "./AuthLayout";
@@ -23,6 +23,7 @@ export function RegisterPage() {
   const [accountType, setAccountType] = useState<AccountType>(search.type ?? "organization");
   const [plan, setPlan] = useState(search.plan ?? DEFAULT_PLAN[accountType]);
   const [cycle, setCycle] = useState<Cycle>(search.cycle ?? "monthly");
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -50,7 +51,7 @@ export function RegisterPage() {
         cycle,
       }),
     onSuccess: async (tokens) => {
-      tokenStore.set(tokens);
+      await startSession(queryClient, tokens);
       await navigate({ to: "/" });
     },
   });

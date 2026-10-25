@@ -20,7 +20,14 @@ from app.models.ai import (
     ProposalStatus,
     SourceDocument,
 )
-from app.models.billing import CYCLES, AccountType, Payment, Subscription
+from app.models.billing import (
+    CYCLES,
+    PAYMENT_METHODS,
+    AccountType,
+    Payment,
+    PaymentStatus,
+    Subscription,
+)
 from app.models.execution import (
     ActivityExecution,
     Evidence,
@@ -28,7 +35,15 @@ from app.models.execution import (
     ExecutionStatus,
 )
 from app.models.form import FIELD_TYPES, FORM_STATUSES, CollectionForm, FormSubmission
-from app.models.organization import AuditLog, Membership, Organization, Role, User
+from app.models.organization import (
+    AuditLog,
+    Membership,
+    Organization,
+    PasswordReset,
+    Role,
+    User,
+    UserSession,
+)
 from app.models.project import (
     PARENT_LEVEL,
     Aggregation,
@@ -49,6 +64,8 @@ __all__ = [
     "CYCLES",
     "AccountType",
     "Payment",
+    "PaymentStatus",
+    "PAYMENT_METHODS",
     "Subscription",
     "FIELD_TYPES",
     "FORM_STATUSES",
@@ -99,4 +116,6 @@ __all__ = [
     "ProjectStatus",
     "Role",
     "User",
+    "UserSession",
+    "PasswordReset",
 ]

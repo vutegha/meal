@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import type { ExecutionInput } from "./api";
-import { newId, outbox, queueExecution, queueFeedback, syncOutbox } from "./outbox";
+import {
+  countPending,
+  newId,
+  outbox,
+  purgeOutbox,
+  queueExecution,
+  queueFeedback,
+  syncOutbox,
+} from "./outbox";
 import { tokenStore } from "./tokens";
 
 const body = (): ExecutionInput => ({
@@ -29,6 +37,7 @@ beforeEach(async () => {
   await outbox.executions.clear();
   await outbox.evidence.clear();
   await outbox.feedback.clear();
+  await outbox.submissions.clear();
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -94,4 +103,46 @@ it("sends feedback recorded offline once the network is back", async () => {
   expect(fetch.mock.calls[0][0]).toBe("/api/v1/orgs/o/projects/p/feedback");
   expect(JSON.parse(fetch.mock.calls[0][1]!.body as string).client_uuid).toBe(feedback.client_uuid);
   expect(await outbox.feedback.count()).toBe(0);
+});
+
+/** Jeton d'accès au format JWT dont seul le champ `sub` compte ici. */
+const tokensFor = (userId: string) => ({
+  access_token: `h.${btoa(JSON.stringify({ sub: userId }))}.s`,
+  refresh_token: "r",
+});
+
+it("never sends one agent's entries with another agent's account", async () => {
+  tokenStore.set(tokensFor("agent-a"));
+  await queueExecution("o", "p", body(), [photo()]);
+  expect((await outbox.executions.toArray())[0].userId).toBe("agent-a");
+
+  tokenStore.set(tokensFor("agent-b"));
+  const fetch = vi.spyOn(globalThis, "fetch");
+  expect(await syncOutbox()).toEqual({ sent: 0, rejected: 0, offline: false });
+  expect(fetch).not.toHaveBeenCalled();
+  expect(await outbox.executions.count()).toBe(1);
+
+  tokenStore.set(tokensFor("agent-a"));
+  fetch
+    .mockResolvedValueOnce(new Response(JSON.stringify({ id: "exe-1" }), { status: 201 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ id: "ev-1" }), { status: 201 }));
+  expect(await syncOutbox()).toEqual({ sent: 2, rejected: 0, offline: false });
+});
+
+it("empties the whole queue when the session ends", async () => {
+  await queueExecution("o", "p", body(), [photo()]);
+  await queueFeedback("o", "p", {
+    received_on: "2026-03-17",
+    channel: "hotline",
+    category: "fraud",
+    description: "Signalement",
+    location: "",
+    activity_id: null,
+    anonymous: false,
+    contact: "+243 000 000",
+    client_uuid: newId(),
+  });
+  expect(await countPending()).toBe(3);
+  await purgeOutbox();
+  expect(await countPending()).toBe(0);
 });

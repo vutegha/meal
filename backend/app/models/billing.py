@@ -1,7 +1,9 @@
 """Abonnement de chaque espace (compte individuel ou organisation) et paiements reçus.
 
 La formule (`plan`) détermine le type de compte, les limites et les fonctions ouvertes : voir
-`app/services/billing.py`. Les paiements passent pour l'instant par un prestataire simulé.
+`app/services/billing.py`. Un paiement en ligne passe par un prestataire (simulé pour l'instant) ;
+un virement ou un envoi mobile money reste en attente jusqu'à sa confirmation par l'équipe de la
+plateforme.
 """
 
 import enum
@@ -9,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Numeric, Sequence, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin, TimestampMixin
@@ -44,6 +46,22 @@ class Subscription(IdMixin, TimestampMixin, Base):
     cancel_at_period_end: Mapped[bool] = mapped_column(default=False)
 
 
+class PaymentStatus(enum.StrEnum):
+    PENDING = "pending"  # virement ou mobile money annoncé, pas encore reçu
+    PAID = "paid"
+    CANCELED = "canceled"  # annulé avant d'être reçu
+    FAILED = "failed"  # refusé par le prestataire
+    REFUNDED = "refunded"
+
+
+# Moyens de paiement : en ligne (prestataire), ou hors ligne, confirmés par la plateforme.
+PAYMENT_METHODS = ("online", "mobile_money", "bank_transfer", "cash", "other")
+
+
+# Numérotation continue des reçus, toutes organisations confondues.
+RECEIPT_SEQUENCE = Sequence("payment_receipt_seq", metadata=Base.metadata)
+
+
 class Payment(IdMixin, TimestampMixin, Base):
     __tablename__ = "payments"
 
@@ -59,3 +77,12 @@ class Payment(IdMixin, TimestampMixin, Base):
     provider: Mapped[str] = mapped_column(String(40))
     reference: Mapped[str] = mapped_column(String(80))
     paid_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(20), server_default=text("'paid'"))
+    method: Mapped[str] = mapped_column(String(30), server_default=text("'online'"))
+    # Numéro de reçu, attribué à l'encaissement : WM-2026-000042.
+    receipt_number: Mapped[str | None] = mapped_column(String(30), unique=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str] = mapped_column(String(500), server_default=text("''"))
+    # Membre de l'équipe de la plateforme qui a confirmé, saisi ou remboursé le paiement.
+    recorded_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

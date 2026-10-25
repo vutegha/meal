@@ -6,6 +6,7 @@ from typing import Any
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://meal:meal@localhost:5432/meal_test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-with-enough-length-0123456789")
 os.environ["JOBS_INLINE"] = "true"
+os.environ["LOGIN_RATE_LIMIT_STORAGE"] = "memory"
 os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="wemeal-test-files-")
 
 import pytest
@@ -17,6 +18,7 @@ from app.core import rls
 from app.core.config import get_settings
 from app.core.db import Base, engine
 from app.main import app
+from app.services import ratelimit
 
 # Propriétaire des tables (sans changement de rôle) : schéma, RLS et nettoyage entre tests.
 owner_engine = create_async_engine(get_settings().database_url)
@@ -58,6 +60,7 @@ async def database() -> AsyncIterator[None]:
 @pytest.fixture(autouse=True)
 async def clean_tables() -> AsyncIterator[None]:
     yield
+    ratelimit.clear_memory()
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
     async with owner_engine.begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} CASCADE"))
