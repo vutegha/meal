@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
+import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import {
   accountabilityApi,
@@ -425,68 +426,70 @@ function SmsThread({
       ) : (
         !thread.isPending && <p className="text-sm text-slate-500">{t("feedback.sms.empty")}</p>
       )}
-      {entry.contact ? (
-        <form
-          className="space-y-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            send.mutate();
-          }}
-        >
-          <textarea
-            aria-label={t("feedback.sms.placeholder")}
-            placeholder={t("feedback.sms.placeholder")}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            rows={2}
-            maxLength={640}
-            required
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <ErrorText error={send.error ?? simulate.error} />
-          <div className="flex flex-wrap items-center gap-2">
-            <div
-              role="radiogroup"
-              aria-label={t("feedback.sms.channel")}
-              className="inline-flex rounded-md border border-slate-300 bg-white p-0.5"
-            >
-              {MESSAGE_CHANNELS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={channel === value}
-                  onClick={() => setPicked(value)}
-                  className={`rounded px-2.5 py-1 text-xs font-medium ${
-                    channel === value ? "bg-brand-600 text-white" : "text-slate-600"
-                  }`}
-                >
-                  {t(`feedback.sms.channels.${value}`)}
-                </button>
-              ))}
-            </div>
-            <Button type="submit" disabled={send.isPending || !text.trim()}>
-              {send.isPending ? t("feedback.sms.sending") : t("feedback.sms.send")}
-            </Button>
-            <span className="text-xs text-slate-500">
-              {t("feedback.sms.chars", { count: text.length })}
-            </span>
-            <span className="flex-1" />
-            {channelConfig?.simulated && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={askSimulated}
-                disabled={simulate.isPending}
+      <FeatureGate feature="messaging" inline>
+        {entry.contact ? (
+          <form
+            className="space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send.mutate();
+            }}
+          >
+            <textarea
+              aria-label={t("feedback.sms.placeholder")}
+              placeholder={t("feedback.sms.placeholder")}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              rows={2}
+              maxLength={640}
+              required
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <ErrorText error={send.error ?? simulate.error} />
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                role="radiogroup"
+                aria-label={t("feedback.sms.channel")}
+                className="inline-flex rounded-md border border-slate-300 bg-white p-0.5"
               >
-                {t("feedback.sms.simulateReply")}
+                {MESSAGE_CHANNELS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={channel === value}
+                    onClick={() => setPicked(value)}
+                    className={`rounded px-2.5 py-1 text-xs font-medium ${
+                      channel === value ? "bg-brand-600 text-white" : "text-slate-600"
+                    }`}
+                  >
+                    {t(`feedback.sms.channels.${value}`)}
+                  </button>
+                ))}
+              </div>
+              <Button type="submit" disabled={send.isPending || !text.trim()}>
+                {send.isPending ? t("feedback.sms.sending") : t("feedback.sms.send")}
               </Button>
-            )}
-          </div>
-        </form>
-      ) : (
-        <p className="text-sm text-slate-500">{t("feedback.sms.noContact")}</p>
-      )}
+              <span className="text-xs text-slate-500">
+                {t("feedback.sms.chars", { count: text.length })}
+              </span>
+              <span className="flex-1" />
+              {channelConfig?.simulated && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={askSimulated}
+                  disabled={simulate.isPending}
+                >
+                  {t("feedback.sms.simulateReply")}
+                </Button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <p className="text-sm text-slate-500">{t("feedback.sms.noContact")}</p>
+        )}
+      </FeatureGate>
     </div>
   );
 }

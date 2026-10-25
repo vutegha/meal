@@ -128,6 +128,14 @@ export function OrgLayout() {
             <span className="hidden 2xl:inline">{me.full_name}</span>
             <span className="2xl:hidden">{t("account.nav")}</span>
           </Link>
+          {me.is_platform_admin && (
+            <Link
+              to="/admin"
+              className="rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+            >
+              {t("admin.badge")}
+            </Link>
+          )}
           <Button variant="ghost" onClick={logout}>
             {t("common.logout")}
           </Button>

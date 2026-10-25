@@ -54,6 +54,8 @@ class User(IdMixin, TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Équipe qui exploite la plateforme : gère les abonnements de tous les espaces (/admin).
+    is_platform_admin: Mapped[bool] = mapped_column(default=False, server_default=false())
     # Mot de passe fixé par un administrateur : à changer à la première connexion.
     must_change_password: Mapped[bool] = mapped_column(default=False, server_default=false())
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

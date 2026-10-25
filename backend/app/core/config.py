@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     llm_max_document_chars: int = 2_000_000
 
     # SMS de la redevabilité : "simulated" (aucun envoi réel), "twilio" ou "africastalking".
+    # Coordonnées affichées à qui choisit de payer par virement ou mobile money ; l'équipe de la
+    # plateforme confirme ensuite chaque paiement reçu depuis /admin. Vide : texte indicatif.
+    payment_instructions: str = ""
     sms_provider: str = "simulated"
     # Numéro ou identifiant d'expéditeur affiché au destinataire.
     sms_sender: str = ""

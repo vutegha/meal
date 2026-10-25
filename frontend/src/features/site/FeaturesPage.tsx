@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/button";
-import { FEATURES } from "@/lib/billing";
+import { type Feature, FEATURES, lowestPlanWith } from "@/lib/billing";
 import { catalogQuery } from "@/lib/queries";
 
 import { SectionTitle, SiteLayout } from "./SiteLayout";
@@ -12,17 +12,25 @@ import { SectionTitle, SiteLayout } from "./SiteLayout";
 const GROUPS = {
   plan: ["extraction", "citations", "logframe", "indicators", "budget", "gantt"],
   execute: ["tor", "offline", "forms", "evidence", "search"],
-  report: ["narrative", "dashboard", "periodic", "feedback", "exports"],
+  report: ["narrative", "dashboard", "periodic", "feedback", "sms", "exports"],
   team: ["roles", "templates", "lessons", "audit"],
 } as const;
+// Éléments ouverts par une formule supérieure : un badge indique laquelle.
+const ITEM_FEATURE: Partial<Record<string, Feature>> = {
+  forms: "forms",
+  periodic: "periodic_reports",
+  sms: "messaging",
+};
 
 export function FeaturesPage() {
   const { t } = useTranslation();
   const { data: catalog } = useQuery(catalogQuery);
-  const featuresOf = (type: "individual" | "organization") =>
-    new Set(catalog?.plans.filter((p) => p.account_type === type).flatMap((p) => p.features));
-  const individual = featuresOf("individual");
-  const organization = featuresOf("organization");
+  const plans = catalog?.plans ?? [];
+  const fromPlan = (item: string) => {
+    const feature = ITEM_FEATURE[item];
+    const plan = feature && lowestPlanWith(catalog, feature);
+    return plan && plan.id !== plans[0]?.id ? t(`billing.plans.${plan.id}`) : null;
+  };
 
   return (
     <SiteLayout>
@@ -50,7 +58,14 @@ export function FeaturesPage() {
                   <span aria-hidden className="font-bold text-brand-600">
                     ✓
                   </span>
-                  <span>{t(`site.features.groups.${group}.items.${item}`)}</span>
+                  <span>
+                    {t(`site.features.groups.${group}.items.${item}`)}
+                    {fromPlan(item) && (
+                      <Badge tone="brand" className="ml-2 align-middle">
+                        {t("site.features.fromPlan", { plan: fromPlan(item) })}
+                      </Badge>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -66,8 +81,11 @@ export function FeaturesPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-left">
                   <th className="p-3 font-medium text-slate-500">{t("site.features.feature")}</th>
-                  <th className="p-3 text-center font-semibold">{t("auth.individual")}</th>
-                  <th className="p-3 text-center font-semibold">{t("auth.organization")}</th>
+                  {plans.map((plan) => (
+                    <th key={plan.id} className="p-3 text-center font-semibold">
+                      {t(`billing.plans.${plan.id}`)}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -76,9 +94,9 @@ export function FeaturesPage() {
                     <th scope="row" className="p-3 text-left font-normal text-slate-700">
                       {t(`billing.features.${feature}`)}
                     </th>
-                    {[individual, organization].map((set, i) => (
-                      <td key={i} className="p-3 text-center">
-                        {set.has(feature) ? (
+                    {plans.map((plan) => (
+                      <td key={plan.id} className="p-3 text-center">
+                        {plan.features.includes(feature) ? (
                           <span
                             className="font-bold text-brand-600"
                             aria-label={t("site.pricing.included")}

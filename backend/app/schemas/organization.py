@@ -70,6 +70,7 @@ class UserOut(ORMModel):
 
 
 class MeOut(UserOut):
+    is_platform_admin: bool
     organizations: list[MyOrganizationOut]
     must_change_password: bool = False
     totp_enabled: bool = False

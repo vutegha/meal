@@ -22,6 +22,13 @@ def webhook(monkeypatch: pytest.MonkeyPatch) -> str:
 async def test_find_export_and_erase_a_person(client: AsyncClient, webhook: str) -> None:
     ctx = await register(client, "admin@example.org")
     h = ctx["headers"]
+    # Les SMS sont ouverts par la formule Institution.
+    r = await client.post(
+        f"/api/v1/orgs/{ctx['org_id']}/billing/checkout",
+        headers=h,
+        json={"plan": "institution", "cycle": "monthly"},
+    )
+    assert r.status_code == 200, r.text
     base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx, 'KIW')}"
     r = await client.post(
         f"{base}/feedback",

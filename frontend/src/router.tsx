@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import { AccountPage } from "@/features/account/AccountPage";
+import { AdminPage } from "@/features/admin/AdminPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
@@ -108,6 +109,18 @@ const registerRoute = createRoute({
   component: RegisterPage,
 });
 
+// Administration de la plateforme ; l'API répond 404 aux autres comptes.
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  beforeLoad: async ({ context }) => {
+    requireAuth();
+    const me = await loadMe(context.queryClient);
+    if (!me.is_platform_admin) throw redirect({ to: "/" });
+  },
+  component: AdminPage,
+});
+
 const orgRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/orgs/$orgId",
@@ -204,6 +217,7 @@ const routeTree = rootRoute.addChildren([
   forgotPasswordRoute,
   resetPasswordRoute,
   registerRoute,
+  adminRoute,
   orgRoute.addChildren([
     orgIndexRoute,
     lessonsRoute,

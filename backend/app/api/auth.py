@@ -276,6 +276,7 @@ async def me(user: CurrentUser, session: SessionDep) -> MeOut:
         email=user.email,
         full_name=user.full_name,
         is_active=user.is_active,
+        is_platform_admin=user.is_platform_admin,
         must_change_password=user.must_change_password,
         totp_enabled=user.totp_enabled_at is not None,
         # Administrateur sans double authentification : l'interface le lui recommande.

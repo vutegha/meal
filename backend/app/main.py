@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from app.api import (
     accountability,
+    admin,
     ai,
     auth,
     billing,
@@ -57,6 +58,7 @@ api.include_router(periodic.router)
 api.include_router(templates.router)
 api.include_router(forms.router)
 api.include_router(sms.router)
+api.include_router(admin.router)
 api.include_router(personal_data.router)
 app.include_router(api)
 

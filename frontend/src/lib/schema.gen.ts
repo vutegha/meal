@@ -4,6 +4,141 @@
  */
 
 export interface paths {
+  "/api/v1/admin/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Payments
+     * @description Tous les paiements, les plus récents d'abord ; ceux en attente sont à confirmer.
+     */
+    get: operations["list_payments_api_v1_admin_payments_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm Payment
+     * @description Le virement ou l'envoi mobile money annoncé est arrivé : la formule s'applique.
+     */
+    post: operations["confirm_payment_api_v1_admin_payments__payment_id__confirm_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/receipt.pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Admin Receipt */
+    get: operations["admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/refund": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refund Payment */
+    post: operations["refund_payment_api_v1_admin_payments__payment_id__refund_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Subscriptions
+     * @description Tous les espaces, leur formule et leur usage. Les filtres ne changent pas le résumé.
+     */
+    get: operations["list_subscriptions_api_v1_admin_subscriptions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions/{org_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Subscription
+     * @description Change la formule, les dates ou les crédits d'un espace, sans paiement (geste commercial,
+     *     paiement reçu hors ligne, correction). Chaque changement est inscrit au journal de l'espace.
+     */
+    patch: operations["update_subscription_api_v1_admin_subscriptions__org_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions/{org_id}/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record Payment
+     * @description Enregistre un paiement reçu hors de l'application ; la formule payée s'applique.
+     */
+    post: operations["record_payment_api_v1_admin_subscriptions__org_id__payments_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/login": {
     parameters: {
       query?: never;
@@ -410,6 +545,43 @@ export interface paths {
     };
     /** List Payments */
     get: operations["list_payments_api_v1_orgs__org_id__billing_payments_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel Payment
+     * @description Annule un virement ou un envoi mobile money annoncé et pas encore reçu.
+     */
+    post: operations["cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/receipt.pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Payment Receipt */
+    get: operations["payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1991,6 +2163,230 @@ export interface components {
       /** Title */
       title: string;
     };
+    /** AdminPaymentConfirm */
+    AdminPaymentConfirm: {
+      /** Method */
+      method?: ("online" | "mobile_money" | "bank_transfer" | "cash" | "other") | null;
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+    };
+    /**
+     * AdminPaymentRecord
+     * @description Paiement reçu hors de l'application (virement, mobile money, espèces).
+     */
+    AdminPaymentRecord: {
+      /** Amount */
+      amount?: number | string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "mobile_money" | "bank_transfer" | "cash" | "other";
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+      /** Pack */
+      pack?: number | null;
+      /** Plan */
+      plan: string;
+      /**
+       * Reference
+       * @default
+       */
+      reference: string;
+    };
+    /** AdminPaymentRefund */
+    AdminPaymentRefund: {
+      /** Note */
+      note: string;
+    };
+    /** AdminPaymentRow */
+    AdminPaymentRow: {
+      /** Amount */
+      amount: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Credits */
+      credits: number;
+      /** Currency */
+      currency: string;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer" | "cash" | "other";
+      /** Note */
+      note: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
+      /** Paid At */
+      paid_at: string | null;
+      /** Paid By Email */
+      paid_by_email: string | null;
+      /** Plan */
+      plan: string;
+      /** Provider */
+      provider: string;
+      /** Receipt Number */
+      receipt_number: string | null;
+      /** Reference */
+      reference: string;
+      /** Refunded At */
+      refunded_at: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "paid" | "canceled" | "failed" | "refunded";
+    };
+    /** AdminPayments */
+    AdminPayments: {
+      /** Items */
+      items: components["schemas"]["AdminPaymentRow"][];
+      summary: components["schemas"]["AdminPaymentsSummary"];
+    };
+    /** AdminPaymentsSummary */
+    AdminPaymentsSummary: {
+      /** Currency */
+      currency: string;
+      /** Paid Last 30 Days */
+      paid_last_30_days: string;
+      /** Pending */
+      pending: number;
+      /** Pending Amount */
+      pending_amount: string;
+      /** Refunded Last 30 Days */
+      refunded_last_30_days: string;
+    };
+    /** AdminSubscriptionRow */
+    AdminSubscriptionRow: {
+      account_type: components["schemas"]["AccountType"];
+      /** Cancel At Period End */
+      cancel_at_period_end: boolean;
+      /** Contact Email */
+      contact_email: string | null;
+      /** Contact Name */
+      contact_name: string | null;
+      /** Credits */
+      credits: number;
+      /** Credits Used This Month */
+      credits_used_this_month: number;
+      /** Current Period End */
+      current_period_end: string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Last Payment At */
+      last_payment_at: string | null;
+      /** Members */
+      members: number;
+      /**
+       * Organization Created At
+       * Format: date-time
+       */
+      organization_created_at: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
+      /** Plan */
+      plan: string;
+      /** Projects */
+      projects: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "trialing" | "active" | "canceled" | "expired";
+      /** Total Paid */
+      total_paid: string;
+      /** Trial Ends At */
+      trial_ends_at: string | null;
+    };
+    /** AdminSubscriptionUpdate */
+    AdminSubscriptionUpdate: {
+      /** Add Credits */
+      add_credits?: number | null;
+      /** Cancel At Period End */
+      cancel_at_period_end?: boolean | null;
+      /** Current Period End */
+      current_period_end?: string | null;
+      /** Cycle */
+      cycle?: ("monthly" | "annual" | "usage") | null;
+      /** Extend Days */
+      extend_days?: number | null;
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+      /** Plan */
+      plan?: string | null;
+      /** Status */
+      status?: ("trialing" | "active") | null;
+      /** Trial Ends At */
+      trial_ends_at?: string | null;
+    };
+    /** AdminSubscriptions */
+    AdminSubscriptions: {
+      /** Items */
+      items: components["schemas"]["AdminSubscriptionRow"][];
+      summary: components["schemas"]["AdminSummary"];
+    };
+    /** AdminSummary */
+    AdminSummary: {
+      /** By Plan */
+      by_plan: {
+        [key: string]: number;
+      };
+      /** By Status */
+      by_status: {
+        [key: string]: number;
+      };
+      /** Currency */
+      currency: string;
+      /** Monthly Recurring */
+      monthly_recurring: string;
+      /** Organizations */
+      organizations: number;
+      /** Revenue Last 30 Days */
+      revenue_last_30_days: string;
+    };
     /**
      * Aggregation
      * @enum {string}
@@ -2175,8 +2571,8 @@ export interface components {
     };
     /** BillingUsage */
     BillingUsage: {
-      /** Ai Month Cost Usd */
-      ai_month_cost_usd: string;
+      /** Credits Used This Month */
+      credits_used_this_month: number;
       /** Members */
       members: number;
       /** Projects */
@@ -2343,6 +2739,8 @@ export interface components {
       credit_packs: number[];
       /** Currency */
       currency: string;
+      /** Payment Instructions */
+      payment_instructions: string;
       /** Plans */
       plans: components["schemas"]["PlanOut"][];
       /** Trial Days */
@@ -2374,6 +2772,12 @@ export interface components {
        * @enum {string}
        */
       cycle: "monthly" | "annual" | "usage";
+      /**
+       * Method
+       * @default online
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer";
       /** Pack */
       pack?: number | null;
       /** Plan */
@@ -3668,6 +4072,8 @@ export interface components {
       id: string;
       /** Is Active */
       is_active: boolean;
+      /** Is Platform Admin */
+      is_platform_admin: boolean;
       /**
        * Mfa Recommended
        * @default false
@@ -3974,12 +4380,30 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer" | "cash" | "other";
+      /** Note */
+      note: string;
+      /** Paid At */
+      paid_at: string | null;
       /** Plan */
       plan: string;
       /** Provider */
       provider: string;
+      /** Receipt Number */
+      receipt_number: string | null;
       /** Reference */
       reference: string;
+      /** Refunded At */
+      refunded_at: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "paid" | "canceled" | "failed" | "refunded";
     };
     /** PeriodProgress */
     PeriodProgress: {
@@ -4140,10 +4564,10 @@ export interface components {
     };
     /** PlanLimits */
     PlanLimits: {
-      /** Ai Monthly Budget Usd */
-      ai_monthly_budget_usd: string;
       /** Members */
       members: number | null;
+      /** Monthly Credits */
+      monthly_credits: number;
       /** Projects */
       projects: number | null;
     };
@@ -4956,6 +5380,242 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  list_payments_api_v1_admin_payments_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        status?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPayments"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  confirm_payment_api_v1_admin_payments__payment_id__confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentConfirm"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  refund_payment_api_v1_admin_payments__payment_id__refund_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentRefund"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_subscriptions_api_v1_admin_subscriptions_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        status?: string | null;
+        plan?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptions"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_subscription_api_v1_admin_subscriptions__org_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminSubscriptionUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptionRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  record_payment_api_v1_admin_subscriptions__org_id__payments_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentRecord"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   login_api_v1_auth_login_post: {
     parameters: {
       query?: never;
@@ -5665,6 +6325,70 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PaymentOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
