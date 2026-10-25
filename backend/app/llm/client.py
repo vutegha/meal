@@ -65,7 +65,7 @@ class AnthropicClient:
             "model": model,
             "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": content}],
-            # Les modèles légers n'acceptent pas le réglage d'effort.
+            # Sans effort, le modèle garde son réglage par défaut (certains modèles le refusent).
             "output_config": {"effort": effort} if effort else anthropic.omit,
         }
         cached_system: list[TextBlockParam] = [

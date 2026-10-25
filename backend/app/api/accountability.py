@@ -205,7 +205,7 @@ async def classify_feedback(
             system=classify_prompt.SYSTEM,
             content=classify_prompt.build_content(body.description, body.channel),
             output_type=FeedbackSuggestion,
-            effort=None,
+            effort="low",
         )
     except LLMError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
