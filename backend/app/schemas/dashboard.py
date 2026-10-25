@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 Beneficiary = Literal["women", "men", "girls", "boys", "with_disability"]
 
@@ -27,6 +27,8 @@ class People(BaseModel):
     boys: int = 0
     with_disability: int = 0
     total: int = 0
+    # Effectifs de 1 à 4 cachés (remis à 0) dans une vue restreinte : voir services/dashboard.py.
+    masked: list[str] = Field(default_factory=list)
 
 
 class Breakdown(BaseModel):
@@ -36,6 +38,8 @@ class Breakdown(BaseModel):
     label: str
     executions: int = 0
     people: int = 0
+    # Effectif de 1 à 4 caché (people vaut alors 0).
+    masked: bool = False
 
 
 class Spending(BaseModel):

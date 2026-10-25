@@ -20,6 +20,13 @@ from app.schemas.dashboard import (
 )
 
 CATEGORIES = ("women", "men", "girls", "boys")
+# Dans une vue restreinte à un lieu ou à un type de bénéficiaires, un effectif de 1 à 4 peut
+# désigner des personnes reconnaissables (« 2 personnes handicapées à Kiwanja ») : il est caché.
+SMALL_COUNT = 5
+
+
+def _hidden(count: int) -> bool:
+    return 0 < count < SMALL_COUNT
 
 
 @dataclass
@@ -137,6 +144,15 @@ def build_dashboard(
         for x in expenses:
             if x.project_id in by_id and filters.in_period(x.spent_on):
                 spending[by_id[x.project_id].currency] += x.amount
+
+    if filters.location or filters.beneficiary:
+        for row in (*by_month, *by_location, *by_zone, *by_project):
+            if _hidden(row.people):
+                row.people, row.masked = 0, True
+        for category in (*CATEGORIES, "with_disability", "total"):
+            if _hidden(getattr(people, category)):
+                setattr(people, category, 0)
+                people.masked.append(category)
 
     return OrgDashboard(
         options=options,

@@ -47,7 +47,11 @@ function BreakdownTable({
                 </td>
                 <td className="py-1.5 pr-3 text-right tabular-nums">{row.executions}</td>
                 <td className="py-1.5 text-right tabular-nums">
-                  {formatNumber(row.people, i18n.language)}
+                  {row.masked ? (
+                    <span title={t("orgDashboard.maskedHint")}>{t("orgDashboard.masked")}</span>
+                  ) : (
+                    formatNumber(row.people, i18n.language)
+                  )}
                 </td>
               </tr>
             ))}
@@ -162,8 +166,20 @@ export function OrgDashboardPage() {
             <Kpi label={t("orgDashboard.executions")} value={formatNumber(data.executions, lang)}>
               <p>{t("orgDashboard.completed", { count: data.completed_executions })}</p>
             </Kpi>
-            <Kpi label={t("orgDashboard.people")} value={formatNumber(data.people.total, lang)}>
-              <p>{t("dashboard.disability", { count: data.people.with_disability })}</p>
+            <Kpi
+              label={t("orgDashboard.people")}
+              value={
+                data.people.masked.includes("total")
+                  ? t("orgDashboard.masked")
+                  : formatNumber(data.people.total, lang)
+              }
+            >
+              {data.people.masked.includes("with_disability") ? (
+                <p>{t("orgDashboard.disabilityMasked")}</p>
+              ) : (
+                <p>{t("dashboard.disability", { count: data.people.with_disability })}</p>
+              )}
+              {data.people.masked.length > 0 && <p>{t("orgDashboard.maskedHint")}</p>}
             </Kpi>
             <Kpi
               label={t("orgDashboard.spent")}
@@ -195,7 +211,10 @@ export function OrgDashboardPage() {
                 {(["women", "men", "girls", "boys"] as const).map((key, i) => (
                   <li key={key} className="flex items-center gap-1.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${PEOPLE_COLORS[i]}`} />
-                    {t(`execution.people.${key}`)} {formatNumber(data.people[key], lang)}
+                    {t(`execution.people.${key}`)}{" "}
+                    {data.people.masked.includes(key)
+                      ? t("orgDashboard.masked")
+                      : formatNumber(data.people[key], lang)}
                   </li>
                 ))}
               </ul>

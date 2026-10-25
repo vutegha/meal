@@ -624,6 +624,10 @@ export const fr = {
     byLocation: "Par lieu",
     byProject: "Par projet",
     noData: "Aucune donnée pour ces filtres.",
+    masked: "< 5",
+    maskedHint:
+      "Moins de 5 personnes : le nombre exact est caché pour ne pas permettre de les reconnaître.",
+    disabilityMasked: "dont moins de 5 en situation de handicap",
   },
   periodic: {
     title: "Rapports périodiques et bailleur",

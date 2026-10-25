@@ -2642,6 +2642,11 @@ export interface components {
       /** Label */
       label: string;
       /**
+       * Masked
+       * @default false
+       */
+      masked: boolean;
+      /**
        * People
        * @default 0
        */
@@ -4500,6 +4505,8 @@ export interface components {
        * @default 0
        */
       girls: number;
+      /** Masked */
+      masked?: string[];
       /**
        * Men
        * @default 0
