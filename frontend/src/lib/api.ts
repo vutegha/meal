@@ -1502,6 +1502,8 @@ export interface DashboardBreakdown {
   label: string;
   executions: number;
   people: number;
+  /** Effectif de 1 à 4 caché dans une vue restreinte (people vaut alors 0). */
+  masked: boolean;
 }
 
 export interface OrgDashboard {
@@ -1515,7 +1517,7 @@ export interface OrgDashboard {
   active_projects: number;
   executions: number;
   completed_executions: number;
-  people: Record<Beneficiary | "total", number>;
+  people: Record<Beneficiary | "total", number> & { masked: (Beneficiary | "total")[] };
   spending: { currency: string; amount: string }[];
   by_month: DashboardBreakdown[];
   by_location: DashboardBreakdown[];

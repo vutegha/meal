@@ -1322,6 +1322,11 @@
             "title": "Label",
             "type": "string"
           },
+          "masked": {
+            "default": false,
+            "title": "Masked",
+            "type": "boolean"
+          },
           "people": {
             "default": 0,
             "title": "People",
@@ -6364,6 +6369,13 @@
             "default": 0,
             "title": "Girls",
             "type": "integer"
+          },
+          "masked": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Masked",
+            "type": "array"
           },
           "men": {
             "default": 0,

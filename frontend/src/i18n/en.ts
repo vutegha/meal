@@ -615,6 +615,9 @@ export const en: Messages = {
     byLocation: "By location",
     byProject: "By project",
     noData: "No data for these filters.",
+    masked: "< 5",
+    maskedHint: "Fewer than 5 people: the exact number is hidden so they cannot be recognised.",
+    disabilityMasked: "fewer than 5 of them with a disability",
   },
   periodic: {
     title: "Periodic and donor reports",

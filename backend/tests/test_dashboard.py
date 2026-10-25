@@ -46,5 +46,15 @@ async def test_org_dashboard_filters(client: AsyncClient) -> None:
     kiwanja = (await client.get(url, headers=h, params={"location": "Kiwanja"})).json()
     assert kiwanja["executions"] == 1 and kiwanja["by_location"][0]["people"] == 36
 
+    # Vue restreinte : un effectif de 1 à 4 est caché, pas un effectif plus grand.
+    disabled = (await client.get(url, headers=h, params={"beneficiary": "with_disability"})).json()
+    assert disabled["people"]["total"] == 0 and "total" in disabled["people"]["masked"]
+    assert disabled["by_location"] == [
+        {"key": "Kiwanja", "label": "Kiwanja", "executions": 1, "people": 0, "masked": True}
+    ]
+    assert data["people"]["with_disability"] == 3 and data["people"]["masked"] == []
+    rutshuru = (await client.get(url, headers=h, params={"location": "Rutshuru"})).json()
+    assert rutshuru["people"]["total"] == 15 and rutshuru["people"]["masked"] == []
+
     elsewhere = (await client.get(url, headers=h, params={"zone": "Bunia"})).json()
     assert elsewhere["projects"] == 0 and elsewhere["executions"] == 0
