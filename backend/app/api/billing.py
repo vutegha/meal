@@ -86,7 +86,7 @@ async def get_billing(org_id: UUID, _: AnyMember, session: SessionDep) -> Subscr
 async def checkout(
     org_id: UUID, body: CheckoutIn, admin: OrgAdmin, session: SessionDep
 ) -> CheckoutOut:
-    sub = await svc.get_subscription(session, org_id)
+    sub = await svc.get_subscription(session, org_id, for_update=True)
     payment = await svc.checkout(
         session,
         sub,
@@ -149,8 +149,10 @@ async def list_payments(org_id: UUID, _: OrgAdmin, session: SessionDep) -> list[
     return list(rows)
 
 
-async def _payment(session: SessionDep, org_id: UUID, payment_id: UUID) -> Payment:
-    payment = await session.get(Payment, payment_id)
+async def _payment(
+    session: SessionDep, org_id: UUID, payment_id: UUID, *, for_update: bool = False
+) -> Payment:
+    payment = await session.get(Payment, payment_id, with_for_update=for_update)
     if payment is None or payment.organization_id != org_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Paiement introuvable")
     return payment
@@ -161,7 +163,7 @@ async def cancel_payment(
     org_id: UUID, payment_id: UUID, admin: OrgAdmin, session: SessionDep
 ) -> Payment:
     """Annule un virement ou un envoi mobile money annoncé et pas encore reçu."""
-    payment = await _payment(session, org_id, payment_id)
+    payment = await _payment(session, org_id, payment_id, for_update=True)
     if payment.status != PaymentStatus.PENDING:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ce paiement n'est plus en attente")
     payment.status = PaymentStatus.CANCELED

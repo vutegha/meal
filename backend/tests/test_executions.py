@@ -330,7 +330,11 @@ async def test_audio_video_and_phone_metadata(client: AsyncClient) -> None:
     played = await client.get(f"{base}/evidence/{audio['id']}/file", headers=h)
     assert played.headers["content-type"] == "audio/webm"
 
-    r = await client.post(url, headers=h, files={"file": ("seance.MOV", b"\x00\x00moov", "")})
+    r = await client.post(
+        url,
+        headers=h,
+        files={"file": ("seance.MOV", b"\x00\x00\x00\x08wide\x00\x00\x00\x10moov", "")},
+    )
     assert r.json()["kind"] == "video" and r.json()["content_type"] == "video/quicktime"
 
     # Photo compressée sur le téléphone (sans EXIF) : on garde la date et la position envoyées.

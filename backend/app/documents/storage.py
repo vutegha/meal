@@ -2,15 +2,22 @@
 
 import asyncio
 import shutil
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 from app.core.config import get_settings
+
+# Lecture et écriture par morceaux des gros fichiers (enregistrements audio et vidéo) : ils ne
+# sont jamais chargés entiers en mémoire.
+CHUNK_BYTES = 1024 * 1024
 
 
 class Storage(Protocol):
     async def put(self, key: str, data: bytes, content_type: str) -> None: ...
+    async def put_file(self, key: str, source: BinaryIO, content_type: str) -> None: ...
     async def get(self, key: str) -> bytes: ...
+    def stream(self, key: str) -> AsyncIterator[bytes]: ...
     async def delete(self, key: str) -> None: ...
     async def delete_prefix(self, prefix: str) -> int: ...
 
@@ -30,8 +37,26 @@ class LocalStorage:
         path.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(path.write_bytes, data)
 
+    async def put_file(self, key: str, source: BinaryIO, content_type: str) -> None:
+        path = self._path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        def copy() -> None:
+            with path.open("wb") as target:
+                shutil.copyfileobj(source, target, CHUNK_BYTES)
+
+        await asyncio.to_thread(copy)
+
     async def get(self, key: str) -> bytes:
         return await asyncio.to_thread(self._path(key).read_bytes)
+
+    async def stream(self, key: str) -> AsyncIterator[bytes]:
+        handle = await asyncio.to_thread(self._path(key).open, "rb")
+        try:
+            while chunk := await asyncio.to_thread(handle.read, CHUNK_BYTES):
+                yield chunk
+        finally:
+            handle.close()
 
     async def delete(self, key: str) -> None:
         self._path(key).unlink(missing_ok=True)
@@ -78,9 +103,28 @@ class S3Storage:
             self.client.put_object, Bucket=self.bucket, Key=key, Body=data, ContentType=content_type
         )
 
+    async def put_file(self, key: str, source: BinaryIO, content_type: str) -> None:
+        await asyncio.to_thread(self._ensure_bucket)
+        await asyncio.to_thread(
+            self.client.upload_fileobj,
+            source,
+            self.bucket,
+            key,
+            ExtraArgs={"ContentType": content_type},
+        )
+
     async def get(self, key: str) -> bytes:
         response = await asyncio.to_thread(self.client.get_object, Bucket=self.bucket, Key=key)
         return bytes(response["Body"].read())
+
+    async def stream(self, key: str) -> AsyncIterator[bytes]:
+        response = await asyncio.to_thread(self.client.get_object, Bucket=self.bucket, Key=key)
+        body = response["Body"]
+        try:
+            while chunk := await asyncio.to_thread(body.read, CHUNK_BYTES):
+                yield chunk
+        finally:
+            body.close()
 
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self.client.delete_object, Bucket=self.bucket, Key=key)
