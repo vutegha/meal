@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -58,6 +59,10 @@ class ExecutionUpdate(BaseModel):
     status: ExecutionStatus | None = None
 
 
+# Façon dont le consentement des personnes photographiées ou enregistrées a été recueilli.
+ConsentMethod = Literal["oral", "written", "guardian", "community"]
+
+
 class EvidenceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,6 +77,9 @@ class EvidenceOut(BaseModel):
     latitude: Decimal | None
     longitude: Decimal | None
     consent_given: bool
+    # oral, written, guardian (parent ou tuteur), community (accord collectif) ; vide : non précisé.
+    consent_method: str = ""
+    consent_recorded_at: datetime | None = None
     has_thumbnail: bool
     page_count: int
     # Visages détectés sur la photo ; floutés sur la vignette sauf décision contraire.
@@ -84,6 +92,7 @@ class EvidenceUpdate(BaseModel):
     kind: EvidenceKind | None = None
     caption: str | None = Field(default=None, max_length=2000)
     consent_given: bool | None = None
+    consent_method: ConsentMethod | None = None
     blur_faces: bool | None = None
 
 

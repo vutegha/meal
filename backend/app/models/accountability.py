@@ -144,6 +144,9 @@ class FeedbackEntry(IdMixin, TimestampMixin, Base):
     closed_on: Mapped[date | None] = mapped_column(Date)
     created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     client_uuid: Mapped[UUID | None] = mapped_column(unique=True)
+    # Contenu personnel effacé (délai de conservation ou demande d'effacement) ; la catégorie,
+    # le statut et les dates restent pour les statistiques.
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

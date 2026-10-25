@@ -5,16 +5,16 @@ coupure réseau n'est enregistrée qu'une fois.
 """
 
 import asyncio
-from io import BytesIO
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from openpyxl import Workbook
 from sqlalchemy import func, select
 
 from app.api.deps import AnyMember, SessionDep, plan_feature
 from app.api.projects import Collector, Planner, ProjectAdmin, _log
+from app.documents.spreadsheet import save_as_text
 from app.models import CollectionForm, FormSubmission, Project, User
 from app.schemas.form import (
     FormField,
@@ -117,6 +117,13 @@ async def get_form(
     return _out(form, await _count(session, form))
 
 
+def _only_personal_changed(form: CollectionForm, fields: list[FormField]) -> bool:
+    def strip(items: list[FormField]) -> list[dict[str, Any]]:
+        return [f.model_dump(exclude={"personal"}) for f in items]
+
+    return strip(_fields(form)) == strip(fields)
+
+
 @router.patch("/{form_id}", response_model=FormOut, dependencies=[plan_feature("forms")])
 async def update_form(
     org_id: UUID,
@@ -130,8 +137,9 @@ async def update_form(
     form = await _get(session, project, form_id)
     submissions = await _count(session, form)
     data = body.model_dump(exclude_unset=True)
-    if "fields" in data and submissions:
-        # Les réponses déjà reçues doivent garder leur sens.
+    if "fields" in data and submissions and not _only_personal_changed(form, body.fields or []):
+        # Les réponses déjà reçues doivent garder leur sens. Marquer une question comme
+        # personnelle reste possible : cela ne change que qui la voit.
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Des réponses ont déjà été reçues : les questions ne peuvent plus changer. "
@@ -297,8 +305,10 @@ def _cell(value: Any) -> Any:
     return value
 
 
-def _workbook(form: CollectionForm, rows: list[tuple[FormSubmission, str]]) -> bytes:
-    fields = _fields(form)
+def _workbook(
+    form: CollectionForm, rows: list[tuple[FormSubmission, str]], personal: bool
+) -> bytes:
+    fields = [f for f in _fields(form) if personal or not f.personal]
     wb = Workbook()
     ws = wb.active
     assert ws is not None
@@ -317,18 +327,32 @@ def _workbook(form: CollectionForm, rows: list[tuple[FormSubmission, str]]) -> b
             ]
         )
     _wrap(ws)
-    buffer = BytesIO()
-    wb.save(buffer)
-    return buffer.getvalue()
+    return save_as_text(wb)
 
 
 @router.get("/{form_id}/export.xlsx", response_class=Response)
 async def export_submissions(
-    org_id: UUID, project_id: UUID, form_id: UUID, _: Planner, session: SessionDep
+    org_id: UUID,
+    project_id: UUID,
+    form_id: UUID,
+    member: Planner,
+    session: SessionDep,
+    personal: bool = Query(default=False, description="Inclure les questions personnelles"),
 ) -> Response:
     project = await svc.get_project(session, org_id, project_id)
     form = await _get(session, project, form_id)
-    content = await asyncio.to_thread(_workbook, form, await _submissions(session, form))
+    submissions = await _submissions(session, form)
+    content = await asyncio.to_thread(_workbook, form, submissions, personal)
+    # Un export emporte les réponses hors de l'application : il est toujours journalisé.
+    _log(
+        session,
+        member,
+        "form.exported",
+        "form",
+        form.id,
+        {"title": form.title, "rows": len(submissions), "personal": personal},
+    )
+    await session.commit()
     return Response(
         content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

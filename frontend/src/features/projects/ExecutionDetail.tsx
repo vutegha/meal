@@ -160,7 +160,11 @@ function EvidenceItem({
       {["photo", "audio", "video"].includes(evidence.kind) && (
         <p className={`text-xs ${evidence.consent_given ? "text-emerald-700" : "text-amber-700"}`}>
           {evidence.consent_given
-            ? `✓ ${t("execution.consentOk")}`
+            ? `✓ ${t("execution.consentOk")}${
+                evidence.consent_method
+                  ? ` (${t(`execution.consentMethods.${evidence.consent_method}`)})`
+                  : ""
+              }`
             : `⚠ ${t("execution.consentMissing")}`}
           {canCollect && (
             <button

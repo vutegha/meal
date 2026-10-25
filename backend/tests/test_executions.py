@@ -125,7 +125,10 @@ async def test_evidence_photo_and_document(client: AsyncClient) -> None:
     assert max(Image.open(BytesIO(thumb.content)).size) == 800
     assert not Image.open(BytesIO(thumb.content)).getexif()  # aucune métadonnée GPS
     original = await client.get(f"{base}/evidence/{picture['id']}/file", headers=h)
-    assert original.content == photo()
+    # L'original garde ses pixels mais plus sa date ni sa position, gardées en base.
+    kept = Image.open(BytesIO(original.content))
+    assert not kept.getexif() and kept.tobytes() == Image.open(BytesIO(photo())).tobytes()
+    assert int(original.headers["content-length"]) == picture["size_bytes"]
 
     minutes = "Compte rendu : 36 participants, dont 22 femmes. Les AVEC ont élu leurs comités."
     r = await client.post(
@@ -280,6 +283,9 @@ async def test_faces_are_blurred(client: AsyncClient) -> None:
     assert (await client.get(f"{url}/file", headers=other_agent)).status_code == 403
     assert (await client.get(f"{url}/file", headers=agent)).status_code == 200
     assert (await client.get(f"{url}/file", headers=h)).status_code == 200
+    # Chaque personne qui a vu l'original non flouté est inscrite au journal.
+    audit = (await client.get(f"/api/v1/orgs/{ctx['org_id']}/audit", headers=h)).json()
+    assert len([e for e in audit if e["action"] == "evidence.original_viewed"]) == 2
 
     # Montrer les visages : un responsable, et seulement avec le consentement.
     r = await client.patch(url, headers=agent, json={"blur_faces": False})

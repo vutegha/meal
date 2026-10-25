@@ -1,6 +1,12 @@
 from functools import lru_cache
+from typing import Self
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Valeurs d'exemple refusées en production (config.py et .env.example).
+PLACEHOLDER_SECRETS = {"change-me-in-production", "remplacer-par-une-longue-valeur-aleatoire"}
+MIN_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -17,6 +23,23 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     cors_origins: list[str] = ["http://localhost:5173"]
+    # Connexion : au-delà de N échecs dans la fenêtre, refus (429) jusqu'à sa fin. Un compteur
+    # par adresse e-mail, un autre par adresse IP. "redis" (partagé) ou "memory".
+    login_max_failures: int = 5
+    login_max_failures_per_ip: int = 20
+    login_window_minutes: int = 15
+    login_rate_limit_storage: str = "redis"
+    # Lien de réinitialisation du mot de passe : valable 24 heures, à usage unique.
+    password_reset_hours: int = 24
+    # Adresse publique de l'interface, pour les liens envoyés par e-mail.
+    public_url: str = "https://localhost"
+    # E-mails (mot de passe oublié). Sans SMTP_HOST, aucun e-mail ne part : un administrateur
+    # de l'organisation crée alors le lien depuis la page Membres.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
 
     # Stockage des fichiers : "local" (dossier) ou "s3" (MinIO, S3, R2…)
     storage_backend: str = "local"
@@ -74,6 +97,20 @@ class Settings(BaseSettings):
     meta_whatsapp_phone_number_id: str | None = None
     # Secret de l'application Meta : contrôle de la signature des notifications reçues.
     meta_app_secret: str | None = None
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
+
+    @model_validator(mode="after")
+    def _strong_secret(self) -> Self:
+        weak = self.secret_key in PLACEHOLDER_SECRETS or len(self.secret_key) < MIN_SECRET_LENGTH
+        if self.is_production and weak:
+            raise ValueError(
+                f"SECRET_KEY doit être une valeur aléatoire d'au moins {MIN_SECRET_LENGTH} "
+                'caractères. Exemple : python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            )
+        return self
 
 
 @lru_cache

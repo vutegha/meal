@@ -1,13 +1,18 @@
 name: wemeal
 
 x-backend-env: &backend-env
+  # production : SECRET_KEY faible refusée, documentation de l'API fermée.
+  ENVIRONMENT: ${ENVIRONMENT:-production}
   DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
-  STORAGE_BACKEND: s3
+  # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
+  # (docker compose --profile s3 up) pour les stocker dans MinIO.
+  STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+  STORAGE_LOCAL_PATH: /data/files
   S3_ENDPOINT: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-meal}
-  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Définir MINIO_ROOT_PASSWORD dans .env}
+  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-0}
   VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
@@ -24,6 +29,14 @@ x-backend-env: &backend-env
   META_WHATSAPP_TOKEN: ${META_WHATSAPP_TOKEN:-}
   META_WHATSAPP_PHONE_NUMBER_ID: ${META_WHATSAPP_PHONE_NUMBER_ID:-}
   META_APP_SECRET: ${META_APP_SECRET:-}
+  # Liens envoyés par e-mail (mot de passe oublié). Sans SMTP_HOST, aucun e-mail ne part :
+  # un administrateur remet le lien depuis la page Membres.
+  PUBLIC_URL: ${PUBLIC_URL:-https://${SITE_ADDRESS:-localhost}}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-}
 
 services:
   db:
@@ -43,25 +56,58 @@ services:
     volumes: [redis-data:/data]
 
   minio:
-    image: minio/minio:latest
+    # MinIO ne publie plus d'image sur Docker Hub : indiquer une image disponible dans MINIO_IMAGE.
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    profiles: [s3]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-meal}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Définir MINIO_ROOT_PASSWORD dans .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
     volumes: [minio-data:/data]
 
   api:
     build: ./backend
     environment: *backend-env
+    volumes: [files:/data/files]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
+    # Base et Redis joignables (GET /health/ready) : `docker compose ps` signale une panne.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   worker:
     build: ./backend
     command: arq app.workers.settings.WorkerSettings
     environment: *backend-env
+    volumes: [files:/data/files]
     depends_on: [api, redis]
+
+  # Sauvegarde chiffrée quotidienne de la base et des fichiers dans BACKUP_DIR (ops/backup.sh).
+  # Copier ce dossier hors du serveur : une sauvegarde sur la même machine ne protège pas
+  # d'une panne de disque ni d'un vol.
+  backup:
+    image: pgvector/pgvector:pg16
+    entrypoint: ["/ops/backup.sh"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?Définir BACKUP_PASSPHRASE dans .env}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./ops:/ops:ro
+      - files:/data/files
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
 
   web:
     build: ./frontend
@@ -72,6 +118,7 @@ services:
     depends_on: [api]
 
 volumes:
+  files:
   db-data:
   redis-data:
   minio-data:

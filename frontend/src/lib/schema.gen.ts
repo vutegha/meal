@@ -156,6 +156,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Logout
+     * @description Ferme la session en cours : ses jetons ne sont plus acceptés, même volés.
+     */
+    post: operations["logout_api_v1_auth_logout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Logout All
+     * @description Ferme toutes les sessions de la personne, sur tous ses appareils.
+     */
+    post: operations["logout_all_api_v1_auth_logout_all_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/me": {
     parameters: {
       query?: never;
@@ -167,6 +207,80 @@ export interface paths {
     get: operations["me_api_v1_auth_me_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/me/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Me
+     * @description Supprime son propre compte : il est anonymisé et ne peut plus se connecter.
+     */
+    post: operations["delete_me_api_v1_auth_me_delete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Change Password */
+    post: operations["change_password_api_v1_auth_password_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password/forgot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Forgot Password
+     * @description Envoie un lien par e-mail si l'adresse existe ; la réponse ne dit jamais si elle existe.
+     */
+    post: operations["forgot_password_api_v1_auth_password_forgot_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password/reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reset Password */
+    post: operations["reset_password_api_v1_auth_password_reset_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -201,6 +315,77 @@ export interface paths {
     put?: never;
     /** Register */
     post: operations["register_api_v1_auth_register_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Sessions */
+    get: operations["list_sessions_api_v1_auth_sessions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Totp Disable */
+    post: operations["totp_disable_api_v1_auth_totp_disable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/enable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Totp Enable */
+    post: operations["totp_enable_api_v1_auth_totp_enable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/setup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Totp Setup
+     * @description Prépare un nouveau secret ; il n'est actif qu'une fois confirmé par un code.
+     */
+    post: operations["totp_setup_api_v1_auth_totp_setup_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -405,6 +590,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/close": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Close
+     * @description Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés.
+     */
+    post: operations["close_api_v1_orgs__org_id__close_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/jobs/{job_id}": {
     parameters: {
       query?: never;
@@ -476,6 +681,87 @@ export interface paths {
     head?: never;
     /** Update Member */
     patch: operations["update_member_api_v1_orgs__org_id__members__member_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/members/{member_id}/reset-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Member Reset Link
+     * @description Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.
+     *
+     *     Seulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur
+     *     pourrait prendre la main sur un compte qui a des droits ailleurs.
+     */
+    post: operations["member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/personal-data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Person
+     * @description Tout ce qui mentionne une personne : nom, numéro de téléphone ou adresse e-mail.
+     */
+    get: operations["search_person_api_v1_orgs__org_id__personal_data_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/personal-data/erase": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Erase Person
+     * @description Efface le contenu des retours choisis (et leurs SMS) et supprime les réponses choisies.
+     */
+    post: operations["erase_person_api_v1_orgs__org_id__personal_data_erase_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/privacy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Privacy */
+    get: operations["get_privacy_api_v1_orgs__org_id__privacy_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Privacy */
+    patch: operations["update_privacy_api_v1_orgs__org_id__privacy_patch"];
     trace?: never;
   };
   "/api/v1/orgs/{org_id}/projects": {
@@ -1826,10 +2112,37 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/health/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Ready
+     * @description Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker.
+     */
+    get: operations["ready_health_ready_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AccountDeleteIn */
+    AccountDeleteIn: {
+      /** Code */
+      code?: string | null;
+      /** Password */
+      password: string;
+    };
     /**
      * AccountType
      * @enum {string}
@@ -2284,6 +2597,8 @@ export interface components {
        * @default false
        */
       consent_given: boolean;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       /** File */
       file: string;
       /** @default other */
@@ -2504,11 +2819,48 @@ export interface components {
      * @enum {string}
      */
     DocumentStatus: "uploaded" | "ocr" | "extracted" | "failed";
+    /** ErasureIn */
+    ErasureIn: {
+      /** Feedback Ids */
+      feedback_ids?: string[];
+      /** Reason */
+      reason: string;
+      /** Submission Ids */
+      submission_ids?: string[];
+    };
+    /** ErasureOut */
+    ErasureOut: {
+      /** Feedback */
+      feedback: number;
+      /** Submissions */
+      submissions: number;
+    };
     /**
      * EvidenceKind
      * @enum {string}
      */
     EvidenceKind: "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+    /**
+     * EvidenceMatch
+     * @description Preuve qui cite la personne (légende ou texte) : à vérifier, jamais effacée d'office.
+     */
+    EvidenceMatch: {
+      /** Caption */
+      caption: string;
+      /** Excerpt */
+      excerpt: string;
+      /** Filename */
+      filename: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Project Code */
+      project_code: string;
+    };
     /** EvidenceOut */
     EvidenceOut: {
       /**
@@ -2520,6 +2872,13 @@ export interface components {
       caption: string;
       /** Consent Given */
       consent_given: boolean;
+      /**
+       * Consent Method
+       * @default
+       */
+      consent_method: string;
+      /** Consent Recorded At */
+      consent_recorded_at?: string | null;
       /** Content Type */
       content_type: string;
       /**
@@ -2566,6 +2925,8 @@ export interface components {
       caption?: string | null;
       /** Consent Given */
       consent_given?: boolean | null;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       kind?: components["schemas"]["EvidenceKind"] | null;
     };
     /**
@@ -3018,6 +3379,41 @@ export interface components {
       /** Sensitive */
       sensitive?: boolean | null;
     };
+    /** FeedbackMatch */
+    FeedbackMatch: {
+      /** Anonymized */
+      anonymized: boolean;
+      /** Category */
+      category: string;
+      /** Contact */
+      contact: string;
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Messages */
+      messages: {
+        [key: string]: unknown;
+      }[];
+      /** Project Code */
+      project_code: string;
+      /**
+       * Received On
+       * Format: date
+       */
+      received_on: string;
+      /** Reference */
+      reference: string;
+      /** Response */
+      response: string;
+      /** Sensitive */
+      sensitive: boolean;
+      /** Status */
+      status: string;
+    };
     /** FeedbackOut */
     FeedbackOut: {
       /** Activity Id */
@@ -3188,6 +3584,11 @@ export interface components {
       mean?: number | null;
       /** Min */
       min?: number | null;
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /** Samples */
       samples?: string[];
       /** Total */
@@ -3211,6 +3612,11 @@ export interface components {
       label: string;
       /** Options */
       options?: string[];
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /**
        * Required
        * @default false
@@ -3648,6 +4054,8 @@ export interface components {
        * Format: email
        */
       email: string;
+      /** Otp */
+      otp?: string | null;
       /** Password */
       password: string;
     };
@@ -3666,8 +4074,23 @@ export interface components {
       is_active: boolean;
       /** Is Platform Admin */
       is_platform_admin: boolean;
+      /**
+       * Mfa Recommended
+       * @default false
+       */
+      mfa_recommended: boolean;
+      /**
+       * Must Change Password
+       * @default false
+       */
+      must_change_password: boolean;
       /** Organizations */
       organizations: components["schemas"]["MyOrganizationOut"][];
+      /**
+       * Totp Enabled
+       * @default false
+       */
+      totp_enabled: boolean;
     };
     /** MemberIn */
     MemberIn: {
@@ -3832,6 +4255,20 @@ export interface components {
       /** Title */
       title?: string | null;
     };
+    /** OrganizationCloseIn */
+    OrganizationCloseIn: {
+      /** Code */
+      code?: string | null;
+      /**
+       * Delete Account
+       * @default false
+       */
+      delete_account: boolean;
+      /** Name */
+      name: string;
+      /** Password */
+      password: string;
+    };
     /** OrganizationIn */
     OrganizationIn: {
       /**
@@ -3895,6 +4332,28 @@ export interface components {
        * @default 0
        */
       women: number;
+    };
+    /** PasswordChangeIn */
+    PasswordChangeIn: {
+      /** Current Password */
+      current_password: string;
+      /** New Password */
+      new_password: string;
+    };
+    /** PasswordForgotIn */
+    PasswordForgotIn: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+    };
+    /** PasswordResetIn */
+    PasswordResetIn: {
+      /** New Password */
+      new_password: string;
+      /** Token */
+      token: string;
     };
     /** PaymentOut */
     PaymentOut: {
@@ -4092,6 +4551,17 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** PersonalDataResult */
+    PersonalDataResult: {
+      /** Evidence */
+      evidence: components["schemas"]["EvidenceMatch"][];
+      /** Feedback */
+      feedback: components["schemas"]["FeedbackMatch"][];
+      /** Query */
+      query: string;
+      /** Submissions */
+      submissions: components["schemas"]["SubmissionMatch"][];
+    };
     /** PlanLimits */
     PlanLimits: {
       /** Members */
@@ -4119,6 +4589,31 @@ export interface components {
       credit: string;
       /** Monthly */
       monthly: string;
+    };
+    /**
+     * PrivacySettings
+     * @description Réglages de protection des données de l'espace.
+     */
+    PrivacySettings: {
+      /** Ai Enabled */
+      ai_enabled: boolean;
+      /** Feedback Retention Months */
+      feedback_retention_months: number;
+      /** Privacy Contact */
+      privacy_contact: string;
+      /** Sms Acknowledgement */
+      sms_acknowledgement: boolean;
+    };
+    /** PrivacyUpdate */
+    PrivacyUpdate: {
+      /** Ai Enabled */
+      ai_enabled?: boolean | null;
+      /** Feedback Retention Months */
+      feedback_retention_months?: number | null;
+      /** Privacy Contact */
+      privacy_contact?: string | null;
+      /** Sms Acknowledgement */
+      sms_acknowledgement?: boolean | null;
     };
     /** ProjectIn */
     ProjectIn: {
@@ -4373,6 +4868,16 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** ResetLinkOut */
+    ResetLinkOut: {
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /** Path */
+      path: string;
+    };
     /**
      * Role
      * @enum {string}
@@ -4398,6 +4903,25 @@ export interface components {
       semantic: boolean;
       /** Snippet */
       snippet: string;
+    };
+    /** SessionOut */
+    SessionOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Current */
+      current: boolean;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Rotated At */
+      rotated_at: string | null;
+      /** User Agent */
+      user_agent: string;
     };
     /** SmsConfig */
     SmsConfig: {
@@ -4489,6 +5013,29 @@ export interface components {
       location: string;
       /** Longitude */
       longitude?: number | null;
+    };
+    /** SubmissionMatch */
+    SubmissionMatch: {
+      /** Answers */
+      answers: {
+        [key: string]: unknown;
+      };
+      /**
+       * Collected At
+       * Format: date-time
+       */
+      collected_at: string;
+      /** Form Title */
+      form_title: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Location */
+      location: string;
+      /** Project Code */
+      project_code: string;
     };
     /** SubmissionOut */
     SubmissionOut: {
@@ -4649,6 +5196,11 @@ export interface components {
     TokenPair: {
       /** Access Token */
       access_token: string;
+      /**
+       * Must Change Password
+       * @default false
+       */
+      must_change_password: boolean;
       /** Refresh Token */
       refresh_token: string;
       /**
@@ -4777,6 +5329,20 @@ export interface components {
       title: string;
       /** Version */
       version: number;
+    };
+    /** TotpCodeIn */
+    TotpCodeIn: {
+      /** Code */
+      code: string;
+    };
+    /** TotpSetupOut */
+    TotpSetupOut: {
+      /** Qr Svg */
+      qr_svg: string;
+      /** Secret */
+      secret: string;
+      /** Uri */
+      uri: string;
     };
     /** UserOut */
     UserOut: {
@@ -5081,6 +5647,49 @@ export interface operations {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
+      /** @description Trop de tentatives, réessayer plus tard */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  logout_api_v1_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  logout_all_api_v1_auth_logout_all_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
   me_api_v1_auth_me_get: {
@@ -5099,6 +5708,132 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MeOut"];
+        };
+      };
+    };
+  };
+  delete_me_api_v1_auth_me_delete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  change_password_api_v1_auth_password_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordChangeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  forgot_password_api_v1_auth_password_forgot_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordForgotIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reset_password_api_v1_auth_password_reset_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordResetIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TokenPair"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -5165,6 +5900,108 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_sessions_api_v1_auth_sessions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionOut"][];
+        };
+      };
+    };
+  };
+  totp_disable_api_v1_auth_totp_disable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TotpCodeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  totp_enable_api_v1_auth_totp_enable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TotpCodeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  totp_setup_api_v1_auth_totp_setup_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TotpSetupOut"];
         };
       };
     };
@@ -5565,6 +6402,39 @@ export interface operations {
       };
     };
   };
+  close_api_v1_orgs__org_id__close_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OrganizationCloseIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   get_job_api_v1_orgs__org_id__jobs__job_id__get: {
     parameters: {
       query?: never;
@@ -5750,6 +6620,172 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MemberOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        member_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResetLinkOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_person_api_v1_orgs__org_id__personal_data_get: {
+    parameters: {
+      query: {
+        q: string;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalDataResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  erase_person_api_v1_orgs__org_id__personal_data_erase_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ErasureIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErasureOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_privacy_api_v1_orgs__org_id__privacy_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_privacy_api_v1_orgs__org_id__privacy_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PrivacyUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
         };
       };
       /** @description Validation Error */
@@ -7394,7 +8430,10 @@ export interface operations {
   };
   export_submissions_api_v1_orgs__org_id__projects__project_id__forms__form_id__export_xlsx_get: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Inclure les questions personnelles */
+        personal?: boolean;
+      };
       header?: never;
       path: {
         org_id: string;
@@ -9391,6 +10430,28 @@ export interface operations {
     };
   };
   health_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+  };
+  ready_health_ready_get: {
     parameters: {
       query?: never;
       header?: never;

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,15 @@ class Organization(IdMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str] = mapped_column(String(80), unique=True)
     default_language: Mapped[str] = mapped_column(String(8), default="fr")
+    # Protection des données (page Données personnelles de l'espace).
+    # Désactivée : aucun texte de l'espace n'est envoyé aux fournisseurs d'IA.
+    ai_enabled: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # Retours clôturés depuis plus de N mois : contact, description et SMS effacés (0 = jamais).
+    feedback_retention_months: Mapped[int] = mapped_column(default=36, server_default="36")
+    # Accusé de réception envoyé à qui écrit par SMS ou WhatsApp, avec la notice d'information.
+    sms_acknowledgement: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # Personne ou service à contacter pour exercer ses droits (repris dans l'accusé).
+    privacy_contact: Mapped[str] = mapped_column(String(200), default="", server_default="")
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
@@ -47,8 +56,44 @@ class User(IdMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     # Équipe qui exploite la plateforme : gère les abonnements de tous les espaces (/admin).
     is_platform_admin: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # Mot de passe fixé par un administrateur : à changer à la première connexion.
+    must_change_password: Mapped[bool] = mapped_column(default=False, server_default=false())
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Double authentification (TOTP) : secret chiffré (core/crypto.py), actif une fois confirmé.
+    totp_secret: Mapped[str | None] = mapped_column(String(255))
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="user")
+
+
+class UserSession(IdMixin, TimestampMixin, Base):
+    """Session ouverte par une connexion, révocable (déconnexion, mot de passe changé).
+
+    Le jeton de rafraîchissement porte l'identifiant de la session et sa génération : chaque
+    rafraîchissement passe à la génération suivante. Rejouer un jeton déjà remplacé (vol
+    probable) révoque la session.
+    """
+
+    __tablename__ = "user_sessions"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    generation: Mapped[int] = mapped_column(default=0)
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_agent: Mapped[str] = mapped_column(String(200), default="")
+
+
+class PasswordReset(IdMixin, TimestampMixin, Base):
+    """Lien de réinitialisation à usage unique ; seule l'empreinte du jeton est gardée."""
+
+    __tablename__ = "password_resets"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class Membership(IdMixin, TimestampMixin, Base):

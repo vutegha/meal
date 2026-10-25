@@ -30,6 +30,7 @@ from app.models import (
     AccountType,
     AiCall,
     Membership,
+    Organization,
     Payment,
     PaymentStatus,
     Project,
@@ -316,7 +317,16 @@ async def credits_used_this_month(session: AsyncSession, org_id: UUID) -> int:
 
 
 async def ai_block_reason(session: AsyncSession, org_id: UUID, purpose: str) -> str | None:
-    """Pourquoi un appel IA n'est pas permis (abonnement expiré, plus de crédits), sinon None."""
+    """Pourquoi un appel IA n'est pas permis (IA désactivée, abonnement expiré, plus de
+    crédits), sinon None."""
+    if (
+        await session.scalar(select(Organization.ai_enabled).where(Organization.id == org_id))
+        is False
+    ):
+        return (
+            "L'IA est désactivée pour cet espace (page Données personnelles) : aucun texte "
+            "n'est envoyé aux fournisseurs d'IA."
+        )
     sub = await session.scalar(select(Subscription).where(Subscription.organization_id == org_id))
     if sub is None:
         return None

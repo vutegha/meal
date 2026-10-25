@@ -1,15 +1,18 @@
 import hashlib
 import hmac
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 
 from app.core.config import Settings, get_settings
+from app.models import SmsMessage
 from app.services import sms
-from tests.conftest import register
+from tests.conftest import owner_engine, register
 from tests.test_organizations import add_member, login
 from tests.test_projects import create_project
 
@@ -98,7 +101,46 @@ async def test_inbound_sms_with_project_code_creates_feedback(
     created = next(e for e in entries if e["channel"] == "sms")
     assert created["reference"] == "RET-0002" and created["category"] == "other"
     assert created["description"] == "Personne n'est venu au point d'eau"
-    assert created["contact"] == "+24381000000" and created["sms_count"] == 1
+    # Message reçu, puis accusé de réception avec la notice d'information.
+    assert created["contact"] == "+24381000000" and created["sms_count"] == 2
+    thread = (
+        await client.get(f"{base}/feedback/{created['id']}/sms", headers=ctx["headers"])
+    ).json()
+    assert [m["direction"] for m in thread] == ["inbound", "outbound"]
+    assert "RET-0002" in thread[1]["body"] and "confidentielle" in thread[1]["body"]
+    assert created["sms_awaiting_reply"] is True  # l'accusé automatique ne compte pas
+    # Confidentiel jusqu'à sa qualification : il peut signaler un abus.
+    assert created["sensitive"] is True
+    await add_member(client, ctx, "suivi@example.org", "meal_officer")
+    officer = await login(client, "suivi@example.org")
+    seen = (await client.get(f"{base}/feedback", headers=officer)).json()
+    assert [e["channel"] for e in seen] == ["hotline"]
+
+
+async def test_reply_joins_only_recent_open_thread(client: AsyncClient, webhook: str) -> None:
+    ctx, base, entry = await setup(client)
+    h = ctx["headers"]
+    url = f"{base}/feedback/{entry['id']}/sms"
+    assert (await client.post(url, headers=h, json={"body": "Merci"})).status_code == 201
+
+    # Retour clôturé : la réponse ne rejoint plus l'ancien dossier.
+    r = await client.patch(
+        f"{base}/feedback/{entry['id']}",
+        headers=h,
+        json={"status": "closed", "response": "Kits complétés"},
+    )
+    assert r.status_code == 200, r.text
+    await client.post(webhook, data={"from": "+243990000001", "text": "Autre sujet"})
+    assert len((await client.get(url, headers=h)).json()) == 1
+
+    # Rouvert, mais le dernier envoi date de plus de 30 jours : même chose.
+    await client.patch(f"{base}/feedback/{entry['id']}", headers=h, json={"status": "in_progress"})
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            update(SmsMessage).values(created_at=datetime.now(UTC) - timedelta(days=31))
+        )
+    await client.post(webhook, data={"from": "+243990000001", "text": "Encore"})
+    assert len((await client.get(url, headers=h)).json()) == 1
 
 
 async def test_sms_permissions_and_errors(

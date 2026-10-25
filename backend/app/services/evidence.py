@@ -1,4 +1,7 @@
-"""Traitement des preuves déposées : type, métadonnées EXIF des photos, vignette, texte."""
+"""Traitement des preuves déposées : type, métadonnées EXIF des photos, vignette, texte.
+
+La date et la position d'une photo sont lues puis retirées du fichier gardé.
+"""
 
 import asyncio
 import hashlib
@@ -9,6 +12,7 @@ from io import BytesIO
 from typing import Any
 
 from app.documents.extract import ExtractionError, detect_kind, extract_pages
+from app.documents.metadata import strip_metadata
 
 IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 IMAGE_EXTENSIONS = {
@@ -58,6 +62,8 @@ class ProcessedFile:
     sha256: str
     is_image: bool
     thumbnail: bytes | None = None
+    # Fichier à garder, quand il diffère de celui reçu (photo sans ses métadonnées).
+    stored: bytes | None = None
     taken_at: datetime | None = None
     latitude: Decimal | None = None
     longitude: Decimal | None = None
@@ -167,9 +173,12 @@ async def process(data: bytes, filename: str, content_type: str | None) -> Proce
         thumbnail, taken_at, latitude, longitude, extra = await asyncio.to_thread(
             _process_image, data
         )
+        stored = await asyncio.to_thread(strip_metadata, data, mime)
         return ProcessedFile(
+            stored=stored,
             content_type=mime,
-            sha256=sha256,
+            # Empreinte du fichier gardé, pour pouvoir le vérifier plus tard.
+            sha256=hashlib.sha256(stored).hexdigest(),
             is_image=True,
             thumbnail=thumbnail,
             taken_at=taken_at,

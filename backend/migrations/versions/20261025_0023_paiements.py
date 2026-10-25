@@ -1,7 +1,7 @@
 """statut, moyen et reçu des paiements
 
-Revision ID: 0019
-Revises: 0018
+Revision ID: 0023
+Revises: 0022
 Create Date: 2026-10-13 16:30:00
 """
 
@@ -10,8 +10,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0019"
-down_revision: str | None = "0018"
+revision: str = "0023"
+down_revision: str | None = "0022"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
