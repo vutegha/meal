@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     # Rôle non propriétaire endossé par l'API pour que la Row Level Security s'applique.
     # Vide : pas de changement de rôle (déconseillé hors développement).
     db_app_role: str = "meal_app"
+    # Migrations : compte propriétaire des tables. Vide : DATABASE_URL.
+    migration_database_url: str = ""
+    # Compte de connexion de l'API et du worker, créé ou mis à jour après les migrations par
+    # `python -m app.scripts.db_login` : ni superutilisateur, ni propriétaire, sans aucun droit
+    # tant qu'il n'a pas endossé `db_app_role`. Sans mot de passe, le script ne fait rien.
+    app_db_user: str = "meal_api"
+    app_db_password: str = ""
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = "change-me-in-production"
     access_token_minutes: int = 15

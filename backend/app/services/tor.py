@@ -66,12 +66,15 @@ def fmt(value: Decimal | float, decimals: int = 2) -> str:
     return text.removesuffix(",00") if decimals == 2 else text
 
 
-async def get_tor(session: AsyncSession, project: Project, tor_id: UUID) -> TermsOfReference:
-    tor = await session.scalar(
-        select(TermsOfReference).where(
-            TermsOfReference.id == tor_id, TermsOfReference.project_id == project.id
-        )
+async def get_tor(
+    session: AsyncSession, project: Project, tor_id: UUID, *, for_update: bool = False
+) -> TermsOfReference:
+    """`for_update` : ligne verrouillée jusqu'à la fin de la transaction (changement de statut),
+    pour que deux validations simultanées ne passent pas toutes les deux."""
+    query = select(TermsOfReference).where(
+        TermsOfReference.id == tor_id, TermsOfReference.project_id == project.id
     )
+    tor = await session.scalar(query.with_for_update() if for_update else query)
     if tor is None:
         raise svc.not_found("TdR")
     return tor

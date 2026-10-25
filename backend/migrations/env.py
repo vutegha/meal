@@ -16,10 +16,14 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _url() -> str:
+    """Les migrations tournent avec le compte propriétaire des tables, pas celui de l'API."""
+    settings = get_settings()
+    return settings.migration_database_url or settings.database_url
+
+
 def run_migrations_offline() -> None:
-    context.configure(
-        url=get_settings().database_url, target_metadata=target_metadata, literal_binds=True
-    )
+    context.configure(url=_url(), target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -31,7 +35,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    engine = create_async_engine(get_settings().database_url)
+    engine = create_async_engine(_url())
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

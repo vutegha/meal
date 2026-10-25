@@ -202,7 +202,7 @@ async def transition_periodic(
     body: TorReview | None = None,
 ) -> PeriodicReport:
     project = await svc.get_project(session, org_id, project_id)
-    report = await periodic_svc.get_periodic(session, project, report_id)
+    report = await periodic_svc.get_periodic(session, project, report_id, for_update=True)
     verb = workflow.transition(report, action, member, body.comment if body else "")
     _log(session, member, f"periodic.{verb}", "periodic_report", report.id, {"title": report.title})
     await session.commit()

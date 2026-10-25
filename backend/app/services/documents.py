@@ -7,7 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.documents.extract import ExtractionError, detect_kind, extract_pages
+from app.documents.extract import SUPPORTED_TYPES, ExtractionError, extract_pages
+from app.documents.filetypes import EXTENSIONS, sniff
 from app.documents.storage import get_storage
 from app.models import DocumentPage, DocumentStatus, Job, Project, SourceDocument
 
@@ -28,8 +29,10 @@ async def ingest(
             status.HTTP_413_CONTENT_TOO_LARGE,
             f"Fichier trop volumineux (maximum {settings.max_upload_mb} Mo)",
         )
-    kind = detect_kind(filename, content_type)
-    if kind is None:
+    # Format reconnu d'après le contenu, pas d'après le type annoncé par le navigateur.
+    mime = sniff(data, filename, content_type)
+    kind = SUPPORTED_TYPES.get(mime or "")
+    if mime is None or kind is None:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             "Format non pris en charge : PDF, Word (.docx), Excel (.xlsx), texte ou image "
@@ -43,14 +46,15 @@ async def ingest(
     ):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ce document a déjà été importé")
 
-    key = f"{project.organization_id}/{project.id}/{uuid4()}-{filename[-120:]}"
-    await get_storage().put(key, data, content_type or "application/octet-stream")
+    # Le nom choisi par l'utilisateur reste en base, jamais dans le chemin du fichier.
+    key = f"{project.organization_id}/{project.id}/{uuid4()}.{EXTENSIONS[mime]}"
+    await get_storage().put(key, data, mime)
     document = SourceDocument(
         organization_id=project.organization_id,
         project_id=project.id,
         filename=filename[:300],
         kind=kind,
-        mime_type=content_type or "application/octet-stream",
+        mime_type=mime,
         size_bytes=len(data),
         sha256=digest,
         storage_key=key,

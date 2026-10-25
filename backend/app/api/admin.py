@@ -194,7 +194,7 @@ async def update_subscription(
     paiement reçu hors ligne, correction). Chaque changement est inscrit au journal de l'espace."""
     if await session.get(Organization, org_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Espace introuvable")
-    sub = await svc.get_subscription(session, org_id)
+    sub = await svc.get_subscription(session, org_id, for_update=True)
     before = _snapshot(sub)
     now = datetime.now(UTC)
 
@@ -327,8 +327,11 @@ async def list_payments(
     return AdminPayments(summary=summary, items=items)
 
 
-async def _get_payment(session: AsyncSession, payment_id: UUID) -> Payment:
-    payment = await session.get(Payment, payment_id)
+async def _get_payment(
+    session: AsyncSession, payment_id: UUID, *, for_update: bool = False
+) -> Payment:
+    # Verrou : deux clics sur « Confirmer » n'appliquent pas deux fois le paiement.
+    payment = await session.get(Payment, payment_id, with_for_update=for_update)
     if payment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Paiement introuvable")
     return payment
@@ -361,8 +364,8 @@ async def confirm_payment(
     payment_id: UUID, body: AdminPaymentConfirm, admin: PlatformAdmin, session: SessionDep
 ) -> AdminPaymentRow:
     """Le virement ou l'envoi mobile money annoncé est arrivé : la formule s'applique."""
-    payment = await _get_payment(session, payment_id)
-    sub = await svc.get_subscription(session, payment.organization_id)
+    payment = await _get_payment(session, payment_id, for_update=True)
+    sub = await svc.get_subscription(session, payment.organization_id, for_update=True)
     if body.method:
         payment.method = body.method
     if body.note:
@@ -378,8 +381,8 @@ async def confirm_payment(
 async def refund_payment(
     payment_id: UUID, body: AdminPaymentRefund, admin: PlatformAdmin, session: SessionDep
 ) -> AdminPaymentRow:
-    payment = await _get_payment(session, payment_id)
-    sub = await svc.get_subscription(session, payment.organization_id)
+    payment = await _get_payment(session, payment_id, for_update=True)
+    sub = await svc.get_subscription(session, payment.organization_id, for_update=True)
     await svc.refund(session, sub, payment, recorded_by=admin.id, note=body.note)
     _log(session, admin, payment, "payment.refunded", note=body.note)
     row = await _row(session, payment)
@@ -398,7 +401,7 @@ async def record_payment(
     """Enregistre un paiement reçu hors de l'application ; la formule payée s'applique."""
     if await session.get(Organization, org_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Espace introuvable")
-    sub = await svc.get_subscription(session, org_id)
+    sub = await svc.get_subscription(session, org_id, for_update=True)
     payment = svc.new_payment(
         org_id,
         plan_id=body.plan,

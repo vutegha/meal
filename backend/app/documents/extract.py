@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from io import BytesIO
 
+from app.documents.filetypes import ImageTooLarge, open_image, too_large_message
+
 SUPPORTED_TYPES = {
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
@@ -11,17 +13,6 @@ SUPPORTED_TYPES = {
     "text/markdown": "txt",
     "image/jpeg": "image",
     "image/png": "image",
-}
-
-EXTENSIONS = {
-    ".pdf": "pdf",
-    ".docx": "docx",
-    ".xlsx": "xlsx",
-    ".txt": "txt",
-    ".md": "txt",
-    ".jpg": "image",
-    ".jpeg": "image",
-    ".png": "image",
 }
 
 # En dessous, une page de PDF qui contient une image est considérée comme scannée et passe
@@ -43,13 +34,6 @@ class Page:
     number: int
     text: str
     needs_ocr: bool = False
-
-
-def detect_kind(filename: str, content_type: str | None) -> str | None:
-    if content_type in SUPPORTED_TYPES:
-        return SUPPORTED_TYPES[content_type]
-    suffix = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    return EXTENSIONS.get(suffix)
 
 
 def _paginate(text: str) -> list[Page]:
@@ -87,10 +71,12 @@ def _pdf(data: bytes) -> list[Page]:
 
 
 def _image(data: bytes) -> list[Page]:
-    from PIL import Image, UnidentifiedImageError
+    from PIL import UnidentifiedImageError
 
     try:
-        Image.open(BytesIO(data)).verify()
+        open_image(data).verify()
+    except ImageTooLarge as exc:
+        raise ExtractionError(too_large_message()) from exc
     except (UnidentifiedImageError, OSError) as exc:
         raise ExtractionError("Image illisible") from exc
     return [Page(1, "", needs_ocr=True)]
@@ -98,8 +84,6 @@ def _image(data: bytes) -> list[Page]:
 
 def page_image(data: bytes, kind: str, number: int) -> bytes:
     """Image PNG d'une page, réduite pour la lecture par le modèle."""
-    from PIL import Image
-
     if kind == "pdf":
         import pymupdf
 
@@ -109,11 +93,13 @@ def page_image(data: bytes, kind: str, number: int) -> bytes:
             pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))  # type: ignore[no-untyped-call]
             return bytes(pixmap.tobytes("png"))
     try:
-        image = Image.open(BytesIO(data))
+        image = open_image(data)
         image.thumbnail((OCR_MAX_SIDE, OCR_MAX_SIDE))
         buffer = BytesIO()
         image.convert("RGB").save(buffer, format="PNG", optimize=True)
         return buffer.getvalue()
+    except ImageTooLarge as exc:
+        raise ExtractionError(too_large_message()) from exc
     except OSError as exc:
         raise ExtractionError("Image illisible") from exc
 
