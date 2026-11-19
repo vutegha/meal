@@ -3,7 +3,9 @@ name: wemeal
 x-backend-env: &backend-env
   # production : SECRET_KEY faible refusée, documentation de l'API fermée.
   ENVIRONMENT: ${ENVIRONMENT:-production}
-  DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
+  # Compte dédié de l'API et du worker, créé par le service migrate : ni superutilisateur ni
+  # propriétaire des tables, il ne voit les données qu'à travers la Row Level Security.
+  DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-meal_api}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
   # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
@@ -65,12 +67,25 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
     volumes: [minio-data:/data]
 
+  # Migrations et compte de connexion de l'API, avec le compte propriétaire des tables. Se lance
+  # à chaque `docker compose up`, puis s'arrête ; l'API et le worker attendent qu'il ait réussi.
+  migrate:
+    build: ./backend
+    command: ["sh", "-c", "alembic upgrade head && python -m app.scripts.db_login"]
+    environment:
+      <<: *backend-env
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
+      APP_DB_USER: ${APP_DB_USER:-meal_api}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+    depends_on:
+      db: { condition: service_healthy }
+
   api:
     build: ./backend
     environment: *backend-env
     volumes: [files:/data/files]
     depends_on:
-      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       redis: { condition: service_started }
     # Base et Redis joignables (GET /health/ready) : `docker compose ps` signale une panne.
     healthcheck:
@@ -88,7 +103,10 @@ services:
     command: arq app.workers.settings.WorkerSettings
     environment: *backend-env
     volumes: [files:/data/files]
-    depends_on: [api, redis]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      api: { condition: service_started }
+      redis: { condition: service_started }
 
   # Sauvegarde chiffrée quotidienne de la base et des fichiers dans BACKUP_DIR (ops/backup.sh).
   # Copier ce dossier hors du serveur : une sauvegarde sur la même machine ne protège pas

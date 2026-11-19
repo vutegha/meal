@@ -81,12 +81,14 @@ def default_title(kind: PeriodicKind, start: date, end: date) -> str:
     return f"{KIND_LABELS[kind]} du {day(start)} au {day(end)}"
 
 
-async def get_periodic(session: AsyncSession, project: Project, report_id: UUID) -> PeriodicReport:
-    report = await session.scalar(
-        select(PeriodicReport).where(
-            PeriodicReport.id == report_id, PeriodicReport.project_id == project.id
-        )
+async def get_periodic(
+    session: AsyncSession, project: Project, report_id: UUID, *, for_update: bool = False
+) -> PeriodicReport:
+    """`for_update` : ligne verrouillée jusqu'à la fin de la transaction (changement de statut)."""
+    query = select(PeriodicReport).where(
+        PeriodicReport.id == report_id, PeriodicReport.project_id == project.id
     )
+    report = await session.scalar(query.with_for_update() if for_update else query)
     if report is None:
         raise svc.not_found("Rapport")
     return report

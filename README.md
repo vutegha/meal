@@ -19,6 +19,12 @@ Les fichiers importés sont gardés dans le volume Docker `files`. Pour les stoc
 d'image sur Docker Hub, une image disponible dans `MINIO_IMAGE`, puis
 `docker compose --profile s3 up --build`.
 
+Au démarrage, le service `migrate` applique les migrations puis crée le compte `meal_api`
+(`APP_DB_USER`, mot de passe `APP_DB_PASSWORD`), avec lequel l'API et le worker se connectent :
+il n'est ni superutilisateur ni propriétaire des tables, et ne voit les données qu'à travers la
+Row Level Security. L'API et le worker refusent de démarrer si cette protection ne s'applique
+pas.
+
 `SECRET_KEY` doit faire au moins 32 caractères aléatoires, sinon l'API refuse de démarrer :
 `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
 
@@ -89,7 +95,7 @@ npm install
 npm run dev                                # http://localhost:5173
 ```
 
-Variables utiles côté API : `DATABASE_URL` (par défaut `postgresql+asyncpg://meal:meal@localhost:5432/meal`), `REDIS_URL`, `SECRET_KEY`.
+Variables utiles côté API : `DATABASE_URL` (par défaut `postgresql+asyncpg://meal:meal@localhost:5432/meal`), `REDIS_URL`, `SECRET_KEY`. En développement, l'API peut se connecter avec le propriétaire des tables (un avertissement le rappelle au démarrage) ; en production, `DATABASE_URL` désigne le compte créé par `python -m app.scripts.db_login` et `MIGRATION_DATABASE_URL` le propriétaire, pour les migrations.
 
 ## Fonctions d'IA
 

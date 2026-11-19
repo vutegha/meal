@@ -173,7 +173,7 @@ async def submit_tor(
     org_id: UUID, project_id: UUID, tor_id: UUID, member: Planner, session: SessionDep
 ) -> TermsOfReference:
     project = await svc.get_project(session, org_id, project_id)
-    tor = await tor_svc.get_tor(session, project, tor_id)
+    tor = await tor_svc.get_tor(session, project, tor_id, for_update=True)
     _require(tor, TorStatus.DRAFT, "Ces TdR ont déjà été soumis")
     tor.status = TorStatus.SUBMITTED
     tor.submitted_by, tor.submitted_at = member.user_id, datetime.now(UTC)
@@ -194,7 +194,7 @@ async def approve_tor(
     session: SessionDep,
 ) -> TermsOfReference:
     project = await svc.get_project(session, org_id, project_id)
-    tor = await tor_svc.get_tor(session, project, tor_id)
+    tor = await tor_svc.get_tor(session, project, tor_id, for_update=True)
     _require(tor, TorStatus.SUBMITTED, "Seuls les TdR soumis peuvent être approuvés")
     tor.status = TorStatus.APPROVED
     tor.approved_by, tor.approved_at = member.user_id, datetime.now(UTC)
@@ -216,7 +216,7 @@ async def return_tor(
 ) -> TermsOfReference:
     """Renvoie des TdR soumis en brouillon, avec un commentaire pour leur auteur."""
     project = await svc.get_project(session, org_id, project_id)
-    tor = await tor_svc.get_tor(session, project, tor_id)
+    tor = await tor_svc.get_tor(session, project, tor_id, for_update=True)
     _require(tor, TorStatus.SUBMITTED, "Seuls les TdR soumis peuvent être renvoyés")
     if not body.comment.strip():
         raise HTTPException(
@@ -236,7 +236,7 @@ async def reopen_tor(
 ) -> TermsOfReference:
     """Repasse des TdR approuvés en brouillon pour les réviser ; l'approbation est levée."""
     project = await svc.get_project(session, org_id, project_id)
-    tor = await tor_svc.get_tor(session, project, tor_id)
+    tor = await tor_svc.get_tor(session, project, tor_id, for_update=True)
     _require(tor, TorStatus.APPROVED, "Seuls les TdR approuvés peuvent être rouverts")
     tor.status = TorStatus.DRAFT
     tor.approved_by = tor.approved_at = None

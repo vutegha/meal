@@ -5,19 +5,29 @@ même saisie (après une coupure réseau) renvoie l'élément existant au lieu d
 """
 
 import asyncio
+import hashlib
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, BinaryIO
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import AnyMember, SessionDep, require_membership
 from app.api.projects import Collector, ProjectAdmin, _flush, _log
 from app.core.config import get_settings
-from app.documents.storage import get_storage
+from app.documents.filetypes import (
+    EXTENSIONS,
+    HEAD_BYTES,
+    inline_allowed,
+    media_type,
+    served_type,
+)
+from app.documents.storage import CHUNK_BYTES, get_storage
 from app.models import (
     ActivityExecution,
     BudgetLine,
@@ -43,7 +53,7 @@ from app.schemas.execution import (
 )
 from app.services import audit
 from app.services import projects as svc
-from app.services.evidence import UnsupportedFile, media_type, process, render_thumbnail
+from app.services.evidence import UnsupportedFile, media_file, process, render_thumbnail
 
 router = APIRouter(prefix="/orgs/{org_id}/projects/{project_id}", tags=["exécution"])
 
@@ -285,6 +295,29 @@ async def delete_execution(
 # --- Preuves ---------------------------------------------------------------------
 
 
+def _limit(megabytes: int) -> int:
+    return megabytes * 1024 * 1024
+
+
+def _check_size(size: int, megabytes: int) -> None:
+    if size > _limit(megabytes):
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE, f"Fichier trop volumineux (maximum {megabytes} Mo)"
+        )
+
+
+def _measure(source: BinaryIO, limit: int) -> tuple[int, str]:
+    """Taille et empreinte SHA-256 d'un fichier lu par morceaux (lecture arrêtée au-delà de la
+    limite) ; le fichier est ensuite rembobiné."""
+    digest = hashlib.sha256()
+    size = 0
+    while size <= limit and (chunk := source.read(CHUNK_BYTES)):
+        digest.update(chunk)
+        size += len(chunk)
+    source.seek(0)
+    return size, digest.hexdigest()
+
+
 @router.post(
     "/executions/{execution_id}/evidence",
     response_model=EvidenceOut,
@@ -323,28 +356,33 @@ async def upload_evidence(
 
     filename = file.filename or "piece"
     settings = get_settings()
-    max_mb = (
-        settings.max_media_mb if media_type(filename, file.content_type) else settings.max_upload_mb
-    )
-    data = await file.read(max_mb * 1024 * 1024 + 1)
-    if len(data) > max_mb * 1024 * 1024:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE, f"Fichier trop volumineux (maximum {max_mb} Mo)"
-        )
-    try:
-        processed = await process(data, filename, file.content_type)
-    except UnsupportedFile as exc:
-        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc)) from exc
-
     storage = get_storage()
     prefix = f"{org_id}/{project.id}/executions/{execution.id}/{uuid4()}"
-    key = f"{prefix}-{filename[-120:]}"
-    stored = processed.stored or data
-    await storage.put(key, stored, processed.content_type)
+    head = await file.read(HEAD_BYTES)
+    await file.seek(0)
     thumbnail_key = ""
-    if processed.thumbnail:
-        thumbnail_key = f"{prefix}-vignette.webp"
-        await storage.put(thumbnail_key, processed.thumbnail, "image/webp")
+    if recording := media_type(head, file.content_type):
+        # Enregistrement audio ou vidéo : mesuré puis copié par morceaux, jamais chargé entier.
+        size, sha256 = await asyncio.to_thread(_measure, file.file, _limit(settings.max_media_mb))
+        _check_size(size, settings.max_media_mb)
+        processed = media_file(recording, sha256)
+        # Le nom choisi par l'utilisateur reste en base, jamais dans le chemin du fichier.
+        key = f"{prefix}.{EXTENSIONS[recording]}"
+        await storage.put_file(key, file.file, recording)
+    else:
+        data = await file.read(_limit(settings.max_upload_mb) + 1)
+        _check_size(len(data), settings.max_upload_mb)
+        try:
+            processed = await process(data, filename, file.content_type)
+        except UnsupportedFile as exc:
+            raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc)) from exc
+        key = f"{prefix}.{EXTENSIONS[processed.content_type]}"
+        stored = processed.stored or data
+        size = len(stored)
+        await storage.put(key, stored, processed.content_type)
+        if processed.thumbnail:
+            thumbnail_key = f"{prefix}-vignette.webp"
+            await storage.put(thumbnail_key, processed.thumbnail, "image/webp")
     if processed.is_image and kind == EvidenceKind.OTHER:
         kind = EvidenceKind.PHOTO
     if media := processed.extra.get("media"):
@@ -356,7 +394,7 @@ async def upload_evidence(
         kind=kind,
         filename=filename[:300],
         content_type=processed.content_type,
-        size_bytes=len(stored),
+        size_bytes=size,
         sha256=processed.sha256,
         storage_key=key,
         thumbnail_key=thumbnail_key,
@@ -493,7 +531,6 @@ async def download_evidence(
     key = evidence.storage_key if variant == "file" else evidence.thumbnail_key
     if not key:
         raise svc.not_found("Vignette")
-    data = await get_storage().get(key)
     # Original d'une photo avec visages (non flouté) : la consultation est journalisée.
     if variant == "file" and (evidence.extra or {}).get("faces"):
         await audit.record_access(
@@ -506,16 +543,25 @@ async def download_evidence(
             data={"filename": evidence.filename},
         )
         await session.commit()
-    media_type = evidence.content_type if variant == "file" else "image/webp"
-    ascii_name = evidence.filename.encode("ascii", "ignore").decode() or "piece"
-    return Response(
-        data,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f'inline; filename="{ascii_name}"',
-            "Cache-Control": "private, max-age=3600",
-        },
-    )
+    content_type = served_type(evidence.content_type) if variant == "file" else "image/webp"
+    # Seuls les photos et enregistrements s'affichent dans la page ; le reste se télécharge, et
+    # rien de ce qui est servi ici ne peut s'exécuter dans le navigateur.
+    disposition = "inline" if inline_allowed(content_type) else "attachment"
+    ascii_name = re.sub(r"[^\w. -]", "_", evidence.filename, flags=re.ASCII) or "piece"
+    headers = {
+        "Content-Disposition": f'{disposition}; filename="{ascii_name}"',
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+    }
+    if content_type.startswith(("audio/", "video/")):
+        # Enregistrement de plusieurs centaines de Mo : envoyé par morceaux.
+        headers["Content-Length"] = str(evidence.size_bytes)
+        return StreamingResponse(
+            get_storage().stream(key), media_type=content_type, headers=headers
+        )
+    data = await get_storage().get(key)
+    return Response(data, media_type=content_type, headers=headers)
 
 
 # --- Dépenses réelles ------------------------------------------------------------

@@ -126,6 +126,7 @@ class Job(IdMixin, TimestampMixin, Base):
     result: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     error: Mapped[str] = mapped_column(Text, default="")
     created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

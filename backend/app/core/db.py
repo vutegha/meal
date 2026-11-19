@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, SessionTransaction, mapped_column
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -55,6 +58,50 @@ def _use_app_role(dbapi_connection: Any, _: Any) -> None:
                 role,
             )
         )
+
+
+_ROLE_SQL = text(
+    "SELECT current_user, session_user, r.rolsuper, r.rolbypassrls, s.rolsuper "
+    "FROM pg_roles r, pg_roles s WHERE r.rolname = current_user AND s.rolname = session_user"
+)
+
+
+async def role_problems() -> tuple[list[str], list[str]]:
+    """Contrôle de démarrage : (problèmes bloquants, avertissements) sur le rôle de la base.
+
+    Bloquant : la Row Level Security ne s'appliquerait pas (rôle applicatif absent, ou rôle qui
+    contourne la RLS). Avertissement : connexion avec un superutilisateur, qui pourrait quitter le
+    rôle applicatif (`RESET ROLE`) ; c'est la configuration des tests et du développement.
+    """
+    expected = get_settings().db_app_role
+    if not expected:
+        return [], ["DB_APP_ROLE vide : la Row Level Security ne s'applique pas"]
+    async with engine.connect() as conn:
+        row = (await conn.execute(_ROLE_SQL)).one()
+    current, login, superuser, bypass, login_superuser = row
+    blocking, warnings = [], []
+    if current != expected:
+        blocking.append(
+            f"La connexion utilise le rôle {current} au lieu de {expected} : migrations non "
+            "passées, ou compte de connexion qui n'est pas membre de ce rôle"
+        )
+    elif superuser or bypass:
+        blocking.append(f"Le rôle {expected} contourne la Row Level Security")
+    if login_superuser:
+        warnings.append(
+            f"Connexion à la base avec le superutilisateur {login} : utiliser un compte dédié "
+            "(APP_DB_USER, voir app/scripts/db_login.py)"
+        )
+    return blocking, warnings
+
+
+async def check_role() -> None:
+    """Refuse de démarrer (API, worker) si la Row Level Security ne s'appliquerait pas."""
+    blocking, warnings = await role_problems()
+    for message in warnings:
+        logger.warning(message)
+    if blocking:
+        raise RuntimeError("; ".join(blocking))
 
 
 _TENANT_SQL = text(

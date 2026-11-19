@@ -204,8 +204,13 @@ def account_type_of(sub: Subscription | None) -> AccountType:
     return PLANS[sub.plan].account_type if sub else AccountType.ORGANIZATION
 
 
-async def get_subscription(session: AsyncSession, org_id: UUID) -> Subscription:
-    sub = await session.scalar(select(Subscription).where(Subscription.organization_id == org_id))
+async def get_subscription(
+    session: AsyncSession, org_id: UUID, *, for_update: bool = False
+) -> Subscription:
+    """`for_update` : abonnement verrouillé jusqu'à la fin de la transaction (crédits ou échéance
+    modifiés), pour que deux encaissements simultanés s'additionnent au lieu de s'écraser."""
+    query = select(Subscription).where(Subscription.organization_id == org_id)
+    sub = await session.scalar(query.with_for_update() if for_update else query)
     if sub is None:
         # Espace créé hors des parcours d'inscription : il démarre un essai de la formule équipe.
         sub = new_subscription(org_id, DEFAULT_PLAN[AccountType.ORGANIZATION], "monthly")

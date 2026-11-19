@@ -1,7 +1,10 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, Response, status
+from fastapi import APIRouter, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api import (
@@ -23,14 +26,23 @@ from app.api import (
     tor,
 )
 from app.core.config import get_settings
-from app.core.db import SessionLocal
+from app.core.db import SessionLocal, check_role
 from app.services import ratelimit
+from app.services.jobs import QueueUnavailable
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await check_role()
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
+    lifespan=lifespan,
     version="0.1.0",
     # Documentation interactive fermée en production : elle décrit toute la surface de l'API.
     openapi_url=None if settings.is_production else "/api/v1/openapi.json",
@@ -44,6 +56,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(QueueUnavailable)
+async def queue_unavailable(_: Request, exc: QueueUnavailable) -> JSONResponse:
+    return JSONResponse({"detail": str(exc)}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
 
 api = APIRouter(prefix="/api/v1")
 api.include_router(auth.router)
