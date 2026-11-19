@@ -46,4 +46,9 @@ def build_content(
     )
     if instructions.strip():
         ask += f"\n\nConsignes de la personne qui demande le rapport :\n{instructions.strip()}"
-    return [{"type": "text", "text": context}, {"type": "text", "text": ask}]
+    return [
+        # Contexte d'abord, mis en cache : régénérer avec d'autres consignes le relit au dixième
+        # du prix au lieu de le repayer en entier.
+        {"type": "text", "text": context, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": ask},
+    ]
