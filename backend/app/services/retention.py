@@ -4,6 +4,7 @@ Lancé chaque nuit par le worker (app/workers/settings.py) ou à la main :
 `uv run python -m app.scripts.purge`.
 """
 
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,7 @@ from app.models import (
     SmsMessage,
     UserSession,
 )
+from app.services import uploads
 
 # SMS qu'aucun projet n'a reconnus : gardés le temps d'un éventuel rattachement manuel.
 UNMATCHED_SMS_DAYS = 30
@@ -34,6 +36,8 @@ ACCESS_ACTIONS = (
     "form.exported",
 )
 ERASED = "[Contenu effacé : données personnelles]"
+# Lignes effacées par transaction lors des purges volumineuses.
+PURGE_BATCH = 5000
 
 
 async def anonymize_feedback(session: AsyncSession, entries: list[FeedbackEntry]) -> None:
@@ -110,13 +114,25 @@ async def purge(session: AsyncSession, today: date | None = None) -> dict[str, A
     )
     counts["password_resets"] = result.rowcount  # type: ignore[attr-defined]
 
-    result = await session.execute(
-        delete(AuditLog).where(
+    # Journal des consultations : la table qui grandit le plus vite (une ligne par fiche
+    # ouverte). Effacé par lots validés un à un : jamais de long verrou ni de grosse transaction.
+    expired = (
+        select(AuditLog.id)
+        .where(
             AuditLog.action.in_(ACCESS_ACTIONS),
             AuditLog.created_at < now - timedelta(days=ACCESS_LOG_DAYS),
         )
+        .limit(PURGE_BATCH)
     )
-    counts["access_logs"] = result.rowcount  # type: ignore[attr-defined]
+    counts["access_logs"] = 0
+    while True:
+        result = await session.execute(delete(AuditLog).where(AuditLog.id.in_(expired)))
+        deleted = result.rowcount  # type: ignore[attr-defined]
+        counts["access_logs"] += deleted
+        await session.commit()
+        if deleted < PURGE_BATCH:
+            break
+    counts["partial_uploads"] = await asyncio.to_thread(uploads.purge_stale)
     return counts
 
 

@@ -13,10 +13,16 @@ import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
-import { type Execution, type LogframeNode, type Project, projectsApi, torApi } from "@/lib/api";
+import { type LogframeNode, type Project, projectsApi, torApi } from "@/lib/api";
 import { flattenTree, formatNumber, formatRate } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
-import { executionsQuery, indicatorsQuery, logframeQuery, torsQuery } from "@/lib/queries";
+import {
+  executionsQuery,
+  executionsSummaryQuery,
+  indicatorsQuery,
+  logframeQuery,
+  torsQuery,
+} from "@/lib/queries";
 import {
   type ActivityState,
   activityState,
@@ -102,7 +108,13 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
   const { role } = useCurrentOrg();
   const canPlan = permissions.plan(role);
   const logframe = useQuery(logframeQuery(orgId, project.id));
-  const executions = useQuery(executionsQuery(orgId, project.id));
+  const summary = useQuery(executionsSummaryQuery(orgId, project.id));
+  const runsByActivity = new Map((summary.data ?? []).map((r) => [r.activity_id, r]));
+  // État de chaque activité d'après le bilan du serveur (terminée, en cours).
+  const runStates = (summary.data ?? []).map((r) => ({
+    activity_id: r.activity_id,
+    status: r.completed > 0 ? ("completed" as const) : ("in_progress" as const),
+  }));
   const formatMonth = useMonthFormat();
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -159,10 +171,7 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
     return periodOf(node);
   };
   const stateFor = (node: LogframeNode) =>
-    activityState(
-      { id: node.id, planned_start: periodFor(node) ? "x" : null },
-      executions.data ?? [],
-    );
+    activityState({ id: node.id, planned_start: periodFor(node) ? "x" : null }, runStates);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>, node: LogframeNode) => {
     if (event.button !== 0) return;
@@ -383,7 +392,7 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
                 const state = stateFor(node);
                 const sub = node.level === "sub_activity";
                 const dragging = drag?.id === node.id;
-                const own = (executions.data ?? []).filter((e) => e.activity_id === node.id);
+                const months = runsByActivity.get(node.id)?.months ?? [];
                 return (
                   <div
                     key={node.id}
@@ -463,13 +472,13 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
                           </span>
                         )
                       )}
-                      {own.map((execution) => {
-                        const month = monthIndex(execution.start_date);
+                      {months.map((day) => {
+                        const month = monthIndex(day);
                         if (month < bounds.first || month > bounds.last) return null;
                         return (
                           <span
-                            key={execution.id}
-                            title={execution.title || execution.start_date}
+                            key={day}
+                            title={day.slice(0, 7)}
                             className="pointer-events-none absolute bottom-0.5 h-1.5 w-1.5 rotate-45 bg-slate-800"
                             style={{ left: (month - bounds.first) * COL + COL / 2 - 3 }}
                           />
@@ -508,7 +517,6 @@ export function ScheduleTab({ orgId, project }: { orgId: string; project: Projec
           nodes={byId}
           period={periodFor(selectedNode)}
           state={stateFor(selectedNode)}
-          executions={(executions.data ?? []).filter((e) => e.activity_id === selectedNode.id)}
           canPlan={canPlan}
           onUnplan={() => save.mutate({ id: selectedNode.id, period: null })}
           onSetDates={(dates) =>
@@ -583,7 +591,6 @@ function ActivityPanel({
   nodes,
   period,
   state,
-  executions,
   canPlan,
   onUnplan,
   onSetDates,
@@ -596,13 +603,15 @@ function ActivityPanel({
   nodes: Map<string, LogframeNode>;
   period: Period | null;
   state: ActivityState;
-  executions: Execution[];
   canPlan: boolean;
   onUnplan: () => void;
   onSetDates: (dates: Dates) => void;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  // Exécutions de cette activité seulement, les plus récentes d'abord.
+  const executions =
+    useQuery(executionsQuery(orgId, project.id, { activity_id: activity.id })).data?.items ?? [];
   const navigate = useNavigate();
   const formatMonth = useMonthFormat();
   const close = useRef<HTMLButtonElement>(null);

@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button, Card, ErrorText } from "@/components/ui";
+import { Button, Card, ErrorText, Pager } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import type { Project } from "@/lib/api";
 import { flattenTree, formatMoney } from "@/lib/format";
@@ -22,7 +22,10 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
   const online = useOnline();
   const { role } = useCurrentOrg();
   const canCollect = permissions.recordValues(role);
-  const executions = useQuery(executionsQuery(orgId, project.id));
+  const [offset, setOffset] = useState(0);
+  const [search, setSearch] = useState("");
+  const executions = useQuery(executionsQuery(orgId, project.id, { offset, q: search }));
+  const page = executions.data;
   const logframe = useQuery(logframeQuery(orgId, project.id));
   const pending = usePending(project.id);
   const [adding, setAdding] = useState(false);
@@ -101,10 +104,21 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
             />
           </div>
         )}
+        <input
+          type="search"
+          className="mb-3 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          placeholder={t("common.search")}
+          aria-label={t("common.search")}
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOffset(0);
+          }}
+        />
         <ErrorText error={executions.error} />
-        {executions.data?.length ? (
+        {page?.items.length ? (
           <ul className="divide-y divide-slate-100">
-            {executions.data.map((e) => {
+            {page.items.map((e) => {
               const activity = nodes.get(e.activity_id);
               return (
                 <li key={e.id}>
@@ -136,6 +150,23 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
           </ul>
         ) : (
           !executions.isPending && <p className="text-sm text-slate-500">{t("execution.empty")}</p>
+        )}
+        {page && (
+          <Pager
+            total={page.total}
+            offset={page.offset}
+            limit={page.limit}
+            onChange={setOffset}
+            labels={{
+              range: t("common.pageRange", {
+                from: page.offset + 1,
+                to: page.offset + page.items.length,
+                total: page.total,
+              }),
+              previous: t("common.previous"),
+              next: t("common.next"),
+            }}
+          />
         )}
       </Card>
     </>

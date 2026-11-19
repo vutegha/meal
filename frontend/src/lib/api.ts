@@ -888,9 +888,78 @@ export interface EvidenceInput {
   longitude?: number;
 }
 
+/** Une page d'une liste longue, la plus récente d'abord. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Taille des pages des listes longues (exécutions, plaintes). */
+export const PAGE_SIZE = 50;
+
+function searchParams(filters: Record<string, string | number | boolean | null | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters))
+    if (value !== undefined && value !== null && value !== "" && value !== false)
+      params.set(key, String(value));
+  const text = params.toString();
+  return text ? `?${text}` : "";
+}
+
+export interface ExecutionFilters {
+  activity_id?: string;
+  status?: ExecutionStatus;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Bilan des exécutions d'une activité, calculé par le serveur. */
+export interface ActivityRuns {
+  activity_id: string;
+  count: number;
+  completed: number;
+  last_start_date: string;
+  /** Mois d'exécution (premier jour du mois, AAAA-MM-JJ). */
+  months: string[];
+  participants: Participants;
+  approved_reports: number;
+}
+
+/** Au-delà, une preuve est envoyée par morceaux de `CHUNK_BYTES`. */
+export const CHUNKED_FROM = 2 * 1024 * 1024;
+export const CHUNK_BYTES = 512 * 1024;
+
+async function sendInChunks(base: string, uploadId: string, file: Blob): Promise<void> {
+  const url = `${base}/uploads/${uploadId}`;
+  let { received } = await request<{ received: number }>(url);
+  while (received < file.size) {
+    const end = Math.min(received + CHUNK_BYTES, file.size);
+    try {
+      ({ received } = await request<{ received: number }>(url, {
+        method: "PUT",
+        headers: { "Content-Range": `bytes ${received}-${end - 1}/${file.size}` },
+        body: file.slice(received, end),
+      }));
+    } catch (error) {
+      // Morceau hors séquence (envoi repris ailleurs) : on relit la position et on reprend.
+      if (!(error instanceof ApiError) || error.status !== 409) throw error;
+      const before = received;
+      ({ received } = await request<{ received: number }>(url));
+      if (received === before) throw error;
+    }
+  }
+}
+
 export const executionsApi = {
-  list: (orgId: string, projectId: string) =>
-    request<Execution[]>(`${project(orgId, projectId)}/executions`),
+  list: (orgId: string, projectId: string, filters: ExecutionFilters = {}) =>
+    request<Page<Execution>>(
+      `${project(orgId, projectId)}/executions${searchParams({ limit: PAGE_SIZE, ...filters })}`,
+    ),
+  summary: (orgId: string, projectId: string) =>
+    request<ActivityRuns[]>(`${project(orgId, projectId)}/executions/summary`),
   get: (orgId: string, projectId: string, executionId: string) =>
     request<ExecutionDetail>(`${project(orgId, projectId)}/executions/${executionId}`),
   create: (orgId: string, projectId: string, body: ExecutionInput) =>
@@ -909,7 +978,7 @@ export const executionsApi = {
     request<void>(`${project(orgId, projectId)}/executions/${executionId}`, {
       method: "DELETE",
     }),
-  upload: (
+  upload: async (
     orgId: string,
     projectId: string,
     executionId: string,
@@ -918,7 +987,15 @@ export const executionsApi = {
     meta: EvidenceInput,
   ) => {
     const body = new FormData();
-    body.append("file", file, filename);
+    const base = project(orgId, projectId);
+    if (file.size > CHUNKED_FROM) {
+      // Fichier lourd : envoyé par morceaux, l'envoi reprend où il s'était arrêté après une
+      // coupure (l'identifiant de l'envoi est celui de la preuve dans la file d'attente).
+      await sendInChunks(base, meta.client_uuid, file);
+      body.append("upload_id", meta.client_uuid);
+      body.append("upload_filename", filename);
+      body.append("upload_content_type", file.type);
+    } else body.append("file", file, filename);
     body.append("kind", meta.kind);
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
@@ -930,7 +1007,7 @@ export const executionsApi = {
       body.append("latitude", String(meta.latitude));
       body.append("longitude", String(meta.longitude));
     }
-    return request<Evidence>(`${project(orgId, projectId)}/executions/${executionId}/evidence`, {
+    return request<Evidence>(`${base}/executions/${executionId}/evidence`, {
       method: "POST",
       body,
     });
@@ -1180,7 +1257,10 @@ export interface FeedbackEntry {
   location: string;
   activity_id: string | null;
   anonymous: boolean;
+  /** Vide dans la liste : le contact se lit sur la fiche (`feedbackEntry`), journalisée. */
   contact: string;
+  /** Un contact existe et la personne connectée peut le lire. */
+  has_contact: boolean;
   status: FeedbackStatus;
   assigned_to: string | null;
   response: string;
@@ -1194,6 +1274,16 @@ export interface FeedbackEntry {
   sms_count: number;
   // Le dernier SMS de l'échange vient de la personne : elle attend une réponse.
   sms_awaiting_reply: boolean;
+}
+
+export interface FeedbackFilters {
+  status?: FeedbackStatus;
+  /** Retours pas encore répondus (reçus ou en cours). */
+  open?: boolean;
+  category?: FeedbackCategory;
+  q?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export type MessageChannel = "sms" | "whatsapp";
@@ -1280,8 +1370,12 @@ export type LessonIn = Pick<
 >;
 
 export const accountabilityApi = {
-  feedback: (orgId: string, projectId: string) =>
-    request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
+  feedback: (orgId: string, projectId: string, filters: FeedbackFilters = {}) =>
+    request<Page<FeedbackEntry>>(
+      `${project(orgId, projectId)}/feedback${searchParams({ limit: PAGE_SIZE, ...filters })}`,
+    ),
+  feedbackEntry: (orgId: string, projectId: string, feedbackId: string) =>
+    request<FeedbackEntry>(`${project(orgId, projectId)}/feedback/${feedbackId}`),
   feedbackStats: (orgId: string, projectId: string) =>
     request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
   classifyFeedback: (

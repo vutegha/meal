@@ -1,4 +1,5 @@
-"""Chiffrement des secrets gardés en base (secret de double authentification).
+"""Chiffrement des secrets gardés en base (secret de double authentification, contact des
+plaignants).
 
 Clé dérivée de SECRET_KEY : changer SECRET_KEY rend ces secrets illisibles, et chaque personne
 doit alors réactiver sa double authentification (`app.scripts.revoke_sessions --unreadable-totp`
@@ -31,6 +32,45 @@ def decrypt(value: str) -> str | None:
         return _fernet().decrypt(value.encode()).decode()
     except InvalidToken:
         return None
+
+
+# --- Champs personnels chiffrés en base (contact des plaignants) ----------------------------
+# Clés dérivées de SECRET_KEY, distinctes de celle des secrets de double authentification.
+
+FIELD_PREFIX = "enc1:"
+
+
+def _field_fernet() -> Fernet:
+    digest = hashlib.sha256(b"wemeal-fields:" + get_settings().secret_key.encode()).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def encrypt_field(value: str) -> str:
+    return FIELD_PREFIX + _field_fernet().encrypt(value.encode()).decode() if value else ""
+
+
+def decrypt_field(value: str) -> str:
+    """Texte en clair ; une valeur sans préfixe (saisie avant le chiffrement) est rendue telle
+    quelle, une valeur devenue illisible (SECRET_KEY changée) devient vide."""
+    if not value.startswith(FIELD_PREFIX):
+        return value
+    try:
+        return _field_fernet().decrypt(value[len(FIELD_PREFIX) :].encode()).decode()
+    except InvalidToken:
+        return ""
+
+
+def blind_index(value: str) -> str:
+    """Empreinte stable (HMAC) d'une valeur : on la retrouve sans la garder en clair."""
+    key = hashlib.sha256(b"wemeal-index:" + get_settings().secret_key.encode()).digest()
+    return hmac.new(key, value.encode(), hashlib.sha256).hexdigest()[:40]
+
+
+def phone_index(text: str) -> str:
+    """Empreinte des 9 derniers chiffres d'un numéro (« +243 99 000-0001 » ou « 0990000001 »
+    donnent la même) ; vide s'il n'y a pas de numéro."""
+    digits = "".join(c for c in text if c.isdigit())
+    return blind_index(digits[-9:]) if len(digits) >= 9 else ""
 
 
 def token_hash(token: str) -> str:

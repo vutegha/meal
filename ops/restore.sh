@@ -3,6 +3,9 @@
 #   docker compose stop api worker
 #   docker compose run --rm --entrypoint /ops/restore.sh backup wemeal-AAAAMMJJ-HHMMSS.tar.gpg
 #   docker compose start api worker
+#   docker compose run --rm api python -m app.scripts.replay_erasures
+# La dernière commande refait les effacements RGPD faits depuis la sauvegarde (registre gardé
+# hors de la base) : sans elle, des personnes effacées réapparaîtraient.
 set -eu
 
 : "${BACKUP_PASSPHRASE:?BACKUP_PASSPHRASE est requise}"
@@ -20,3 +23,4 @@ pg_restore -h db -U meal -d meal --clean --if-exists --no-owner --exit-on-error 
 find /data/files -mindepth 1 -delete
 tar -C /data -xzf "$work/files.tar.gz"
 echo "Restauré depuis $archive"
+echo "À faire maintenant : docker compose run --rm api python -m app.scripts.replay_erasures"

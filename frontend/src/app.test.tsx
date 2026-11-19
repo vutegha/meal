@@ -111,7 +111,8 @@ it("connecte l'utilisateur ouvre le tableau de bord d'un projet puis son cadre l
 
   await user.click(await screen.findByText("Résilience des ménages"));
   expect(router.state.location.pathname).toBe("/orgs/org-1/projects/p1");
-  expect(screen.getByRole("button", { name: "Tableau de bord" })).toHaveAttribute(
+  // La page du projet est chargée à la demande.
+  expect(await screen.findByRole("button", { name: "Tableau de bord" })).toHaveAttribute(
     "aria-current",
     "page",
   );

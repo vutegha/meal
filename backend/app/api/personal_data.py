@@ -8,9 +8,10 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy import ColumnElement, String, cast, delete, or_, select
 
 from app.api.deps import OrgAdmin, SessionDep
+from app.core.crypto import phone_index
 from app.models import (
     CollectionForm,
     Evidence,
@@ -27,7 +28,7 @@ from app.schemas.personal_data import (
     PersonalDataResult,
     SubmissionMatch,
 )
-from app.services import audit, sms
+from app.services import audit, erasures, sms
 from app.services.retention import anonymize_feedback
 
 router = APIRouter(prefix="/orgs/{org_id}/personal-data", tags=["données personnelles"])
@@ -61,17 +62,28 @@ async def search_person(
     phone = sms.normalize_phone(needle)
     projects = {p.id: p.code for p in await session.scalars(select(Project))}
 
-    feedback_filter = [
-        FeedbackEntry.contact.ilike(pattern),
+    feedback_filter: list[ColumnElement[bool]] = [
         FeedbackEntry.description.ilike(pattern),
         FeedbackEntry.response.ilike(pattern),
     ]
+    # Le contact est chiffré en base : un numéro se retrouve par son empreinte (« +243 99
+    # 000-0001 » et « 0990000001 » donnent la même), un nom en lisant les contacts de l'espace.
+    lowered = needle.lower()
+    named = [
+        entry_id
+        for entry_id, contact in await session.execute(
+            select(FeedbackEntry.id, FeedbackEntry.contact).where(FeedbackEntry.contact != "")
+        )
+        if lowered in contact.lower()
+    ]
+    if named:
+        feedback_filter.append(FeedbackEntry.id.in_(named))
     if phone:
-        # Un même numéro s'écrit « +243 99 000-0001 » ou « 0990000001 » : on compare les
-        # 9 derniers chiffres du contact saisi.
-        digits = func.regexp_replace(FeedbackEntry.contact, "[^0-9]", "", "g")
         phone_ids = select(SmsMessage.feedback_id).where(SmsMessage.phone == phone)
-        feedback_filter += [digits.like(f"%{phone[-9:]}"), FeedbackEntry.id.in_(phone_ids)]
+        feedback_filter += [
+            FeedbackEntry.contact_index == phone_index(phone),
+            FeedbackEntry.id.in_(phone_ids),
+        ]
     entries = list(
         await session.scalars(
             select(FeedbackEntry)
@@ -203,6 +215,9 @@ async def erase_person(
             delete(FormSubmission).where(FormSubmission.id.in_(body.submission_ids))
         )
         removed = result.rowcount  # type: ignore[attr-defined]
+    # Refaits après une restauration de sauvegarde (registre hors de la base).
+    erasures.record(session, "feedback", [e.id for e in entries], org_id)
+    erasures.record(session, "submission", body.submission_ids, org_id)
     audit.record(
         session,
         organization_id=org_id,

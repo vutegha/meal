@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Pager, Select } from "@/components/ui";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import {
@@ -24,6 +24,7 @@ import { discard, newId, queueFeedback, syncOutbox, usePending } from "@/lib/out
 import { permissions } from "@/lib/permissions";
 import { useOnline } from "@/lib/useOnline";
 import {
+  feedbackEntryQuery,
   feedbackQuery,
   feedbackSmsQuery,
   feedbackStatsQuery,
@@ -511,6 +512,13 @@ function FeedbackItem({
   const { role, me } = useCurrentOrg();
   const [handling, setHandling] = useState(false);
   const [texting, setTexting] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  // Le contact n'est pas dans la liste : la fiche est lue (et journalisée) à la demande.
+  const detail = useQuery({
+    ...feedbackEntryQuery(orgId, projectId, entry.id),
+    enabled: entry.has_contact && (revealed || texting),
+  });
+  const full = detail.data ?? entry;
   const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
   const manager = permissions.manageProjects(role);
   const canHandle = entry.sensitive
@@ -549,7 +557,20 @@ function FeedbackItem({
         {activity && `${activity} · `}
         {entry.anonymous
           ? t("feedback.anonymousShort")
-          : entry.contact && `${t("feedback.contact")} : ${entry.contact} · `}
+          : full.contact
+            ? `${t("feedback.contact")} : ${full.contact} · `
+            : entry.has_contact && (
+                <>
+                  <button
+                    type="button"
+                    className="font-medium text-brand-700 hover:underline"
+                    onClick={() => setRevealed(true)}
+                  >
+                    {t("feedback.showContact")}
+                  </button>
+                  {" · "}
+                </>
+              )}
         {assignee && `${t("feedback.assignedTo")} : ${assignee} · `}
         {entry.response_days !== null
           ? t("feedback.answeredIn", { count: entry.response_days })
@@ -584,7 +605,7 @@ function FeedbackItem({
           )}
         </div>
       )}
-      {texting && <SmsThread orgId={orgId} projectId={projectId} entry={entry} />}
+      {texting && <SmsThread orgId={orgId} projectId={projectId} entry={full} />}
       {handling && (
         <HandleForm
           orgId={orgId}
@@ -601,7 +622,17 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
   const { t, i18n } = useTranslation();
   const { role } = useCurrentOrg();
   const canCollect = permissions.recordValues(role);
-  const entries = useQuery(feedbackQuery(orgId, projectId));
+  const [status, setStatus] = useState<FeedbackStatus | "open" | "">("open");
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+  const entries = useQuery(
+    feedbackQuery(orgId, projectId, {
+      ...(status === "open" ? { open: true } : status ? { status } : {}),
+      q: search,
+      offset,
+    }),
+  );
+  const page = entries.data;
   const stats = useQuery(feedbackStatsQuery(orgId, projectId));
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const members = useQuery(membersQuery(orgId));
@@ -620,16 +651,11 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
       setSyncing(false);
     }
   };
-  const [status, setStatus] = useState<FeedbackStatus | "open" | "">("open");
   const nodes = new Map(flattenTree(logframe.data ?? []).map((n) => [n.id, n]));
   const people = new Map(
     (members.data ?? []).map((m) => [m.user.id, m.user.full_name || m.user.email]),
   );
-  const shown = (entries.data ?? []).filter((e) =>
-    status === "open"
-      ? e.status === "received" || e.status === "in_progress"
-      : !status || e.status === status,
-  );
+  const shown = page?.items ?? [];
   const s = stats.data;
 
   return (
@@ -674,7 +700,10 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
             aria-label={t("feedback.statusLabel")}
             className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             value={status}
-            onChange={(e) => setStatus(e.target.value as typeof status)}
+            onChange={(e) => {
+              setStatus(e.target.value as typeof status);
+              setOffset(0);
+            }}
           >
             <option value="open">{t("feedback.filterOpen")}</option>
             <option value="">{t("feedback.filterAll")}</option>
@@ -742,6 +771,17 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
             🔒 {t("feedback.hidden", { count: s.hidden_sensitive })}
           </p>
         )}
+        <input
+          type="search"
+          className="mb-3 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          placeholder={t("common.search")}
+          aria-label={t("common.search")}
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOffset(0);
+          }}
+        />
         <ErrorText error={entries.error} />
         {shown.length ? (
           <ul className="divide-y divide-slate-100">
@@ -761,6 +801,23 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
           </ul>
         ) : (
           !entries.isPending && <p className="text-sm text-slate-500">{t("feedback.empty")}</p>
+        )}
+        {page && (
+          <Pager
+            total={page.total}
+            offset={page.offset}
+            limit={page.limit}
+            onChange={setOffset}
+            labels={{
+              range: t("common.pageRange", {
+                from: page.offset + 1,
+                to: page.offset + page.items.length,
+                total: page.total,
+              }),
+              previous: t("common.previous"),
+              next: t("common.next"),
+            }}
+          />
         )}
       </Card>
     </>

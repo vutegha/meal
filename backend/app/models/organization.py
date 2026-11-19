@@ -3,7 +3,17 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, false, func, true
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    false,
+    func,
+    true,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -93,7 +103,9 @@ class PasswordReset(IdMixin, TimestampMixin, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
 
 class Membership(IdMixin, TimestampMixin, Base):
@@ -114,11 +126,15 @@ class Membership(IdMixin, TimestampMixin, Base):
 
 class AuditLog(IdMixin, Base):
     __tablename__ = "audit_logs"
+    # Journal d'une organisation, le plus récent d'abord.
+    __table_args__ = (Index("ix_audit_logs_org_recent", "organization_id", "created_at"),)
 
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
-    actor_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    actor_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     action: Mapped[str] = mapped_column(String(80))
     entity_type: Mapped[str] = mapped_column(String(80))
     entity_id: Mapped[UUID | None]

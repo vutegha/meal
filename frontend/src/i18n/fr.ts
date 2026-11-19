@@ -10,6 +10,10 @@ export const fr = {
     loading: "Chargement…",
     logout: "Se déconnecter",
     error: "Une erreur est survenue. Réessayez.",
+    pageRange: "{{from}}–{{to}} sur {{total}}",
+    previous: "Précédent",
+    next: "Suivant",
+    search: "Rechercher",
   },
   auth: {
     otpCode: "Code de vérification",
@@ -652,6 +656,7 @@ export const fr = {
     refresh: "Recalculer les tableaux",
   },
   feedback: {
+    showContact: "Voir le contact",
     title: "Plaintes et retours communautaires",
     intro:
       "Chaque retour reçoit une référence et un délai de réponse : 14 jours, 3 jours pour les cas sensibles. Les cas sensibles (fraude, exploitation et abus sexuels, sécurité) ne sont visibles que des responsables, de la personne qui les saisit et de celle qui les traite.",

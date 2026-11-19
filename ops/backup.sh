@@ -29,6 +29,12 @@ PASS
   # Les sauvegardes plus anciennes que BACKUP_KEEP_DAYS jours sont supprimées.
   find /backups -name 'wemeal-*.tar.gpg' -mtime +"$BACKUP_KEEP_DAYS" -delete
   echo "Sauvegarde /backups/wemeal-$stamp.tar.gpg ($(du -h "/backups/wemeal-$stamp.tar.gpg" | cut -f1))"
+  # Copie hors du serveur : BACKUP_COPY_CMD reçoit le chemin du fichier chiffré en $1
+  # (par exemple une commande qui l'envoie vers un stockage objet ou un autre serveur).
+  if [ -n "${BACKUP_COPY_CMD:-}" ]; then
+    sh -c "$BACKUP_COPY_CMD" copy "/backups/wemeal-$stamp.tar.gpg" \
+      || echo "ÉCHEC de la copie hors du serveur" >&2
+  fi
 }
 
 case "${1:-schedule}" in

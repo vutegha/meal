@@ -3,35 +3,70 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Outlet,
   redirect,
   type RouterHistory,
 } from "@tanstack/react-router";
 
-import { AccountPage } from "@/features/account/AccountPage";
-import { AdminPage } from "@/features/admin/AdminPage";
-import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { RegisterPage } from "@/features/auth/RegisterPage";
-import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
-import { BillingPage } from "@/features/orgs/BillingPage";
 import { FeatureGate } from "@/features/orgs/FeatureGate";
-import { MembersPage } from "@/features/orgs/MembersPage";
-import { OrgDashboardPage } from "@/features/orgs/OrgDashboardPage";
-import { OrgLessonsPage } from "@/features/orgs/OrgLessonsPage";
-import { PrivacyPage } from "@/features/orgs/PrivacyPage";
-import { TemplatesPage } from "@/features/orgs/TemplatesPage";
 import { OrgLayout } from "@/features/orgs/OrgLayout";
-import { ProjectPage } from "@/features/projects/ProjectPage";
-import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { PROJECT_TABS, type ProjectTab } from "@/features/projects/tabs";
-import { FeaturesPage } from "@/features/site/FeaturesPage";
-import { HomePage } from "@/features/site/HomePage";
-import { PricingPage } from "@/features/site/PricingPage";
 import type { AccountType } from "@/lib/api";
 import { type Cycle, CYCLES } from "@/lib/billing";
 import { loadProfile } from "@/lib/session";
 import { tokenStore } from "@/lib/tokens";
+
+// Chaque page est un fichier JavaScript à part, chargé quand on l'ouvre : le premier affichage
+// sur un téléphone en 3G ne télécharge que la coque de l'application et la page demandée. Le
+// service worker garde ensuite toutes les pages pour le hors-ligne.
+const AccountPage = lazyRouteComponent(
+  () => import("@/features/account/AccountPage"),
+  "AccountPage",
+);
+const AdminPage = lazyRouteComponent(() => import("@/features/admin/AdminPage"), "AdminPage");
+const ForgotPasswordPage = lazyRouteComponent(
+  () => import("@/features/auth/ForgotPasswordPage"),
+  "ForgotPasswordPage",
+);
+const RegisterPage = lazyRouteComponent(
+  () => import("@/features/auth/RegisterPage"),
+  "RegisterPage",
+);
+const ResetPasswordPage = lazyRouteComponent(
+  () => import("@/features/auth/ResetPasswordPage"),
+  "ResetPasswordPage",
+);
+const BillingPage = lazyRouteComponent(() => import("@/features/orgs/BillingPage"), "BillingPage");
+const MembersPage = lazyRouteComponent(() => import("@/features/orgs/MembersPage"), "MembersPage");
+const OrgDashboardPage = lazyRouteComponent(
+  () => import("@/features/orgs/OrgDashboardPage"),
+  "OrgDashboardPage",
+);
+const OrgLessonsPage = lazyRouteComponent(
+  () => import("@/features/orgs/OrgLessonsPage"),
+  "OrgLessonsPage",
+);
+const PrivacyPage = lazyRouteComponent(() => import("@/features/orgs/PrivacyPage"), "PrivacyPage");
+const TemplatesPage = lazyRouteComponent(
+  () => import("@/features/orgs/TemplatesPage"),
+  "TemplatesPage",
+);
+const ProjectPage = lazyRouteComponent(
+  () => import("@/features/projects/ProjectPage"),
+  "ProjectPage",
+);
+const ProjectsPage = lazyRouteComponent(
+  () => import("@/features/projects/ProjectsPage"),
+  "ProjectsPage",
+);
+const FeaturesPage = lazyRouteComponent(
+  () => import("@/features/site/FeaturesPage"),
+  "FeaturesPage",
+);
+const HomePage = lazyRouteComponent(() => import("@/features/site/HomePage"), "HomePage");
+const PricingPage = lazyRouteComponent(() => import("@/features/site/PricingPage"), "PricingPage");
 
 interface RouterContext {
   queryClient: QueryClient;

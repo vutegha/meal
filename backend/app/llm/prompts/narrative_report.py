@@ -38,7 +38,9 @@ def build_content(context: str, sections: list[tuple[str, str, str]]) -> list[di
         for key, title, guidance in sections
     )
     return [
-        {"type": "text", "text": context},
+        # Contexte d'abord, mis en cache : régénérer (autres consignes, autres sections) le relit
+        # au dixième du prix au lieu de le repayer en entier.
+        {"type": "text", "text": context, "cache_control": {"type": "ephemeral"}},
         {
             "type": "text",
             "text": (

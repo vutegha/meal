@@ -140,7 +140,7 @@ async def enqueue(job: Job) -> None:
     from arq.connections import RedisSettings
 
     try:
-        redis = RedisSettings.from_dsn(get_settings().redis_url)
+        redis = RedisSettings.from_dsn(get_settings().redis_dsn)
         # Une seule tentative : la personne attend la réponse.
         redis.conn_retries = 1
         pool = await create_pool(redis)

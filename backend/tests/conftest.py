@@ -8,6 +8,9 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-with-enough-length-01234567
 os.environ["JOBS_INLINE"] = "true"
 os.environ["LOGIN_RATE_LIMIT_STORAGE"] = "memory"
 os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="wemeal-test-files-")
+os.environ["ERASURE_LOG_PATH"] = os.path.join(
+    tempfile.mkdtemp(prefix="wemeal-test-erasures-"), "erasures.jsonl"
+)
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -48,6 +51,7 @@ async def database() -> AsyncIterator[None]:
         ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.run_sync(Base.metadata.create_all)
         for statement in rls.all_statements():
             await conn.execute(text(statement))

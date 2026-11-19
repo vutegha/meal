@@ -27,10 +27,18 @@ from app.api import (
 )
 from app.core.config import get_settings
 from app.core.db import SessionLocal, check_role
+from app.core.observability import (
+    ObservabilityMiddleware,
+    init_sentry,
+    metrics_payload,
+    setup_logging,
+)
 from app.services import ratelimit
 from app.services.jobs import QueueUnavailable
 
 settings = get_settings()
+setup_logging()
+init_sentry()
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +57,7 @@ app = FastAPI(
     docs_url=None if settings.is_production else "/api/docs",
     redoc_url=None,
 )
+app.add_middleware(ObservabilityMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -81,6 +90,13 @@ api.include_router(sms.router)
 api.include_router(admin.router)
 api.include_router(personal_data.router)
 app.include_router(api)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Mesures Prometheus ; joignable seulement depuis le réseau Docker (Caddy ne le sert pas)."""
+    payload, content_type = metrics_payload()
+    return Response(payload, media_type=content_type)
 
 
 @app.get("/health", tags=["système"])

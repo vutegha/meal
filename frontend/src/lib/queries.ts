@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 
 import {
   accountabilityApi,
@@ -6,7 +6,9 @@ import {
   api,
   dashboardApi,
   type DashboardFilters,
+  type ExecutionFilters,
   executionsApi,
+  type FeedbackFilters,
   periodicApi,
   projectsApi,
   reportsApi,
@@ -97,10 +99,17 @@ export const torVersionsQuery = (orgId: string, projectId: string, torId: string
     queryFn: () => torApi.versions(orgId, projectId, torId),
   });
 
-export const executionsQuery = (orgId: string, projectId: string) =>
+export const executionsQuery = (orgId: string, projectId: string, filters: ExecutionFilters = {}) =>
   queryOptions({
-    queryKey: [...projectKey(orgId, projectId), "executions"],
-    queryFn: () => executionsApi.list(orgId, projectId),
+    queryKey: [...projectKey(orgId, projectId), "executions", "list", filters],
+    queryFn: () => executionsApi.list(orgId, projectId, filters),
+    placeholderData: keepPreviousData,
+  });
+
+export const executionsSummaryQuery = (orgId: string, projectId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "executions", "summary"],
+    queryFn: () => executionsApi.summary(orgId, projectId),
   });
 
 export const executionQuery = (orgId: string, projectId: string, executionId: string) =>
@@ -139,10 +148,18 @@ export const periodicQuery = (orgId: string, projectId: string, reportId: string
     queryFn: () => periodicApi.get(orgId, projectId, reportId),
   });
 
-export const feedbackQuery = (orgId: string, projectId: string) =>
+export const feedbackQuery = (orgId: string, projectId: string, filters: FeedbackFilters = {}) =>
   queryOptions({
-    queryKey: [...projectKey(orgId, projectId), "feedback"],
-    queryFn: () => accountabilityApi.feedback(orgId, projectId),
+    queryKey: [...projectKey(orgId, projectId), "feedback", "list", filters],
+    queryFn: () => accountabilityApi.feedback(orgId, projectId, filters),
+    placeholderData: keepPreviousData,
+  });
+
+/** Fiche d'un retour, avec le contact : chargée seulement quand on l'ouvre. */
+export const feedbackEntryQuery = (orgId: string, projectId: string, feedbackId: string) =>
+  queryOptions({
+    queryKey: [...projectKey(orgId, projectId), "feedback", "entry", feedbackId],
+    queryFn: () => accountabilityApi.feedbackEntry(orgId, projectId, feedbackId),
   });
 
 export const feedbackStatsQuery = (orgId: string, projectId: string) =>

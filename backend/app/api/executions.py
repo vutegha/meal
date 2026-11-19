@@ -12,10 +12,22 @@ from decimal import Decimal
 from typing import Annotated, BinaryIO
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile, status
-from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlalchemy import Date, func, select
 from sqlalchemy.orm import selectinload
+from starlette.datastructures import Headers
 
 from app.api.deps import AnyMember, SessionDep, require_membership
 from app.api.projects import Collector, ProjectAdmin, _flush, _log
@@ -33,13 +45,17 @@ from app.models import (
     BudgetLine,
     Evidence,
     EvidenceKind,
+    ExecutionStatus,
     Expense,
     LogframeNode,
     Membership,
+    NarrativeReport,
     Project,
+    ReportStatus,
     Role,
 )
 from app.schemas.execution import (
+    ActivityRuns,
     ConsentMethod,
     EvidenceOut,
     EvidenceUpdate,
@@ -48,10 +64,12 @@ from app.schemas.execution import (
     ExecutionExpenseOut,
     ExecutionIn,
     ExecutionOut,
+    ExecutionPage,
     ExecutionUpdate,
     Participants,
+    UploadProgress,
 )
-from app.services import audit
+from app.services import audit, uploads
 from app.services import projects as svc
 from app.services.evidence import UnsupportedFile, media_file, process, render_thumbnail
 
@@ -96,7 +114,9 @@ async def _spent(session: SessionDep, execution_ids: list[UUID]) -> dict[UUID, D
     return {execution_id: total for execution_id, total in rows if execution_id}
 
 
-def execution_out(execution: ActivityExecution, spent: Decimal | None) -> ExecutionOut:
+def execution_out(
+    execution: ActivityExecution, spent: Decimal | None, evidence_count: int | None = None
+) -> ExecutionOut:
     participants = Participants.model_validate(execution.participants)
     return ExecutionOut.model_validate(
         {
@@ -107,7 +127,7 @@ def execution_out(execution: ActivityExecution, spent: Decimal | None) -> Execut
             },
             "participants": participants,
             "participants_total": participants.total,
-            "evidence_count": len(execution.evidence),
+            "evidence_count": len(execution.evidence) if evidence_count is None else evidence_count,
             "spent": spent or Decimal(0),
         }
     )
@@ -162,26 +182,113 @@ async def _detail(session: SessionDep, execution: ActivityExecution) -> Executio
 # --- Exécutions ------------------------------------------------------------------
 
 
-@router.get("/executions", response_model=list[ExecutionOut])
+@router.get("/executions", response_model=ExecutionPage)
 async def list_executions(
     org_id: UUID,
     project_id: UUID,
     _: AnyMember,
     session: SessionDep,
     activity_id: UUID | None = None,
-) -> list[ExecutionOut]:
+    status_filter: Annotated[ExecutionStatus | None, Query(alias="status")] = None,
+    q: Annotated[str, Query(max_length=200)] = "",
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ExecutionPage:
     project = await svc.get_project(session, org_id, project_id)
-    query = (
-        select(ActivityExecution)
-        .where(ActivityExecution.project_id == project.id)
-        .options(selectinload(ActivityExecution.evidence))
-        .order_by(ActivityExecution.start_date.desc(), ActivityExecution.created_at.desc())
-    )
+    where = [ActivityExecution.project_id == project.id]
     if activity_id:
-        query = query.where(ActivityExecution.activity_id == activity_id)
-    executions = list(await session.scalars(query))
-    spent = await _spent(session, [e.id for e in executions])
-    return [execution_out(e, spent.get(e.id)) for e in executions]
+        where.append(ActivityExecution.activity_id == activity_id)
+    if status_filter:
+        where.append(ActivityExecution.status == status_filter)
+    if q.strip():
+        pattern = f"%{q.strip()}%"
+        where.append(
+            ActivityExecution.title.ilike(pattern) | ActivityExecution.location.ilike(pattern)
+        )
+    total = await session.scalar(select(func.count()).select_from(ActivityExecution).where(*where))
+    evidence_count = (
+        select(func.count(Evidence.id))
+        .where(Evidence.execution_id == ActivityExecution.id)
+        .correlate(ActivityExecution)
+        .scalar_subquery()
+    )
+    rows = (
+        await session.execute(
+            select(ActivityExecution, evidence_count)
+            .where(*where)
+            .order_by(ActivityExecution.start_date.desc(), ActivityExecution.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    spent = await _spent(session, [e.id for e, _ in rows])
+    return ExecutionPage(
+        items=[execution_out(e, spent.get(e.id), count) for e, count in rows],
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/executions/summary", response_model=list[ActivityRuns])
+async def executions_summary(
+    org_id: UUID, project_id: UUID, _: AnyMember, session: SessionDep
+) -> list[ActivityRuns]:
+    """Par activité : nombre d'exécutions, terminées, participants et rapports approuvés."""
+    project = await svc.get_project(session, org_id, project_id)
+    people = {
+        key: func.coalesce(func.sum(ActivityExecution.participants[key].as_integer()), 0).label(key)
+        for key in Participants.model_fields
+    }
+    approved = (
+        select(
+            ActivityExecution.activity_id.label("activity_id"),
+            func.count(NarrativeReport.id).label("approved"),
+        )
+        .join(NarrativeReport, NarrativeReport.execution_id == ActivityExecution.id)
+        .where(
+            ActivityExecution.project_id == project.id,
+            NarrativeReport.status == ReportStatus.APPROVED,
+        )
+        .group_by(ActivityExecution.activity_id)
+        .subquery()
+    )
+    runs = (
+        select(
+            ActivityExecution.activity_id,
+            func.count().label("n"),
+            func.count()
+            .filter(ActivityExecution.status == ExecutionStatus.COMPLETED)
+            .label("completed"),
+            func.max(ActivityExecution.start_date).label("last_start_date"),
+            func.array_agg(
+                func.date_trunc("month", ActivityExecution.start_date).cast(Date).distinct()
+            ).label("months"),
+            *people.values(),
+        )
+        .where(ActivityExecution.project_id == project.id)
+        .group_by(ActivityExecution.activity_id)
+        .subquery()
+    )
+    rows = await session.execute(
+        select(runs, func.coalesce(approved.c.approved, 0).label("approved")).outerjoin(
+            approved, approved.c.activity_id == runs.c.activity_id
+        )
+    )
+    return [
+        ActivityRuns(
+            activity_id=row.activity_id,
+            count=row.n,
+            completed=row.completed,
+            last_start_date=row.last_start_date,
+            months=sorted(row.months),
+            participants=Participants.model_construct(
+                **{key: getattr(row, key) for key in Participants.model_fields}
+            ),
+            approved_reports=row.approved,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/executions", response_model=ExecutionDetail, status_code=status.HTTP_201_CREATED)
@@ -318,6 +425,49 @@ def _measure(source: BinaryIO, limit: int) -> tuple[int, str]:
     return size, digest.hexdigest()
 
 
+@router.get("/uploads/{upload_id}", response_model=UploadProgress)
+async def upload_progress(
+    org_id: UUID, project_id: UUID, upload_id: UUID, member: Collector, session: SessionDep
+) -> UploadProgress:
+    """Où en est un envoi par morceaux : le téléphone reprend à partir de `received`."""
+    await svc.get_project(session, org_id, project_id)
+    return UploadProgress(
+        received=uploads.received(uploads.part_path(org_id, member.user_id, upload_id))
+    )
+
+
+@router.put("/uploads/{upload_id}", response_model=UploadProgress)
+async def upload_chunk(
+    org_id: UUID,
+    project_id: UUID,
+    upload_id: UUID,
+    request: Request,
+    member: Collector,
+    session: SessionDep,
+    content_range: Annotated[str, Header()],
+) -> UploadProgress | JSONResponse:
+    """Ajoute un morceau (`Content-Range: bytes début-fin/total`) à un envoi en cours."""
+    await svc.get_project(session, org_id, project_id)
+    await session.commit()  # rien à garder ouvert pendant la réception du morceau
+    path = uploads.part_path(org_id, member.user_id, upload_id)
+    try:
+        start, end, total = uploads.parse_range(content_range)
+        if end - start + 1 > uploads.MAX_CHUNK_BYTES:
+            raise uploads.RangeError("Morceau trop gros", uploads.received(path))
+        chunk = await request.body()
+        if len(chunk) != end - start + 1:
+            raise uploads.RangeError(
+                "Taille du morceau différente du Content-Range", uploads.received(path)
+            )
+        limit = _limit(max(get_settings().max_media_mb, get_settings().max_upload_mb))
+        done = await asyncio.to_thread(uploads.append, path, start, chunk, total, limit)
+    except uploads.RangeError as exc:
+        return JSONResponse(
+            {"detail": str(exc), "received": exc.received}, status_code=status.HTTP_409_CONFLICT
+        )
+    return UploadProgress(received=done)
+
+
 @router.post(
     "/executions/{execution_id}/evidence",
     response_model=EvidenceOut,
@@ -327,10 +477,14 @@ async def upload_evidence(
     org_id: UUID,
     project_id: UUID,
     execution_id: UUID,
-    file: UploadFile,
     member: Collector,
     session: SessionDep,
     response: Response,
+    file: UploadFile | None = None,
+    # Fichier envoyé par morceaux (PUT /uploads/{id}) : nom et type d'origine à part.
+    upload_id: Annotated[UUID | None, Form()] = None,
+    upload_filename: Annotated[str, Form(max_length=300)] = "",
+    upload_content_type: Annotated[str, Form(max_length=200)] = "",
     kind: Annotated[EvidenceKind, Form()] = EvidenceKind.OTHER,
     caption: Annotated[str, Form(max_length=2000)] = "",
     consent_given: Annotated[bool, Form()] = False,
@@ -354,6 +508,56 @@ async def upload_evidence(
             response.status_code = status.HTTP_200_OK
             return evidence_out(existing)
 
+    part = None
+    if file is None:
+        if upload_id is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Fichier manquant")
+        part = uploads.part_path(org_id, member.user_id, upload_id)
+        if not part.exists():
+            raise HTTPException(status.HTTP_409_CONFLICT, "Envoi par morceaux introuvable")
+        file = UploadFile(
+            file=part.open("rb"),
+            filename=upload_filename or "piece",
+            headers=Headers({"content-type": upload_content_type or "application/octet-stream"}),
+        )
+    try:
+        return await _store_evidence(
+            session,
+            project,
+            execution,
+            member,
+            file,
+            kind,
+            caption,
+            consent_given,
+            consent_method,
+            client_uuid,
+            taken_at,
+            latitude,
+            longitude,
+        )
+    finally:
+        if part is not None:
+            await file.close()
+            part.unlink(missing_ok=True)
+
+
+async def _store_evidence(
+    session: SessionDep,
+    project: Project,
+    execution: ActivityExecution,
+    member: Membership,
+    file: UploadFile,
+    kind: EvidenceKind,
+    caption: str,
+    consent_given: bool,
+    consent_method: ConsentMethod | None,
+    client_uuid: UUID | None,
+    taken_at: datetime | None,
+    latitude: Decimal | None,
+    longitude: Decimal | None,
+) -> EvidenceOut:
+    org_id = project.organization_id
     filename = file.filename or "piece"
     settings = get_settings()
     storage = get_storage()

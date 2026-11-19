@@ -7,14 +7,22 @@ x-backend-env: &backend-env
   # propriétaire des tables, il ne voit les données qu'à travers la Row Level Security.
   DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-meal_api}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
   # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
   # (docker compose --profile s3 up) pour les stocker dans MinIO.
   STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
   STORAGE_LOCAL_PATH: /data/files
+  # Registre des effacements RGPD (identifiants seulement), hors des sauvegardes : rejoué après
+  # une restauration (python -m app.scripts.replay_erasures).
+  ERASURE_LOG_PATH: /data/erasures/erasures.jsonl
   S3_ENDPOINT: http://minio:9000
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-meal}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
+  # Suivi des erreurs (Sentry ou GlitchTip auto-hébergé) : vide = rien n'est envoyé. Les données
+  # personnelles sont retirées avant l'envoi (app/core/observability.py).
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-0}
   VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
@@ -43,6 +51,32 @@ x-backend-env: &backend-env
 services:
   db:
     image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    # Réglages pour un serveur de 4 Go de mémoire (à adapter dans .env). Requêtes de plus de
+    # 200 ms journalisées sans leurs paramètres (noms, téléphones), statistiques par requête.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1536MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-16MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-128MB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-100}
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - log_min_duration_statement=${PG_SLOW_QUERY_MS:-200}
+      - -c
+      - log_parameter_max_length=0
+      - -c
+      - log_parameter_max_length_on_error=0
+    shm_size: 256mb
     environment:
       POSTGRES_USER: meal
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
@@ -55,7 +89,17 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    # Joignable seulement sur le réseau Docker ; mot de passe si REDIS_PASSWORD est défini.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction $${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\" --no-auth-warning} ping | grep -q PONG"]
+      interval: 10s
+      retries: 5
+    mem_limit: ${REDIS_MEM_LIMIT:-384m}
 
   minio:
     # MinIO ne publie plus d'image sur Docker Hub : indiquer une image disponible dans MINIO_IMAGE.
@@ -82,11 +126,18 @@ services:
 
   api:
     build: ./backend
-    environment: *backend-env
-    volumes: [files:/data/files]
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      # Processus de l'API : 2 par cœur. Un export lourd n'immobilise plus les autres.
+      API_WORKERS: ${API_WORKERS:-2}
+    # Mesures Prometheus des processus : dossier en mémoire, neuf à chaque démarrage.
+    tmpfs: [/tmp/metrics]
+    mem_limit: ${API_MEM_LIMIT:-1g}
+    volumes: [files:/data/files, erasures:/data/erasures]
     depends_on:
       migrate: { condition: service_completed_successfully }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
     # Base et Redis joignables (GET /health/ready) : `docker compose ps` signale une panne.
     healthcheck:
       test:
@@ -100,13 +151,21 @@ services:
 
   worker:
     build: ./backend
+    restart: unless-stopped
     command: arq app.workers.settings.WorkerSettings
     environment: *backend-env
-    volumes: [files:/data/files]
+    # OCR, PDF et IA : le service le plus gourmand en mémoire.
+    mem_limit: ${WORKER_MEM_LIMIT:-1536m}
+    healthcheck:
+      test: ["CMD", "arq", "--check", "app.workers.settings.WorkerSettings"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    volumes: [files:/data/files, erasures:/data/erasures]
     depends_on:
       migrate: { condition: service_completed_successfully }
       api: { condition: service_started }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
 
   # Sauvegarde chiffrée quotidienne de la base et des fichiers dans BACKUP_DIR (ops/backup.sh).
   # Copier ce dossier hors du serveur : une sauvegarde sur la même machine ne protège pas
@@ -119,6 +178,7 @@ services:
       BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?Définir BACKUP_PASSPHRASE dans .env}
       BACKUP_HOUR: ${BACKUP_HOUR:-2}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_COPY_CMD: ${BACKUP_COPY_CMD:-}
     volumes:
       - ./ops:/ops:ro
       - files:/data/files
@@ -129,6 +189,7 @@ services:
 
   web:
     build: ./frontend
+    restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
     ports: ["80:80", "443:443"]
@@ -137,6 +198,7 @@ services:
 
 volumes:
   files:
+  erasures:
   db-data:
   redis-data:
   minio-data:
