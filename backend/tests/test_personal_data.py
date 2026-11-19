@@ -187,3 +187,40 @@ async def test_erasures_are_replayed_after_a_restore(client: AsyncClient) -> Non
     assert "Kahindo" not in entry["description"] and entry["has_contact"] is False
     # Rejouer une deuxième fois ne change plus rien.
     assert (await replay())["feedback"] == 0
+
+
+async def test_contact_is_encrypted_at_rest(client: AsyncClient) -> None:
+    """Le contact n'est jamais en clair dans la base ; on retrouve la personne par son numéro
+    écrit autrement, ou par son nom."""
+    from sqlalchemy import text
+
+    ctx = await register(client, "chiffre@example.org")
+    h = ctx["headers"]
+    base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx)}"
+    r = await client.post(
+        f"{base}/feedback",
+        headers=h,
+        json={
+            "received_on": "2026-03-02",
+            "channel": "hotline",
+            "category": "complaint",
+            "description": "Distribution incomplète",
+            "contact": "Mama Furaha, +243 99 000-0001",
+        },
+    )
+    feedback_id = r.json()["id"]
+    async with owner_engine.connect() as conn:
+        stored, index = (
+            await conn.execute(
+                text("SELECT contact, contact_index FROM feedback_entries WHERE id = :id"),
+                {"id": feedback_id},
+            )
+        ).one()
+    assert stored.startswith("enc1:") and "Furaha" not in stored and "0001" not in stored
+    assert len(index) == 40
+    detail = (await client.get(f"{base}/feedback/{feedback_id}", headers=h)).json()
+    assert detail["contact"] == "Mama Furaha, +243 99 000-0001"
+    search = f"/api/v1/orgs/{ctx['org_id']}/personal-data"
+    for q in ("0990000001", "furaha"):
+        found = (await client.get(search, headers=h, params={"q": q})).json()
+        assert [e["id"] for e in found["feedback"]] == [feedback_id], q

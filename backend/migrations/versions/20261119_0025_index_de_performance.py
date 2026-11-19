@@ -64,14 +64,6 @@ def upgrade() -> None:
         op.f("ix_feedback_entries_assigned_to"), "feedback_entries", ["assigned_to"], unique=False
     )
     op.create_index(
-        "ix_feedback_entries_contact_trgm",
-        "feedback_entries",
-        ["contact"],
-        unique=False,
-        postgresql_using="gin",
-        postgresql_ops={"contact": "gin_trgm_ops"},
-    )
-    op.create_index(
         op.f("ix_feedback_entries_created_by"), "feedback_entries", ["created_by"], unique=False
     )
     op.create_index(
@@ -229,12 +221,6 @@ def downgrade() -> None:
         postgresql_ops={"description": "gin_trgm_ops"},
     )
     op.drop_index(op.f("ix_feedback_entries_created_by"), table_name="feedback_entries")
-    op.drop_index(
-        "ix_feedback_entries_contact_trgm",
-        table_name="feedback_entries",
-        postgresql_using="gin",
-        postgresql_ops={"contact": "gin_trgm_ops"},
-    )
     op.drop_index(op.f("ix_feedback_entries_assigned_to"), table_name="feedback_entries")
     op.drop_index(op.f("ix_feedback_entries_activity_id"), table_name="feedback_entries")
     op.drop_index(op.f("ix_evidence_uploaded_by"), table_name="evidence")

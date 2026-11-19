@@ -8,9 +8,10 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy import ColumnElement, String, cast, delete, or_, select
 
 from app.api.deps import OrgAdmin, SessionDep
+from app.core.crypto import phone_index
 from app.models import (
     CollectionForm,
     Evidence,
@@ -61,17 +62,28 @@ async def search_person(
     phone = sms.normalize_phone(needle)
     projects = {p.id: p.code for p in await session.scalars(select(Project))}
 
-    feedback_filter = [
-        FeedbackEntry.contact.ilike(pattern),
+    feedback_filter: list[ColumnElement[bool]] = [
         FeedbackEntry.description.ilike(pattern),
         FeedbackEntry.response.ilike(pattern),
     ]
+    # Le contact est chiffré en base : un numéro se retrouve par son empreinte (« +243 99
+    # 000-0001 » et « 0990000001 » donnent la même), un nom en lisant les contacts de l'espace.
+    lowered = needle.lower()
+    named = [
+        entry_id
+        for entry_id, contact in await session.execute(
+            select(FeedbackEntry.id, FeedbackEntry.contact).where(FeedbackEntry.contact != "")
+        )
+        if lowered in contact.lower()
+    ]
+    if named:
+        feedback_filter.append(FeedbackEntry.id.in_(named))
     if phone:
-        # Un même numéro s'écrit « +243 99 000-0001 » ou « 0990000001 » : on compare les
-        # 9 derniers chiffres du contact saisi.
-        digits = func.regexp_replace(FeedbackEntry.contact, "[^0-9]", "", "g")
         phone_ids = select(SmsMessage.feedback_id).where(SmsMessage.phone == phone)
-        feedback_filter += [digits.like(f"%{phone[-9:]}"), FeedbackEntry.id.in_(phone_ids)]
+        feedback_filter += [
+            FeedbackEntry.contact_index == phone_index(phone),
+            FeedbackEntry.id.in_(phone_ids),
+        ]
     entries = list(
         await session.scalars(
             select(FeedbackEntry)

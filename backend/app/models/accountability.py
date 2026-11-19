@@ -14,13 +14,30 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
+from app.core.crypto import decrypt_field, encrypt_field, phone_index
 from app.core.db import Base, IdMixin, TimestampMixin
 from app.models.report import ReportStatus
+
+
+class EncryptedText(TypeDecorator[str]):
+    """Texte chiffré à l'écriture et déchiffré à la lecture (app/core/crypto.py)."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: str | None, dialect: Dialect) -> str | None:
+        return None if value is None else encrypt_field(value)
+
+    def process_result_value(self, value: str | None, dialect: Dialect) -> str | None:
+        return None if value is None else decrypt_field(value)
 
 
 def _enum(cls: type[enum.Enum], name: str) -> Enum:
@@ -138,12 +155,6 @@ class FeedbackEntry(IdMixin, TimestampMixin, Base):
         # Recherche d'une personne (page Données personnelles) et recherche dans le registre :
         # index trigrammes, utilisés par ILIKE '%…%'.
         Index(
-            "ix_feedback_entries_contact_trgm",
-            "contact",
-            postgresql_using="gin",
-            postgresql_ops={"contact": "gin_trgm_ops"},
-        ),
-        Index(
             "ix_feedback_entries_description_trgm",
             "description",
             postgresql_using="gin",
@@ -170,7 +181,10 @@ class FeedbackEntry(IdMixin, TimestampMixin, Base):
         ForeignKey("logframe_nodes.id", ondelete="SET NULL"), index=True
     )
     anonymous: Mapped[bool] = mapped_column(default=False)
-    contact: Mapped[str] = mapped_column(String(300), default="")
+    # Chiffré en base (nom, téléphone) : illisible dans une copie de la base ou une sauvegarde
+    # volée. `contact_index` permet de retrouver un numéro sans le garder en clair.
+    contact: Mapped[str] = mapped_column(EncryptedText, default="")
+    contact_index: Mapped[str] = mapped_column(String(40), default="", index=True)
     status: Mapped[FeedbackStatus] = mapped_column(
         _enum(FeedbackStatus, "feedback_status"), default=FeedbackStatus.RECEIVED
     )
@@ -257,3 +271,9 @@ class Lesson(IdMixin, TimestampMixin, Base):
     created_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
+
+
+@event.listens_for(FeedbackEntry, "before_insert")
+@event.listens_for(FeedbackEntry, "before_update")
+def _index_contact(_: Any, __: Any, entry: FeedbackEntry) -> None:
+    entry.contact_index = phone_index(entry.contact or "")
