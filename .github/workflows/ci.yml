@@ -69,7 +69,9 @@ jobs:
   e2e:
     # Parcours complet dans un vrai navigateur : inscription, import et extraction IA (faux
     # modèle), TdR, exécution, rapport narratif, validation, exports, tableau de bord.
-    runs-on: ubuntu-latest
+    # Playwright 1.56 ne sait pas installer ses dépendances sur Ubuntu 26.04, devenue
+    # ubuntu-latest : version d'Ubuntu fixée pour ce job.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: pgvector/pgvector:pg16
