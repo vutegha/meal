@@ -38,7 +38,9 @@ export default defineConfig({
             urlPattern: ({ url, request }) =>
               url.pathname.startsWith("/api/v1/orgs/") &&
               request.method === "GET" &&
-              !url.pathname.includes("/export"),
+              !url.pathname.includes("/export") &&
+              // Photos, audios et vidéos des bénéficiaires : jamais gardés sur le téléphone.
+              !url.pathname.includes("/evidence/"),
             handler: "NetworkFirst",
             options: {
               cacheName: "api",

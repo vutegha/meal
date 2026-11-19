@@ -92,6 +92,12 @@ class Evidence(IdMixin, TimestampMixin, Base):
     # Photos de personnes : sans consentement, la photo reste dans le dossier mais n'est pas
     # reprise dans les rapports.
     consent_given: Mapped[bool] = mapped_column(default=False)
+    # Preuve du consentement : comment il a été recueilli, par qui et quand.
+    consent_method: Mapped[str] = mapped_column(String(20), default="", server_default="")
+    consent_recorded_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    consent_recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Texte extrait des documents (comptes rendus, rapports) pour le rapport narratif.
     text: Mapped[str] = mapped_column(Text, default="")
     page_count: Mapped[int] = mapped_column(default=0)

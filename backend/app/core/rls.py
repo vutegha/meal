@@ -9,7 +9,8 @@ démonstration) peuvent positionner `app.system`, jamais une requête HTTP.
 APP_ROLE = "meal_app"
 
 # Tables qui portent `organization_id` et sont filtrées. `memberships` reste hors RLS : c'est
-# elle qui permet de savoir à quelles organisations un utilisateur appartient.
+# elle qui permet de savoir à quelles organisations un utilisateur appartient. `subscriptions`
+# aussi : `/auth/me` lit la formule de chacune de ces organisations.
 TENANT_TABLES = (
     "audit_logs",
     "projects",
@@ -24,6 +25,7 @@ TENANT_TABLES = (
     "ai_proposals",
     "budget_lines",
     "feedback_entries",
+    "sms_messages",
     "indicators",
     "indicator_values",
     "terms_of_reference",
@@ -36,6 +38,7 @@ TENANT_TABLES = (
     "document_templates",
     "collection_forms",
     "form_submissions",
+    "payments",
 )
 
 POLICY = (

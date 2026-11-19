@@ -5,9 +5,9 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, or_, select
 
-from app.api.deps import AnyMember, SessionDep
+from app.api.deps import AnyMember, SessionDep, plan_feature
 from app.api.projects import Collector, Planner, ProjectAdmin, _flush, _log
 from app.core.config import get_settings
 from app.llm.client import LLMError
@@ -20,6 +20,8 @@ from app.models import (
     Membership,
     NarrativeReport,
     Project,
+    SmsDirection,
+    SmsMessage,
 )
 from app.schemas.accountability import (
     FeedbackClassifyIn,
@@ -31,7 +33,11 @@ from app.schemas.accountability import (
     LessonIn,
     LessonOut,
     LessonUpdate,
+    SmsOut,
+    SmsSendIn,
+    SmsSimulateIn,
 )
+from app.services import audit, billing, sms
 from app.services import feedback as fb
 from app.services import projects as svc
 from app.services.ai import call_structured
@@ -91,7 +97,35 @@ async def list_feedback(
     rows = await session.scalars(
         query.order_by(FeedbackEntry.received_on.desc(), FeedbackEntry.reference.desc())
     )
-    return [fb.out(member, e) for e in rows if fb.can_see(member, e)]
+    threads = await sms.summaries(session, project.id)
+    result = []
+    sensitive: list[str] = []
+    contacts = 0
+    for entry in rows:
+        if not fb.can_see(member, entry):
+            continue
+        item = fb.out(member, entry)
+        if fb.can_read_contact(member, entry) and entry.id in threads:
+            count, awaiting = threads[entry.id]
+            item = item.model_copy(update={"sms_count": count, "sms_awaiting_reply": awaiting})
+        result.append(item)
+        if entry.sensitive:
+            sensitive.append(entry.reference)
+        if item.contact:
+            contacts += 1
+    # Qui a vu les plaintes sensibles et les contacts : journalisé (références, pas de contenu).
+    if sensitive or contacts:
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="feedback.viewed",
+            entity_type="project",
+            entity_id=project.id,
+            data={"sensitive": sensitive, "contacts": contacts},
+        )
+        await session.commit()
+    return result
 
 
 @router.get(f"{PROJECT}/feedback/stats", response_model=FeedbackStats)
@@ -124,20 +158,22 @@ async def create_feedback(
             )
         )
         if existing is not None:
+            # Renvoi d'une saisie hors ligne : seul qui peut voir l'entrée la récupère.
+            if not fb.can_see(member, existing):
+                raise HTTPException(status.HTTP_409_CONFLICT, "Identifiant de saisie déjà utilisé")
             response.status_code = status.HTTP_200_OK
             return fb.out(member, existing)
     await _check_activity(session, project, body.activity_id)
-    count = await session.scalar(select(func.count()).where(FeedbackEntry.project_id == project.id))
     data = body.model_dump()
-    if data["sensitive"] is None:
-        data["sensitive"] = body.category in fb.SENSITIVE_CATEGORIES
+    # Une catégorie sensible est toujours confidentielle, quoi que demande le client.
+    data["sensitive"] = bool(data["sensitive"]) or body.category in fb.SENSITIVE_CATEGORIES
     if body.anonymous:
         data["contact"] = ""
     entry = FeedbackEntry(
         **data,
         organization_id=org_id,
         project_id=project.id,
-        reference=f"RET-{(count or 0) + 1:04d}",
+        reference=await sms.next_reference(session, project.id),
         created_by=member.user_id,
     )
     session.add(entry)
@@ -169,7 +205,7 @@ async def classify_feedback(
             system=classify_prompt.SYSTEM,
             content=classify_prompt.build_content(body.description, body.channel),
             output_type=FeedbackSuggestion,
-            effort=None,
+            effort="low",
         )
     except LLMError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
@@ -207,6 +243,8 @@ async def update_feedback(
         if key == "sensitive" and value is None:
             continue
         setattr(entry, key, value)
+    if entry.category in fb.SENSITIVE_CATEGORIES:
+        entry.sensitive = True
     if entry.anonymous:
         entry.contact = ""
 
@@ -249,6 +287,152 @@ async def delete_feedback(
     await session.commit()
 
 
+# --- SMS avec la personne à l'origine du retour ------------------------------------------
+
+
+async def _sms_thread(session: SessionDep, entry: FeedbackEntry) -> list[SmsOut]:
+    rows = await session.scalars(
+        select(SmsMessage).where(SmsMessage.feedback_id == entry.id).order_by(SmsMessage.created_at)
+    )
+    return [SmsOut.model_validate(m) for m in rows]
+
+
+@router.get(f"{PROJECT}/feedback/{{feedback_id}}/sms", response_model=list[SmsOut])
+async def list_feedback_sms(
+    org_id: UUID, project_id: UUID, feedback_id: UUID, member: AnyMember, session: SessionDep
+) -> list[SmsOut]:
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_read_contact(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Échanges réservés à qui traite ce retour")
+    thread = await _sms_thread(session, entry)
+    if thread:
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="feedback.messages_viewed",
+            entity_type="feedback",
+            entity_id=entry.id,
+            data={"reference": entry.reference},
+        )
+        await session.commit()
+    return thread
+
+
+@router.post(
+    f"{PROJECT}/feedback/{{feedback_id}}/sms",
+    response_model=SmsOut,
+    status_code=201,
+    dependencies=[plan_feature("messaging")],
+)
+async def send_feedback_sms(
+    org_id: UUID,
+    project_id: UUID,
+    feedback_id: UUID,
+    body: SmsSendIn,
+    member: AnyMember,
+    session: SessionDep,
+) -> SmsOut:
+    """Envoie un SMS ou un message WhatsApp à la personne.
+
+    Un échec du prestataire est enregistré et renvoyé tel quel.
+    """
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_handle(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Vous ne traitez pas ce retour")
+    if entry.anonymous:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Retour anonyme : aucun numéro à contacter"
+        )
+    phone = sms.normalize_phone(body.to or entry.contact)
+    if phone is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Aucun numéro de téléphone valide pour ce retour (ex. +243990000000)",
+        )
+    message = SmsMessage(
+        organization_id=org_id,
+        project_id=project.id,
+        feedback_id=entry.id,
+        channel=body.channel,
+        direction=SmsDirection.OUTBOUND,
+        phone=phone,
+        body=body.body.strip(),
+        status="queued",
+        provider="",
+        sent_by=member.user_id,
+    )
+    try:
+        gateway = sms.get_gateway(channel=body.channel)
+        message.provider = gateway.name
+        result = await gateway.send(phone, message.body)
+        message.status = result.status
+        message.provider_message_id = result.provider_message_id[:100]
+    except sms.SmsError as exc:
+        message.status = "failed"
+        message.error = str(exc)
+    session.add(message)
+    await session.flush()
+    # Écrire à la personne, c'est commencer à traiter son retour.
+    if message.status != "failed" and entry.status == FeedbackStatus.RECEIVED:
+        entry.status = FeedbackStatus.IN_PROGRESS
+    # Ni numéro ni texte dans le journal : données personnelles.
+    _log(
+        session,
+        member,
+        "feedback.sms_sent",
+        "feedback",
+        entry.id,
+        {"reference": entry.reference, "channel": body.channel, "status": message.status},
+    )
+    await session.commit()
+    await session.refresh(message)
+    return SmsOut.model_validate(message)
+
+
+@router.post(
+    f"{PROJECT}/feedback/{{feedback_id}}/sms/simulate",
+    response_model=SmsOut,
+    status_code=201,
+    dependencies=[plan_feature("messaging")],
+)
+async def simulate_feedback_sms(
+    org_id: UUID,
+    project_id: UUID,
+    feedback_id: UUID,
+    body: SmsSimulateIn,
+    member: AnyMember,
+    session: SessionDep,
+) -> SmsOut:
+    """Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp)."""
+    provider = (
+        get_settings().sms_provider if body.channel == "sms" else get_settings().whatsapp_provider
+    )
+    if provider != "simulated":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disponible en mode simulé seulement")
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    if not fb.can_handle(member, entry):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Vous ne traitez pas ce retour")
+    message = SmsMessage(
+        organization_id=org_id,
+        project_id=project.id,
+        feedback_id=entry.id,
+        channel=body.channel,
+        direction=SmsDirection.INBOUND,
+        phone=sms.normalize_phone(entry.contact) or entry.contact[:32],
+        body=body.body.strip(),
+        status="received",
+        provider="simulated",
+    )
+    session.add(message)
+    await session.commit()
+    await session.refresh(message)
+    return SmsOut.model_validate(message)
+
+
 # --- Leçons apprises -----------------------------------------------------------------------
 
 
@@ -281,6 +465,7 @@ async def list_org_lessons(
     org_id: UUID, _: AnyMember, session: SessionDep, q: str = "", tag: str = ""
 ) -> list[LessonOut]:
     """Toutes les leçons de l'organisation, pour apprendre d'un projet à l'autre."""
+    await billing.require_feature(session, org_id, "org_lessons")
     rows = await session.execute(_lesson_query(org_id, q, tag))
     return [_lesson_out(lesson, code) for lesson, code in rows]
 

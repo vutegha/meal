@@ -7,7 +7,7 @@ Le mot de passe du compte de démonstration est lu dans DEMO_PASSWORD, ou géné
 import asyncio
 import os
 import secrets
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -27,7 +27,9 @@ from app.models import (
     ProjectStatus,
     User,
 )
+from app.services import billing
 from app.services.organizations import create_organization
+from app.services.proposals import month_end, month_start
 
 DEMO_EMAIL = "demo@wemeal.org"
 
@@ -101,7 +103,13 @@ async def seed(session: AsyncSession) -> str | None:
     )
     session.add(user)
     await session.flush()
-    org = await create_organization(session, name="ONG Démo Kivu", owner=user)
+    org = await create_organization(
+        session, name="ONG Démo Kivu", owner=user, plan="institution", cycle="annual"
+    )
+    # Démonstration : formule active un an, sans passer par l'essai.
+    sub = await billing.get_subscription(session, org.id)
+    sub.status, sub.trial_ends_at = "active", None
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=365)
 
     project = Project(
         organization_id=org.id,
@@ -120,6 +128,8 @@ async def seed(session: AsyncSession) -> str | None:
     await session.flush()
 
     nodes: dict[str, LogframeNode] = {}
+    # Chronogramme : mois de début et de fin, comptés depuis le début du projet.
+    schedule = {"A1.1.1": (1, 3), "A1.1.2": (3, 4), "A1.2.1": (5, 9), "A2.1.1": (7, 18)}
 
     async def add(spec: NodeSpec, parent: LogframeNode | None, position: int) -> None:
         level, code, title, children = spec
@@ -132,6 +142,10 @@ async def seed(session: AsyncSession) -> str | None:
             title=title,
             position=position,
         )
+        if code in schedule and project.start_date:
+            first, last = schedule[code]
+            node.planned_start = month_start(project.start_date, first)
+            node.planned_end = month_end(project.start_date, last)
         session.add(node)
         await session.flush()
         nodes[code] = node

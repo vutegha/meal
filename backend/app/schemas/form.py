@@ -15,6 +15,9 @@ class FormField(BaseModel):
     required: bool = False
     options: list[str] = Field(default_factory=list, max_length=50)
     hint: str = Field(default="", max_length=300)
+    # Donnée qui identifie une personne (nom, téléphone, numéro de carte) ou la concerne de près
+    # (santé, statut) : absente de la synthèse et des exports, sauf demande explicite.
+    personal: bool = False
 
     @model_validator(mode="after")
     def _options(self) -> "FormField":
@@ -100,6 +103,7 @@ class FieldSummary(BaseModel):
     label: str
     type: FieldType
     answered: int
+    personal: bool = False
     # Choix : effectif par option ; oui/non : effectif de chaque réponse.
     counts: dict[str, int] = Field(default_factory=dict)
     # Nombres : total, moyenne, minimum, maximum.

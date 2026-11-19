@@ -66,3 +66,9 @@ Chaque étape est livrée par une ou plusieurs pull requests relues, testées et
 - [x] 7.4 Écran des leçons de toute l'organisation : recherche, étiquettes, filtre par projet, lien vers le projet
 - [x] 7.5 Classification IA des retours (modèle léger, seul le texte est envoyé ; catégorie sensible forcée confidentielle et urgente) et saisie hors ligne des retours par la file d'envoi
 - [x] 7.6 Modèles propres à chaque bailleur, choisis selon le bailleur du projet, ou au cas par cas pour un rapport périodique
+
+## Corrections du diagnostic de septembre 2026
+- [x] D.1 Ouverture hors ligne : profil gardé sur l'appareil, seule une session refusée par le serveur renvoie à la connexion ; test e2e de rechargement sans réseau sur la version construite (service worker)
+- [x] D.2 Coupure réseau ou serveur indisponible pendant le rafraîchissement du jeton : la session est gardée
+- [x] D.3 Plainte de catégorie sensible toujours confidentielle (création et modification) ; renvoi d'un `client_uuid` refusé à qui ne peut pas voir l'entrée
+- [x] D.4 File d'envoi liée à l'utilisateur qui a saisi, jamais envoyée avec un autre compte, vidée à la déconnexion (avec avertissement) ; cache de l'API effacé au changement de compte ; photos, audios et vidéos jamais gardés par le service worker

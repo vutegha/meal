@@ -6,6 +6,7 @@ import { Button, Card, ErrorText, Field, Select } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import { type Indicator, type PeriodTarget, projectsApi } from "@/lib/api";
 import { flattenTree, formatNumber, formatRate } from "@/lib/format";
+import { filterIndicators, parseList } from "@/lib/indicators";
 import { permissions } from "@/lib/permissions";
 import { indicatorsQuery, logframeQuery } from "@/lib/queries";
 
@@ -186,6 +187,60 @@ function TargetsForm({
   );
 }
 
+function DetailsForm({
+  orgId,
+  projectId,
+  indicator,
+  onDone,
+}: Props & {
+  indicator: Indicator;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const invalidate = useInvalidateProject(orgId, projectId);
+  const [source, setSource] = useState(indicator.source_of_verification);
+  const [disaggregations, setDisaggregations] = useState(indicator.disaggregations.join(", "));
+  const save = useMutation({
+    mutationFn: () =>
+      projectsApi.updateIndicator(orgId, projectId, indicator.id, {
+        source_of_verification: source,
+        disaggregations: parseList(disaggregations),
+      }),
+    onSuccess: async () => {
+      await invalidate();
+      onDone();
+    },
+  });
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    save.mutate();
+  };
+  return (
+    <form onSubmit={submit} className="grid gap-3 bg-slate-50 p-3 sm:grid-cols-2">
+      <Field
+        label={t("indicators.source")}
+        value={source}
+        onChange={(e) => setSource(e.target.value)}
+      />
+      <Field
+        label={t("indicators.disaggregations")}
+        hint={t("indicators.disaggregationsHint")}
+        value={disaggregations}
+        onChange={(e) => setDisaggregations(e.target.value)}
+      />
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" disabled={save.isPending}>
+          {t("common.save")}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          {t("common.cancel")}
+        </Button>
+        <ErrorText error={save.error} />
+      </div>
+    </form>
+  );
+}
+
 function PeriodTable({ indicator }: { indicator: Indicator }) {
   const { t, i18n } = useTranslation();
   const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
@@ -227,6 +282,7 @@ const emptyForm = {
   target: "",
   aggregation: "sum" as "sum" | "latest",
   source_of_verification: "",
+  disaggregations: "",
 };
 
 export function IndicatorsTab({ orgId, projectId }: Props) {
@@ -240,10 +296,15 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [valueFor, setValueFor] = useState<string | null>(null);
   const [targetsFor, setTargetsFor] = useState<string | null>(null);
+  const [detailsFor, setDetailsFor] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [nodeFilter, setNodeFilter] = useState("");
 
   const nodes = flattenTree(logframe.data ?? []);
   const nodeName = new Map(nodes.map((n) => [n.id, `${n.code} ${n.title}`.trim()]));
   const num = (value: string | null) => formatNumber(value, i18n.language);
+  const filterNodes = nodes.filter((n) => n.level === "outcome" || n.level === "output");
+  const shown = filterIndicators(indicators.data ?? [], nodes, { query, nodeId: nodeFilter });
 
   const add = useMutation({
     mutationFn: () =>
@@ -251,6 +312,7 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
         ...form,
         baseline: form.baseline || null,
         target: form.target || null,
+        disaggregations: parseList(form.disaggregations),
       }),
     onSuccess: async () => {
       setForm(emptyForm);
@@ -270,9 +332,32 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
 
   return (
     <Card>
-      {indicators.data?.length ? (
+      {!!indicators.data?.length && (
+        <div className="mb-3 grid gap-3 sm:grid-cols-2">
+          <Field
+            label={t("indicators.search")}
+            type="search"
+            placeholder={t("indicators.searchPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <Select
+            label={t("indicators.filterNode")}
+            value={nodeFilter}
+            onChange={(e) => setNodeFilter(e.target.value)}
+          >
+            <option value="">{t("indicators.allNodes")}</option>
+            {filterNodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {t(`levels.${n.level}`)} · {nodeName.get(n.id)}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+      {shown.length ? (
         <ul className="divide-y divide-slate-100">
-          {indicators.data.map((indicator) => {
+          {shown.map((indicator) => {
             const pct = Math.min(100, Math.round((indicator.achievement_rate ?? 0) * 100));
             return (
               <li key={indicator.id} className="py-3">
@@ -280,10 +365,28 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
                   <span className="font-mono text-xs text-slate-500">{indicator.code}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{indicator.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {nodeName.get(indicator.node_id)}
-                      {indicator.source_of_verification && ` · ${indicator.source_of_verification}`}
-                    </p>
+                    <p className="text-xs text-slate-500">{nodeName.get(indicator.node_id)}</p>
+                    <dl className="mt-1 space-y-0.5 text-xs text-slate-600">
+                      <div>
+                        <dt className="inline font-medium">{t("indicators.source")} : </dt>
+                        <dd className="inline">{indicator.source_of_verification || "–"}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium">{t("indicators.disaggregations")} : </dt>
+                        <dd className="inline">
+                          {indicator.disaggregations.length
+                            ? indicator.disaggregations.map((d) => (
+                                <span
+                                  key={d}
+                                  className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-slate-700"
+                                >
+                                  {d}
+                                </span>
+                              ))
+                            : "–"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
                   <div className="w-56 text-right text-xs text-slate-600">
                     <p>
@@ -309,6 +412,15 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
                         onClick={() => setValueFor(indicator.id)}
                       >
                         + {t("indicators.addValue")}
+                      </Button>
+                    )}
+                    {canPlan && (
+                      <Button
+                        variant="ghost"
+                        className="!px-2 !py-1 text-xs"
+                        onClick={() => setDetailsFor(indicator.id)}
+                      >
+                        {t("indicators.editDetails")}
                       </Button>
                     )}
                     {canPlan && (
@@ -344,6 +456,16 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
                     />
                   </div>
                 )}
+                {detailsFor === indicator.id && (
+                  <div className="mt-2">
+                    <DetailsForm
+                      orgId={orgId}
+                      projectId={projectId}
+                      indicator={indicator}
+                      onDone={() => setDetailsFor(null)}
+                    />
+                  </div>
+                )}
                 {valueFor === indicator.id && (
                   <div className="mt-2">
                     <ValueForm
@@ -359,7 +481,9 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
           })}
         </ul>
       ) : (
-        <p className="text-sm text-slate-500">{t("indicators.empty")}</p>
+        <p className="text-sm text-slate-500">
+          {indicators.data?.length ? t("indicators.noMatch") : t("indicators.empty")}
+        </p>
       )}
 
       {canPlan && nodes.length > 0 && (
@@ -397,6 +521,12 @@ export function IndicatorsTab({ orgId, projectId }: Props) {
               onChange={set("source_of_verification")}
             />
           </div>
+          <Field
+            label={t("indicators.disaggregations")}
+            hint={t("indicators.disaggregationsHint")}
+            value={form.disaggregations}
+            onChange={set("disaggregations")}
+          />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field label={t("indicators.unit")} value={form.unit} onChange={set("unit")} />
             <Field

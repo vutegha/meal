@@ -1,6 +1,22 @@
 {$SITE_ADDRESS:localhost} {
 	encode zstd gzip
 
+	# En-têtes de sécurité, pour l'interface comme pour l'API (fichiers des preuves compris).
+	# Pas de script ni de style externe : tout est servi par ce site.
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		# Appareil photo, micro et position : seulement pour ce site (preuves de terrain).
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()"
+		Cross-Origin-Opener-Policy same-origin
+		-Server
+	}
+	# HSTS seulement sur un vrai domaine : sur localhost il gênerait les autres sites locaux.
+	@public not host localhost 127.0.0.1
+	header @public Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
 	handle /api/* {
 		reverse_proxy api:8000
 	}

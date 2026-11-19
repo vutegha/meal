@@ -14,6 +14,7 @@ export function blankField(taken: string[], label = ""): FormField {
     required: false,
     options: [],
     hint: "",
+    personal: false,
   };
 }
 

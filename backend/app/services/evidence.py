@@ -1,4 +1,7 @@
-"""Traitement des preuves déposées : type, métadonnées EXIF des photos, vignette, texte."""
+"""Traitement des preuves déposées : type, métadonnées EXIF des photos, vignette, texte.
+
+La date et la position d'une photo sont lues puis retirées du fichier gardé.
+"""
 
 import asyncio
 import hashlib
@@ -8,15 +11,11 @@ from decimal import Decimal
 from io import BytesIO
 from typing import Any
 
-from app.documents.extract import ExtractionError, detect_kind, extract_pages
+from app.documents.extract import SUPPORTED_TYPES, ExtractionError, extract_pages
+from app.documents.filetypes import ImageTooLarge, open_image, sniff, too_large_message
+from app.documents.metadata import strip_metadata
 
 IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
-IMAGE_EXTENSIONS = {
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".webp": "image/webp",
-}
 MEDIA_TYPES = {
     "audio/mpeg": "audio",
     "audio/mp4": "audio",
@@ -32,19 +31,6 @@ MEDIA_TYPES = {
     "video/quicktime": "video",
     "video/3gpp": "video",
 }
-MEDIA_EXTENSIONS = {
-    ".mp3": "audio/mpeg",
-    ".m4a": "audio/mp4",
-    ".aac": "audio/aac",
-    ".ogg": "audio/ogg",
-    ".opus": "audio/ogg",
-    ".wav": "audio/wav",
-    ".amr": "audio/amr",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".mov": "video/quicktime",
-    ".3gp": "video/3gpp",
-}
 THUMBNAIL_SIZE = 800
 # Balises EXIF utiles (numéros standard).
 _DATETIME_ORIGINAL = 0x9003
@@ -58,6 +44,8 @@ class ProcessedFile:
     sha256: str
     is_image: bool
     thumbnail: bytes | None = None
+    # Fichier à garder, quand il diffère de celui reçu (photo sans ses métadonnées).
+    stored: bytes | None = None
     taken_at: datetime | None = None
     latitude: Decimal | None = None
     longitude: Decimal | None = None
@@ -70,22 +58,10 @@ class UnsupportedFile(Exception):
     pass
 
 
-def _suffix(filename: str) -> str:
-    return "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
-
-def image_type(filename: str, content_type: str | None) -> str | None:
-    if content_type in IMAGE_TYPES:
-        return content_type
-    return IMAGE_EXTENSIONS.get(_suffix(filename))
-
-
-def media_type(filename: str, content_type: str | None) -> str | None:
-    """Type MIME d'un enregistrement audio ou vidéo, ou None."""
-    base = (content_type or "").split(";")[0].strip().lower()
-    if base in MEDIA_TYPES:
-        return base
-    return MEDIA_EXTENSIONS.get(_suffix(filename))
+def media_file(mime: str, sha256: str) -> ProcessedFile:
+    return ProcessedFile(
+        content_type=mime, sha256=sha256, is_image=False, extra={"media": MEDIA_TYPES[mime]}
+    )
 
 
 def _degrees(value: Any, ref: str) -> Decimal | None:
@@ -99,17 +75,23 @@ def _degrees(value: Any, ref: str) -> Decimal | None:
     return Decimal(str(round(result, 6)))
 
 
+def _load(data: bytes) -> Any:
+    from PIL import UnidentifiedImageError
+
+    try:
+        image = open_image(data)
+        image.load()
+    except ImageTooLarge as exc:
+        raise UnsupportedFile(too_large_message()) from exc
+    except (UnidentifiedImageError, OSError) as exc:
+        raise UnsupportedFile("Image illisible") from exc
+    return image
+
+
 def _process_image(
     data: bytes,
 ) -> tuple[bytes, datetime | None, Decimal | None, Decimal | None, dict[str, Any]]:
-    from PIL import Image, UnidentifiedImageError
-
-    try:
-        image = Image.open(BytesIO(data))
-        image.load()
-    except (UnidentifiedImageError, OSError) as exc:
-        raise UnsupportedFile("Image illisible") from exc
-
+    image = _load(data)
     exif = image.getexif()
     taken_at = None
     raw = exif.get_ifd(_EXIF_IFD).get(_DATETIME_ORIGINAL)
@@ -151,25 +133,23 @@ def _thumbnail(image: Any, blur: bool) -> tuple[bytes, int]:
 
 def render_thumbnail(data: bytes, blur: bool) -> tuple[bytes, int]:
     """Refait la vignette d'une photo déjà déposée (floutage activé ou retiré)."""
-    from PIL import Image, UnidentifiedImageError
-
-    try:
-        image = Image.open(BytesIO(data))
-        image.load()
-    except (UnidentifiedImageError, OSError) as exc:
-        raise UnsupportedFile("Image illisible") from exc
-    return _thumbnail(image, blur)
+    return _thumbnail(_load(data), blur)
 
 
 async def process(data: bytes, filename: str, content_type: str | None) -> ProcessedFile:
+    """Fichier reconnu d'après son contenu : le type annoncé par le client n'est pas cru."""
     sha256 = hashlib.sha256(data).hexdigest()
-    if mime := image_type(filename, content_type):
+    mime = sniff(data, filename, content_type)
+    if mime in IMAGE_TYPES:
         thumbnail, taken_at, latitude, longitude, extra = await asyncio.to_thread(
             _process_image, data
         )
+        stored = await asyncio.to_thread(strip_metadata, data, mime)
         return ProcessedFile(
+            stored=stored,
             content_type=mime,
-            sha256=sha256,
+            # Empreinte du fichier gardé, pour pouvoir le vérifier plus tard.
+            sha256=hashlib.sha256(stored).hexdigest(),
             is_image=True,
             thumbnail=thumbnail,
             taken_at=taken_at,
@@ -177,20 +157,16 @@ async def process(data: bytes, filename: str, content_type: str | None) -> Proce
             longitude=longitude,
             extra=extra,
         )
-    if mime := media_type(filename, content_type):
+    if mime in MEDIA_TYPES:
         # Enregistrement conservé tel quel : pas de texte, pas de vignette.
-        return ProcessedFile(
-            content_type=mime, sha256=sha256, is_image=False, extra={"media": MEDIA_TYPES[mime]}
-        )
-    kind = detect_kind(filename, content_type)
-    if kind is None:
+        return media_file(mime, sha256)
+    kind = SUPPORTED_TYPES.get(mime or "")
+    if mime is None or kind is None:
         raise UnsupportedFile(
             "Format non pris en charge : photos (JPEG, PNG, WebP), audio, vidéo ou documents "
             "(PDF, Word, Excel, texte)"
         )
-    processed = ProcessedFile(
-        content_type=content_type or "application/octet-stream", sha256=sha256, is_image=False
-    )
+    processed = ProcessedFile(content_type=mime, sha256=sha256, is_image=False)
     try:
         pages = await asyncio.to_thread(extract_pages, data, kind)
     except ExtractionError as exc:

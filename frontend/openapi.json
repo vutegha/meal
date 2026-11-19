@@ -1,6 +1,40 @@
 {
   "components": {
     "schemas": {
+      "AccountDeleteIn": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "AccountDeleteIn",
+        "type": "object"
+      },
+      "AccountType": {
+        "enum": [
+          "individual",
+          "organization"
+        ],
+        "title": "AccountType",
+        "type": "string"
+      },
       "ActivityBudget": {
         "properties": {
           "activity_id": {
@@ -54,6 +88,667 @@
           "execution_rate"
         ],
         "title": "ActivityBudget",
+        "type": "object"
+      },
+      "AdminPaymentConfirm": {
+        "properties": {
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "online",
+                  "mobile_money",
+                  "bank_transfer",
+                  "cash",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "title": "AdminPaymentConfirm",
+        "type": "object"
+      },
+      "AdminPaymentRecord": {
+        "description": "Paiement reçu hors de l'application (virement, mobile money, espèces).",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "pack": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "reference": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "cycle",
+          "method"
+        ],
+        "title": "AdminPaymentRecord",
+        "type": "object"
+      },
+      "AdminPaymentRefund": {
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "AdminPaymentRefund",
+        "type": "object"
+      },
+      "AdminPaymentRow": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "paid_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid By Email"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "canceled",
+              "failed",
+              "refunded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "cycle",
+          "amount",
+          "currency",
+          "credits",
+          "description",
+          "provider",
+          "reference",
+          "status",
+          "method",
+          "receipt_number",
+          "paid_at",
+          "refunded_at",
+          "note",
+          "created_at",
+          "organization_id",
+          "organization_name",
+          "paid_by_email"
+        ],
+        "title": "AdminPaymentRow",
+        "type": "object"
+      },
+      "AdminPayments": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPaymentRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminPaymentsSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ],
+        "title": "AdminPayments",
+        "type": "object"
+      },
+      "AdminPaymentsSummary": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "paid_last_30_days": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Paid Last 30 Days",
+            "type": "string"
+          },
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "pending_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pending Amount",
+            "type": "string"
+          },
+          "refunded_last_30_days": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Refunded Last 30 Days",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pending",
+          "pending_amount",
+          "paid_last_30_days",
+          "refunded_last_30_days",
+          "currency"
+        ],
+        "title": "AdminPaymentsSummary",
+        "type": "object"
+      },
+      "AdminSubscriptionRow": {
+        "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "cancel_at_period_end": {
+            "title": "Cancel At Period End",
+            "type": "boolean"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "credits_used_this_month": {
+            "title": "Credits Used This Month",
+            "type": "integer"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "last_payment_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Payment At"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "organization_created_at": {
+            "format": "date-time",
+            "title": "Organization Created At",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "trialing",
+              "active",
+              "canceled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total_paid": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Paid",
+            "type": "string"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name",
+          "organization_created_at",
+          "contact_email",
+          "contact_name",
+          "plan",
+          "account_type",
+          "cycle",
+          "status",
+          "trial_ends_at",
+          "current_period_end",
+          "cancel_at_period_end",
+          "credits",
+          "members",
+          "projects",
+          "credits_used_this_month",
+          "last_payment_at",
+          "total_paid"
+        ],
+        "title": "AdminSubscriptionRow",
+        "type": "object"
+      },
+      "AdminSubscriptionUpdate": {
+        "properties": {
+          "add_credits": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": -100000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Add Credits"
+          },
+          "cancel_at_period_end": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel At Period End"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monthly",
+                  "annual",
+                  "usage"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "extend_days": {
+            "anyOf": [
+              {
+                "maximum": 3660.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extend Days"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "trialing",
+                  "active"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          }
+        },
+        "title": "AdminSubscriptionUpdate",
+        "type": "object"
+      },
+      "AdminSubscriptions": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSubscriptionRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ],
+        "title": "AdminSubscriptions",
+        "type": "object"
+      },
+      "AdminSummary": {
+        "properties": {
+          "by_plan": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Plan",
+            "type": "object"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "monthly_recurring": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monthly Recurring",
+            "type": "string"
+          },
+          "organizations": {
+            "title": "Organizations",
+            "type": "integer"
+          },
+          "revenue_last_30_days": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Revenue Last 30 Days",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organizations",
+          "by_status",
+          "by_plan",
+          "monthly_recurring",
+          "revenue_last_30_days",
+          "currency"
+        ],
+        "title": "AdminSummary",
         "type": "object"
       },
       "Aggregation": {
@@ -265,7 +960,7 @@
           },
           "nodes": {
             "items": {
-              "$ref": "#/components/schemas/ExtractedNode"
+              "$ref": "#/components/schemas/ApplyNode"
             },
             "title": "Nodes",
             "type": "array"
@@ -275,6 +970,115 @@
           "nodes"
         ],
         "title": "ApplyLogframeIn",
+        "type": "object"
+      },
+      "ApplyNode": {
+        "properties": {
+          "assumptions": {
+            "description": "Hypothèses ou risques associés, sinon chaîne vide",
+            "title": "Assumptions",
+            "type": "string"
+          },
+          "code": {
+            "description": "Code tel qu'écrit dans le document, sinon le ref",
+            "title": "Code",
+            "type": "string"
+          },
+          "end_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Month"
+          },
+          "level": {
+            "enum": [
+              "goal",
+              "outcome",
+              "output",
+              "activity",
+              "sub_activity"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "parent_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ref du parent ; null pour l'objectif général",
+            "title": "Parent Ref"
+          },
+          "ref": {
+            "description": "Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3",
+            "title": "Ref",
+            "type": "string"
+          },
+          "source_document": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Numéro du document source (1, 2…)",
+            "title": "Source Document"
+          },
+          "source_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page"
+          },
+          "source_quote": {
+            "description": "Extrait exact du document, 5 à 30 mots",
+            "title": "Source Quote",
+            "type": "string"
+          },
+          "start_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Month"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "parent_ref",
+          "level",
+          "code",
+          "title",
+          "assumptions",
+          "source_document",
+          "source_page",
+          "source_quote"
+        ],
+        "title": "ApplyNode",
         "type": "object"
       },
       "ApplySuggestionIn": {
@@ -361,6 +1165,29 @@
         "title": "AuditLogOut",
         "type": "object"
       },
+      "BillingUsage": {
+        "properties": {
+          "credits_used_this_month": {
+            "title": "Credits Used This Month",
+            "type": "integer"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "projects",
+          "members",
+          "credits_used_this_month"
+        ],
+        "title": "BillingUsage",
+        "type": "object"
+      },
       "Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post": {
         "properties": {
           "file": {
@@ -399,6 +1226,23 @@
             "default": false,
             "title": "Consent Given",
             "type": "boolean"
+          },
+          "consent_method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "oral",
+                  "written",
+                  "guardian",
+                  "community"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Method"
           },
           "file": {
             "contentMediaType": "application/octet-stream",
@@ -460,6 +1304,40 @@
           "file"
         ],
         "title": "Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post",
+        "type": "object"
+      },
+      "Breakdown": {
+        "description": "Une ligne de ventilation : un mois, un lieu, une zone ou un projet.",
+        "properties": {
+          "executions": {
+            "default": 0,
+            "title": "Executions",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "masked": {
+            "default": false,
+            "title": "Masked",
+            "type": "boolean"
+          },
+          "people": {
+            "default": 0,
+            "title": "People",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "Breakdown",
         "type": "object"
       },
       "BudgetLineIn": {
@@ -867,6 +1745,206 @@
         "title": "BuiltinTemplates",
         "type": "object"
       },
+      "Catalog": {
+        "properties": {
+          "credit_packs": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Credit Packs",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "payment_instructions": {
+            "title": "Payment Instructions",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanOut"
+            },
+            "title": "Plans",
+            "type": "array"
+          },
+          "trial_days": {
+            "title": "Trial Days",
+            "type": "integer"
+          },
+          "welcome_credits": {
+            "title": "Welcome Credits",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "currency",
+          "trial_days",
+          "welcome_credits",
+          "credit_packs",
+          "plans",
+          "payment_instructions"
+        ],
+        "title": "Catalog",
+        "type": "object"
+      },
+      "ChannelConfig": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channel",
+          "provider",
+          "simulated"
+        ],
+        "title": "ChannelConfig",
+        "type": "object"
+      },
+      "CheckoutIn": {
+        "properties": {
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "method": {
+            "default": "online",
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "pack": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "cycle"
+        ],
+        "title": "CheckoutIn",
+        "type": "object"
+      },
+      "CheckoutOut": {
+        "properties": {
+          "payment": {
+            "$ref": "#/components/schemas/PaymentOut"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/SubscriptionOut"
+          }
+        },
+        "required": [
+          "payment",
+          "subscription"
+        ],
+        "title": "CheckoutOut",
+        "type": "object"
+      },
+      "DashboardOptions": {
+        "properties": {
+          "locations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          },
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "years",
+          "zones",
+          "locations",
+          "projects"
+        ],
+        "title": "DashboardOptions",
+        "type": "object"
+      },
+      "DashboardProject": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "title"
+        ],
+        "title": "DashboardProject",
+        "type": "object"
+      },
       "DocumentOut": {
         "properties": {
           "created_at": {
@@ -931,6 +2009,57 @@
         "title": "DocumentStatus",
         "type": "string"
       },
+      "ErasureIn": {
+        "properties": {
+          "feedback_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Feedback Ids",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "submission_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Submission Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ErasureIn",
+        "type": "object"
+      },
+      "ErasureOut": {
+        "properties": {
+          "feedback": {
+            "title": "Feedback",
+            "type": "integer"
+          },
+          "submissions": {
+            "title": "Submissions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "feedback",
+          "submissions"
+        ],
+        "title": "ErasureOut",
+        "type": "object"
+      },
       "EvidenceKind": {
         "enum": [
           "report",
@@ -943,6 +2072,46 @@
         ],
         "title": "EvidenceKind",
         "type": "string"
+      },
+      "EvidenceMatch": {
+        "description": "Preuve qui cite la personne (légende ou texte) : à vérifier, jamais effacée d'office.",
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "filename",
+          "kind",
+          "caption",
+          "excerpt"
+        ],
+        "title": "EvidenceMatch",
+        "type": "object"
       },
       "EvidenceOut": {
         "properties": {
@@ -958,6 +2127,23 @@
           "consent_given": {
             "title": "Consent Given",
             "type": "boolean"
+          },
+          "consent_method": {
+            "default": "",
+            "title": "Consent Method",
+            "type": "string"
+          },
+          "consent_recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Recorded At"
           },
           "content_type": {
             "title": "Content Type",
@@ -1093,6 +2279,23 @@
               }
             ],
             "title": "Consent Given"
+          },
+          "consent_method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "oral",
+                  "written",
+                  "guardian",
+                  "community"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Method"
           },
           "kind": {
             "anyOf": [
@@ -2141,93 +3344,6 @@
         "title": "ExtractedIndicator",
         "type": "object"
       },
-      "ExtractedNode": {
-        "properties": {
-          "assumptions": {
-            "description": "Hypothèses ou risques associés, sinon chaîne vide",
-            "title": "Assumptions",
-            "type": "string"
-          },
-          "code": {
-            "description": "Code tel qu'écrit dans le document, sinon le ref",
-            "title": "Code",
-            "type": "string"
-          },
-          "level": {
-            "enum": [
-              "goal",
-              "outcome",
-              "output",
-              "activity",
-              "sub_activity"
-            ],
-            "title": "Level",
-            "type": "string"
-          },
-          "parent_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "ref du parent ; null pour l'objectif général",
-            "title": "Parent Ref"
-          },
-          "ref": {
-            "description": "Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3",
-            "title": "Ref",
-            "type": "string"
-          },
-          "source_document": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Numéro du document source (1, 2…)",
-            "title": "Source Document"
-          },
-          "source_page": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Page"
-          },
-          "source_quote": {
-            "description": "Extrait exact du document, 5 à 30 mots",
-            "title": "Source Quote",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ref",
-          "parent_ref",
-          "level",
-          "code",
-          "title",
-          "assumptions",
-          "source_document",
-          "source_page",
-          "source_quote"
-        ],
-        "title": "ExtractedNode",
-        "type": "object"
-      },
       "FeedbackCategory": {
         "enum": [
           "information",
@@ -2358,6 +3474,80 @@
           "description"
         ],
         "title": "FeedbackIn",
+        "type": "object"
+      },
+      "FeedbackMatch": {
+        "properties": {
+          "anonymized": {
+            "title": "Anonymized",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "contact": {
+            "title": "Contact",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          },
+          "sensitive": {
+            "title": "Sensitive",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "reference",
+          "received_on",
+          "category",
+          "status",
+          "sensitive",
+          "contact",
+          "description",
+          "response",
+          "anonymized",
+          "messages"
+        ],
+        "title": "FeedbackMatch",
         "type": "object"
       },
       "FeedbackOut": {
@@ -2507,6 +3697,16 @@
           "sensitive": {
             "title": "Sensitive",
             "type": "boolean"
+          },
+          "sms_awaiting_reply": {
+            "default": false,
+            "title": "Sms Awaiting Reply",
+            "type": "boolean"
+          },
+          "sms_count": {
+            "default": 0,
+            "title": "Sms Count",
+            "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/FeedbackStatus"
@@ -2879,6 +4079,11 @@
             ],
             "title": "Min"
           },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
+          },
           "samples": {
             "items": {
               "type": "string"
@@ -2946,6 +4151,11 @@
             "maxItems": 50,
             "title": "Options",
             "type": "array"
+          },
+          "personal": {
+            "default": false,
+            "title": "Personal",
+            "type": "boolean"
           },
           "required": {
             "default": false,
@@ -4144,7 +5354,20 @@
             "title": "Email",
             "type": "string"
           },
+          "otp": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Otp"
+          },
           "password": {
+            "maxLength": 128,
             "title": "Password",
             "type": "string"
           }
@@ -4175,12 +5398,31 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "is_platform_admin": {
+            "title": "Is Platform Admin",
+            "type": "boolean"
+          },
+          "mfa_recommended": {
+            "default": false,
+            "title": "Mfa Recommended",
+            "type": "boolean"
+          },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "organizations": {
             "items": {
               "$ref": "#/components/schemas/MyOrganizationOut"
             },
             "title": "Organizations",
             "type": "array"
+          },
+          "totp_enabled": {
+            "default": false,
+            "title": "Totp Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4188,6 +5430,7 @@
           "email",
           "full_name",
           "is_active",
+          "is_platform_admin",
           "organizations"
         ],
         "title": "MeOut",
@@ -4278,6 +5521,9 @@
       },
       "MyOrganizationOut": {
         "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4287,6 +5533,13 @@
             "title": "Default Language",
             "type": "string"
           },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4295,6 +5548,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           },
           "role": {
             "$ref": "#/components/schemas/Role"
@@ -4310,7 +5574,10 @@
           "slug",
           "default_language",
           "created_at",
-          "role"
+          "role",
+          "account_type",
+          "plan",
+          "features"
         ],
         "title": "MyOrganizationOut",
         "type": "object"
@@ -4347,6 +5614,30 @@
               }
             ],
             "title": "Parent Id"
+          },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
           },
           "position": {
             "anyOf": [
@@ -4417,6 +5708,30 @@
             ],
             "title": "Parent Id"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "title": "Position",
             "type": "integer"
@@ -4434,7 +5749,9 @@
           "title",
           "description",
           "assumptions",
-          "position"
+          "position",
+          "planned_start",
+          "planned_end"
         ],
         "title": "NodeOut",
         "type": "object"
@@ -4481,6 +5798,30 @@
             ],
             "title": "Parent Id"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "title": "Position",
             "type": "integer"
@@ -4498,7 +5839,9 @@
           "title",
           "description",
           "assumptions",
-          "position"
+          "position",
+          "planned_start",
+          "planned_end"
         ],
         "title": "NodeTree",
         "type": "object"
@@ -4539,6 +5882,30 @@
             ],
             "title": "Description"
           },
+          "planned_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End"
+          },
+          "planned_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Start"
+          },
           "position": {
             "anyOf": [
               {
@@ -4564,6 +5931,119 @@
           }
         },
         "title": "NodeUpdate",
+        "type": "object"
+      },
+      "OrgDashboard": {
+        "properties": {
+          "active_projects": {
+            "title": "Active Projects",
+            "type": "integer"
+          },
+          "by_location": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Location",
+            "type": "array"
+          },
+          "by_month": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Month",
+            "type": "array"
+          },
+          "by_project": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Project",
+            "type": "array"
+          },
+          "by_zone": {
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Zone",
+            "type": "array"
+          },
+          "completed_executions": {
+            "title": "Completed Executions",
+            "type": "integer"
+          },
+          "executions": {
+            "title": "Executions",
+            "type": "integer"
+          },
+          "options": {
+            "$ref": "#/components/schemas/DashboardOptions"
+          },
+          "people": {
+            "$ref": "#/components/schemas/People"
+          },
+          "projects": {
+            "title": "Projects",
+            "type": "integer"
+          },
+          "spending": {
+            "items": {
+              "$ref": "#/components/schemas/Spending"
+            },
+            "title": "Spending",
+            "type": "array"
+          }
+        },
+        "required": [
+          "options",
+          "projects",
+          "active_projects",
+          "executions",
+          "completed_executions",
+          "people",
+          "spending",
+          "by_month",
+          "by_location",
+          "by_zone",
+          "by_project"
+        ],
+        "title": "OrgDashboard",
+        "type": "object"
+      },
+      "OrganizationCloseIn": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "delete_account": {
+            "default": false,
+            "title": "Delete Account",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "password"
+        ],
+        "title": "OrganizationCloseIn",
         "type": "object"
       },
       "OrganizationIn": {
@@ -4687,6 +6167,238 @@
           }
         },
         "title": "Participants",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "properties": {
+          "current_password": {
+            "maxLength": 128,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
+        "type": "object"
+      },
+      "PasswordForgotIn": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordForgotIn",
+        "type": "object"
+      },
+      "PasswordResetIn": {
+        "properties": {
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 200,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetIn",
+        "type": "object"
+      },
+      "PaymentOut": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "online",
+              "mobile_money",
+              "bank_transfer",
+              "cash",
+              "other"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "receipt_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Number"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "canceled",
+              "failed",
+              "refunded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "cycle",
+          "amount",
+          "currency",
+          "credits",
+          "description",
+          "provider",
+          "reference",
+          "status",
+          "method",
+          "receipt_number",
+          "paid_at",
+          "refunded_at",
+          "note",
+          "created_at"
+        ],
+        "title": "PaymentOut",
+        "type": "object"
+      },
+      "People": {
+        "properties": {
+          "boys": {
+            "default": 0,
+            "title": "Boys",
+            "type": "integer"
+          },
+          "girls": {
+            "default": 0,
+            "title": "Girls",
+            "type": "integer"
+          },
+          "masked": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Masked",
+            "type": "array"
+          },
+          "men": {
+            "default": 0,
+            "title": "Men",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "with_disability": {
+            "default": 0,
+            "title": "With Disability",
+            "type": "integer"
+          },
+          "women": {
+            "default": 0,
+            "title": "Women",
+            "type": "integer"
+          }
+        },
+        "title": "People",
         "type": "object"
       },
       "PeriodProgress": {
@@ -5007,6 +6719,224 @@
           "updated_at"
         ],
         "title": "PeriodicSummary",
+        "type": "object"
+      },
+      "PersonalDataResult": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMatch"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackMatch"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "submissions": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionMatch"
+            },
+            "title": "Submissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "feedback",
+          "submissions",
+          "evidence"
+        ],
+        "title": "PersonalDataResult",
+        "type": "object"
+      },
+      "PlanLimits": {
+        "properties": {
+          "members": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members"
+          },
+          "monthly_credits": {
+            "title": "Monthly Credits",
+            "type": "integer"
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projects"
+          }
+        },
+        "required": [
+          "projects",
+          "members",
+          "monthly_credits"
+        ],
+        "title": "PlanLimits",
+        "type": "object"
+      },
+      "PlanOut": {
+        "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/PlanPrices"
+          }
+        },
+        "required": [
+          "id",
+          "account_type",
+          "prices",
+          "limits",
+          "features"
+        ],
+        "title": "PlanOut",
+        "type": "object"
+      },
+      "PlanPrices": {
+        "properties": {
+          "annual": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Annual",
+            "type": "string"
+          },
+          "credit": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Credit",
+            "type": "string"
+          },
+          "monthly": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monthly",
+            "type": "string"
+          }
+        },
+        "required": [
+          "monthly",
+          "annual",
+          "credit"
+        ],
+        "title": "PlanPrices",
+        "type": "object"
+      },
+      "PrivacySettings": {
+        "description": "Réglages de protection des données de l'espace.",
+        "properties": {
+          "ai_enabled": {
+            "title": "Ai Enabled",
+            "type": "boolean"
+          },
+          "feedback_retention_months": {
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Feedback Retention Months",
+            "type": "integer"
+          },
+          "privacy_contact": {
+            "maxLength": 200,
+            "title": "Privacy Contact",
+            "type": "string"
+          },
+          "sms_acknowledgement": {
+            "title": "Sms Acknowledgement",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ai_enabled",
+          "feedback_retention_months",
+          "sms_acknowledgement",
+          "privacy_contact"
+        ],
+        "title": "PrivacySettings",
+        "type": "object"
+      },
+      "PrivacyUpdate": {
+        "properties": {
+          "ai_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Enabled"
+          },
+          "feedback_retention_months": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Retention Months"
+          },
+          "privacy_contact": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacy Contact"
+          },
+          "sms_acknowledgement": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms Acknowledgement"
+          }
+        },
+        "title": "PrivacyUpdate",
         "type": "object"
       },
       "ProjectIn": {
@@ -5424,6 +7354,20 @@
       },
       "RegisterIn": {
         "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType",
+            "default": "organization"
+          },
+          "cycle": {
+            "default": "monthly",
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -5436,23 +7380,40 @@
             "type": "string"
           },
           "organization_name": {
-            "maxLength": 200,
-            "minLength": 2,
-            "title": "Organization Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Name"
           },
           "password": {
             "maxLength": 128,
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           }
         },
         "required": [
           "email",
           "full_name",
-          "password",
-          "organization_name"
+          "password"
         ],
         "title": "RegisterIn",
         "type": "object"
@@ -5663,6 +7624,25 @@
         "title": "ReportSummary",
         "type": "object"
       },
+      "ResetLinkOut": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "expires_at"
+        ],
+        "title": "ResetLinkOut",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "admin",
@@ -5712,6 +7692,246 @@
           "rank"
         ],
         "title": "SearchHit",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rotated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotated At"
+          },
+          "user_agent": {
+            "title": "User Agent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "rotated_at",
+          "user_agent",
+          "current"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "SmsConfig": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelConfig"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "inbound_enabled": {
+            "title": "Inbound Enabled",
+            "type": "boolean"
+          },
+          "sender": {
+            "title": "Sender",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channels",
+          "sender",
+          "inbound_enabled"
+        ],
+        "title": "SmsConfig",
+        "type": "object"
+      },
+      "SmsDirection": {
+        "enum": [
+          "inbound",
+          "outbound"
+        ],
+        "title": "SmsDirection",
+        "type": "string"
+      },
+      "SmsOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SmsDirection"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "feedback_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sent_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent By"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "feedback_id",
+          "channel",
+          "direction",
+          "phone",
+          "body",
+          "status",
+          "provider",
+          "error",
+          "sent_by",
+          "created_at"
+        ],
+        "title": "SmsOut",
+        "type": "object"
+      },
+      "SmsSendIn": {
+        "properties": {
+          "body": {
+            "maxLength": 640,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "SmsSendIn",
+        "type": "object"
+      },
+      "SmsSimulateIn": {
+        "properties": {
+          "body": {
+            "maxLength": 640,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "whatsapp"
+            ],
+            "title": "Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "SmsSimulateIn",
+        "type": "object"
+      },
+      "Spending": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "title": "Spending",
         "type": "object"
       },
       "SubmissionIn": {
@@ -5782,6 +8002,47 @@
           "answers"
         ],
         "title": "SubmissionIn",
+        "type": "object"
+      },
+      "SubmissionMatch": {
+        "properties": {
+          "answers": {
+            "additionalProperties": true,
+            "title": "Answers",
+            "type": "object"
+          },
+          "collected_at": {
+            "format": "date-time",
+            "title": "Collected At",
+            "type": "string"
+          },
+          "form_title": {
+            "title": "Form Title",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "project_code": {
+            "title": "Project Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_code",
+          "form_title",
+          "collected_at",
+          "location",
+          "answers"
+        ],
+        "title": "SubmissionMatch",
         "type": "object"
       },
       "SubmissionOut": {
@@ -5861,6 +8122,96 @@
           "submitted_by"
         ],
         "title": "SubmissionOut",
+        "type": "object"
+      },
+      "SubscriptionOut": {
+        "properties": {
+          "account_type": {
+            "$ref": "#/components/schemas/AccountType"
+          },
+          "cancel_at_period_end": {
+            "title": "Cancel At Period End",
+            "type": "boolean"
+          },
+          "credits": {
+            "title": "Credits",
+            "type": "integer"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cycle": {
+            "enum": [
+              "monthly",
+              "annual",
+              "usage"
+            ],
+            "title": "Cycle",
+            "type": "string"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "trialing",
+              "active",
+              "canceled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/BillingUsage"
+          }
+        },
+        "required": [
+          "plan",
+          "account_type",
+          "cycle",
+          "status",
+          "trial_ends_at",
+          "current_period_end",
+          "credits",
+          "cancel_at_period_end",
+          "limits",
+          "features",
+          "usage"
+        ],
+        "title": "SubscriptionOut",
         "type": "object"
       },
       "TemplateIn": {
@@ -6093,6 +8444,11 @@
           "access_token": {
             "title": "Access Token",
             "type": "string"
+          },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
           },
           "refresh_token": {
             "title": "Refresh Token",
@@ -6380,6 +8736,44 @@
         "title": "TorVersionOut",
         "type": "object"
       },
+      "TotpCodeIn": {
+        "properties": {
+          "code": {
+            "maxLength": 10,
+            "minLength": 6,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TotpCodeIn",
+        "type": "object"
+      },
+      "TotpSetupOut": {
+        "properties": {
+          "qr_svg": {
+            "title": "Qr Svg",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri",
+          "qr_svg"
+        ],
+        "title": "TotpSetupOut",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "email": {
@@ -6463,6 +8857,447 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/payments": {
+      "get": {
+        "description": "Tous les paiements, les plus récents d'abord ; ceux en attente sont à confirmer.",
+        "operationId": "list_payments_api_v1_admin_payments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayments"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/confirm": {
+      "post": {
+        "description": "Le virement ou l'envoi mobile money annoncé est arrivé : la formule s'applique.",
+        "operationId": "confirm_payment_api_v1_admin_payments__payment_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm Payment",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/receipt.pdf": {
+      "get": {
+        "operationId": "admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Receipt",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{payment_id}/refund": {
+      "post": {
+        "operationId": "refund_payment_api_v1_admin_payments__payment_id__refund_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentRefund"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refund Payment",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/subscriptions": {
+      "get": {
+        "description": "Tous les espaces, leur formule et leur usage. Les filtres ne changent pas le résumé.",
+        "operationId": "list_subscriptions_api_v1_admin_subscriptions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plan"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Subscriptions",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/subscriptions/{org_id}": {
+      "patch": {
+        "description": "Change la formule, les dates ou les crédits d'un espace, sans paiement (geste commercial,\npaiement reçu hors ligne, correction). Chaque changement est inscrit au journal de l'espace.",
+        "operationId": "update_subscription_api_v1_admin_subscriptions__org_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSubscriptionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSubscriptionRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Subscription",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/v1/admin/subscriptions/{org_id}/payments": {
+      "post": {
+        "description": "Enregistre un paiement reçu hors de l'application ; la formule payée s'applique.",
+        "operationId": "record_payment_api_v1_admin_subscriptions__org_id__payments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Payment",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -6496,9 +9331,52 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "Trop de tentatives, réessayer plus tard"
           }
         },
         "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Ferme la session en cours : ses jetons ne sont plus acceptés, même volés.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "description": "Ferme toutes les sessions de la personne, sur tous ses appareils.",
+        "operationId": "logout_all_api_v1_auth_logout_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout All",
         "tags": [
           "auth"
         ]
@@ -6525,6 +9403,161 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/delete": {
+      "post": {
+        "description": "Supprime son propre compte : il est anonymisé et ne peut plus se connecter.",
+        "operationId": "delete_me_api_v1_auth_me_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "change_password_api_v1_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "description": "Envoie un lien par e-mail si l'adresse existe ; la réponse ne dit jamais si elle existe.",
+        "operationId": "forgot_password_api_v1_auth_password_forgot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordForgotIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "reset_password_api_v1_auth_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
         "tags": [
           "auth"
         ]
@@ -6609,6 +9642,163 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "list_sessions_api_v1_auth_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions Api V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/disable": {
+      "post": {
+        "operationId": "totp_disable_api_v1_auth_totp_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Disable",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/enable": {
+      "post": {
+        "operationId": "totp_enable_api_v1_auth_totp_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Enable",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/setup": {
+      "post": {
+        "description": "Prépare un nouveau secret ; il n'est actif qu'une fois confirmé par un code.",
+        "operationId": "totp_setup_api_v1_auth_totp_setup_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totp Setup",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/billing/plans": {
+      "get": {
+        "description": "Formules et tarifs, publics : la page Tarifs du site les affiche sans connexion.",
+        "operationId": "catalog_api_v1_billing_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Catalog",
+        "tags": [
+          "abonnements"
         ]
       }
     },
@@ -6910,6 +10100,524 @@
         "summary": "List Audit",
         "tags": [
           "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing": {
+      "get": {
+        "operationId": "get_billing_api_v1_orgs__org_id__billing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Billing",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/cancel": {
+      "post": {
+        "description": "Arrête le renouvellement : l'espace garde sa formule jusqu'à la fin de la période.",
+        "operationId": "cancel_api_v1_orgs__org_id__billing_cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/checkout": {
+      "post": {
+        "operationId": "checkout_api_v1_orgs__org_id__billing_checkout_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Checkout",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments": {
+      "get": {
+        "operationId": "list_payments_api_v1_orgs__org_id__billing_payments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentOut"
+                  },
+                  "title": "Response List Payments Api V1 Orgs  Org Id  Billing Payments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Payments",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/cancel": {
+      "post": {
+        "description": "Annule un virement ou un envoi mobile money annoncé et pas encore reçu.",
+        "operationId": "cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Payment",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/receipt.pdf": {
+      "get": {
+        "operationId": "payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Payment Receipt",
+        "tags": [
+          "abonnements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/close": {
+      "post": {
+        "description": "Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés.",
+        "operationId": "close_api_v1_orgs__org_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationCloseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/dashboard": {
+      "get": {
+        "operationId": "org_dashboard_api_v1_orgs__org_id__dashboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2100,
+                  "minimum": 2000,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 12,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zone",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Zone",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "location",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Location",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beneficiary",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "women",
+                    "men",
+                    "girls",
+                    "boys",
+                    "with_disability"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Beneficiary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Org Dashboard",
+        "tags": [
+          "tableau de bord"
         ]
       }
     },
@@ -7264,6 +10972,288 @@
           }
         ],
         "summary": "Update Member",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/members/{member_id}/reset-link": {
+      "post": {
+        "description": "Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.\n\nSeulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur\npourrait prendre la main sur un compte qui a des droits ailleurs.",
+        "operationId": "member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Member Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Member Reset Link",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/personal-data": {
+      "get": {
+        "description": "Tout ce qui mentionne une personne : nom, numéro de téléphone ou adresse e-mail.",
+        "operationId": "search_person_api_v1_orgs__org_id__personal_data_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 3,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDataResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Person",
+        "tags": [
+          "données personnelles"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/personal-data/erase": {
+      "post": {
+        "description": "Efface le contenu des retours choisis (et leurs SMS) et supprime les réponses choisies.",
+        "operationId": "erase_person_api_v1_orgs__org_id__personal_data_erase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErasureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Erase Person",
+        "tags": [
+          "données personnelles"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/privacy": {
+      "get": {
+        "operationId": "get_privacy_api_v1_orgs__org_id__privacy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Privacy",
+        "tags": [
+          "organisations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_privacy_api_v1_orgs__org_id__privacy_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Privacy",
         "tags": [
           "organisations"
         ]
@@ -9950,6 +13940,234 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms": {
+      "get": {
+        "operationId": "list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SmsOut"
+                  },
+                  "title": "Response List Feedback Sms Api V1 Orgs  Org Id  Projects  Project Id  Feedback  Feedback Id  Sms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Feedback Sms",
+        "tags": [
+          "redevabilité"
+        ]
+      },
+      "post": {
+        "description": "Envoie un SMS ou un message WhatsApp à la personne.\n\nUn échec du prestataire est enregistré et renvoyé tel quel.",
+        "operationId": "send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsSendIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Feedback Sms",
+        "tags": [
+          "redevabilité"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
+      "post": {
+        "description": "Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).",
+        "operationId": "simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsSimulateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Simulate Feedback Sms",
+        "tags": [
+          "redevabilité"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/projects/{project_id}/forms": {
       "get": {
         "operationId": "list_forms_api_v1_orgs__org_id__projects__project_id__forms_get",
@@ -10313,6 +14531,18 @@
               "format": "uuid",
               "title": "Form Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Inclure les questions personnelles",
+            "in": "query",
+            "name": "personal",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inclure les questions personnelles",
+              "title": "Personal",
+              "type": "boolean"
             }
           }
         ],
@@ -14027,6 +18257,54 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/sms/config": {
+      "get": {
+        "operationId": "sms_config_api_v1_orgs__org_id__sms_config_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sms Config",
+        "tags": [
+          "redevabilité"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/templates": {
       "get": {
         "operationId": "list_templates_api_v1_orgs__org_id__templates_get",
@@ -14322,6 +18600,32 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "système"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker.",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
         "tags": [
           "système"
         ]

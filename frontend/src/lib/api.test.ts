@@ -46,6 +46,36 @@ describe("api.request", () => {
     expect(tokenStore.get()).toBeNull();
   });
 
+  it("garde la session si le réseau coupe pendant le rafraîchissement", async () => {
+    const tokens = { access_token: "expire", refresh_token: "r1" };
+    tokenStore.set(tokens);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(401, { detail: "Authentification requise" }))
+        .mockRejectedValueOnce(new TypeError("Failed to fetch")),
+    );
+
+    await expect(api.me()).rejects.toBeInstanceOf(TypeError);
+    expect(tokenStore.get()).toEqual(tokens);
+  });
+
+  it("garde la session si le serveur est indisponible pendant le rafraîchissement", async () => {
+    const tokens = { access_token: "expire", refresh_token: "r1" };
+    tokenStore.set(tokens);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(401, { detail: "Authentification requise" }))
+        .mockResolvedValueOnce(jsonResponse(502, { detail: "Passerelle" })),
+    );
+
+    await expect(api.me()).rejects.toMatchObject({ status: 502 });
+    expect(tokenStore.get()).toEqual(tokens);
+  });
+
   it("remonte le message d'erreur du serveur", async () => {
     vi.stubGlobal(
       "fetch",

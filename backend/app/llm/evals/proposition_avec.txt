@@ -29,3 +29,8 @@ Ligne 1.1 – Formateurs AVEC : 4 formateurs x 800 USD par mois x 6 mois = 19 20
 Ligne 2.1 – Kits de démarrage AVEC : 30 kits x 120 USD = 3 600 USD (activité A1.1.2).
 Ligne 2.2 – Formations professionnelles : 150 jeunes x 90 USD = 13 500 USD (activité A1.2.1).
 Ligne 9.1 – Loyer du bureau de Rutshuru : 900 USD par mois x 24 mois = 21 600 USD (coûts de support).
+
+4. CHRONOGRAMME
+A1.1.1 – Formation des membres des AVEC : mois 1 à 3.
+A1.1.2 – Dotation des kits de démarrage : mois 3 et 4.
+A1.2.1 – Formations professionnelles des jeunes : mois 5 à 9.

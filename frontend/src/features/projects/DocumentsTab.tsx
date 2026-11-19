@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
-import { aiApi, type Project, type SearchHit, type SourceDocument } from "@/lib/api";
+import { aiApi, type Job, type Project, type SearchHit, type SourceDocument } from "@/lib/api";
 import { permissions } from "@/lib/permissions";
 import { documentsQuery, proposalsQuery } from "@/lib/queries";
 
@@ -12,7 +13,7 @@ import { ProposalReview } from "./ProposalReview";
 import { useInvalidateProject } from "./useInvalidateProject";
 import { useJob } from "./useJob";
 
-const ACCEPT = ".pdf,.docx,.xlsx,.txt,.md,.jpg,.jpeg,.png";
+export const ACCEPT = ".pdf,.docx,.xlsx,.txt,.md,.jpg,.jpeg,.png";
 
 function formatSize(bytes: number, language: string): string {
   const units = ["o", "Ko", "Mo"];
@@ -176,7 +177,8 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
   const job = useJob(orgId, () =>
     queryClient.invalidateQueries({ queryKey: proposalsQuery(orgId, projectId).queryKey }),
   );
-  const extract = useMutation({
+  // Variable de la mutation : vraie quand l'extraction démarre d'elle-même à la création.
+  const extract = useMutation<Job, Error, boolean>({
     mutationFn: () => aiApi.extract(orgId, projectId),
     onSuccess: job.start,
   });
@@ -185,6 +187,30 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
   const pending = proposals.data?.find((p) => p.status === "pending");
   const history = proposals.data?.filter((p) => p.status !== "pending") ?? [];
   const readyCount = documents.data?.filter((d) => d.status === "extracted").length ?? 0;
+  const [applied, setApplied] = useState(false);
+
+  // Création du projet avec ses documents : dès que leur texte est lu (pages scannées
+  // comprises), l'extraction démarre sans attendre de clic.
+  const navigate = useNavigate();
+  const { setup } = useSearch({ from: "/orgs/$orgId/projects/$projectId" });
+  const reading = documents.data?.some((d) => d.status === "ocr") ?? true;
+  const autoStarted = extract.variables === true;
+  const { mutate: startExtraction, isPending: starting } = extract;
+  useEffect(() => {
+    if (!setup || !canPlan || reading || proposals.isPending || starting) return;
+    void navigate({ to: ".", search: (prev) => ({ ...prev, setup: undefined }), replace: true });
+    if (readyCount > 0 && !pending) startExtraction(true);
+  }, [
+    setup,
+    canPlan,
+    reading,
+    proposals.isPending,
+    starting,
+    readyCount,
+    pending,
+    startExtraction,
+    navigate,
+  ]);
   const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "short", timeStyle: "short" });
 
   return (
@@ -236,7 +262,7 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
       <Card title={t("proposal.title")}>
         {canPlan && !pending && (
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <Button onClick={() => extract.mutate()} disabled={running || readyCount === 0}>
+            <Button onClick={() => extract.mutate(false)} disabled={running || readyCount === 0}>
               ✨ {t("proposal.extract")}
             </Button>
             {running && (
@@ -249,6 +275,31 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
             )}
           </div>
         )}
+        {autoStarted && running && (
+          <p className="mb-3 rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
+            {t("proposal.autoStarted")}
+          </p>
+        )}
+        {applied && !pending && (
+          <div
+            role="status"
+            className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm"
+          >
+            <p className="font-medium text-emerald-900">{t("proposal.applied")}</p>
+            <p className="mt-0.5 text-emerald-900">{t("proposal.appliedNext")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button onClick={() => navigate({ to: ".", search: { tab: "schedule" } })}>
+                {t("proposal.goSchedule")}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate({ to: ".", search: { tab: "logframe" } })}
+              >
+                {t("proposal.goLogframe")}
+              </Button>
+            </div>
+          </div>
+        )}
         <ErrorText error={extract.error} />
         <ErrorText error={job.error} />
         {pending ? (
@@ -259,9 +310,10 @@ export function DocumentsTab({ orgId, project }: { orgId: string; project: Proje
             proposal={pending}
             currency={pending.payload.currency ?? project.currency}
             canPlan={canPlan}
+            onApplied={() => setApplied(true)}
           />
         ) : (
-          !running && <p className="text-sm text-slate-500">{t("proposal.none")}</p>
+          !running && !applied && <p className="text-sm text-slate-500">{t("proposal.none")}</p>
         )}
         {history.length > 0 && (
           <ul className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">

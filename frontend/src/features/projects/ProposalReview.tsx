@@ -57,16 +57,19 @@ export function ProposalReview({
   proposal,
   currency,
   canPlan,
+  onApplied,
 }: {
   orgId: string;
   projectId: string;
   proposal: Proposal;
   currency: string;
   canPlan: boolean;
+  onApplied?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { nodes, indicators, budget_lines: lines, documents } = proposal.payload;
+  const info = proposal.payload.project;
 
   const children = useMemo(() => {
     const map = new Map<string | null, ProposedNode[]>();
@@ -134,7 +137,10 @@ export function ProposalReview({
         indicators: indicators.filter((_, index) => indicatorActive(index)),
         budget_lines: lines.filter((_, index) => lineActive(index)),
       }),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await invalidate();
+      onApplied?.();
+    },
   });
   const reject = useMutation({
     mutationFn: () => aiApi.reject(orgId, projectId, proposal.id),
@@ -160,6 +166,14 @@ export function ProposalReview({
               {t(`levels.${node.level}`)}
             </span>
             <span className="font-mono text-xs text-slate-500">{node.code}</span>
+            {node.start_month != null && (
+              <span className="shrink-0 rounded bg-brand-50 px-1.5 py-0.5 text-[11px] text-brand-800">
+                🗓{" "}
+                {node.end_month != null && node.end_month !== node.start_month
+                  ? t("proposal.months", { start: node.start_month, end: node.end_month })
+                  : t("proposal.month", { start: node.start_month })}
+              </span>
+            )}
             <input
               aria-label={t("logframe.title")}
               className="min-w-48 flex-1 rounded border border-transparent px-1 py-0.5 text-sm hover:border-slate-300 focus:border-brand-600 focus:outline-none"
@@ -192,6 +206,46 @@ export function ProposalReview({
           {unverified > 0 && ` · ${t("proposal.unverifiedCount", { count: unverified })}`}
         </p>
       </div>
+
+      {info && (
+        <section>
+          <h3 className="text-sm font-semibold">{t("proposal.projectInfo")}</h3>
+          <p className="mb-1 text-xs text-slate-500">{t("proposal.projectInfoHint")}</p>
+          <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[10rem_1fr]">
+            {info.donor && (
+              <>
+                <dt className="text-slate-500">{t("projects.donor")}</dt>
+                <dd>{info.donor}</dd>
+              </>
+            )}
+            {(info.start_date || info.end_date || info.duration_months) && (
+              <>
+                <dt className="text-slate-500">
+                  {t("projects.startDate")} – {t("projects.endDate")}
+                </dt>
+                <dd>
+                  {[info.start_date, info.end_date].filter(Boolean).join(" – ")}
+                  {info.duration_months
+                    ? ` (${t("proposal.duration", { count: info.duration_months })})`
+                    : ""}
+                </dd>
+              </>
+            )}
+            {info.zones.length > 0 && (
+              <>
+                <dt className="text-slate-500">{t("proposal.zones")}</dt>
+                <dd>{info.zones.join(", ")}</dd>
+              </>
+            )}
+            {info.target_groups.length > 0 && (
+              <>
+                <dt className="text-slate-500">{t("proposal.targetGroups")}</dt>
+                <dd>{info.target_groups.join(", ")}</dd>
+              </>
+            )}
+          </dl>
+        </section>
+      )}
 
       {proposal.payload.missing_information.length > 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">

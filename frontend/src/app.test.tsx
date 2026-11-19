@@ -20,6 +20,9 @@ const me = {
       default_language: "fr",
       created_at: "2026-09-27T10:00:00Z",
       role: "admin",
+      account_type: "organization",
+      plan: "team",
+      features: ["projects", "team", "templates", "org_lessons", "audit"],
     },
   ],
 };
@@ -90,7 +93,7 @@ it("connecte l'utilisateur ouvre le tableau de bord d'un projet puis son cadre l
     vi.fn((url: string) => Promise.resolve(respond(url))),
   );
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createAppRouter(queryClient, createMemoryHistory({ initialEntries: ["/"] }));
+  const router = createAppRouter(queryClient, createMemoryHistory({ initialEntries: ["/login"] }));
 
   render(
     <QueryClientProvider client={queryClient}>

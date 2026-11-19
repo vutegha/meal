@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { Button, Field, Select } from "@/components/ui";
 import {
+  CONSENT_METHODS,
+  type ConsentMethod,
   EVIDENCE_KINDS,
   type EvidenceKind,
   type ExecutionStatus,
@@ -174,10 +176,31 @@ export function FilePicker({
                   <input
                     type="checkbox"
                     checked={item.meta.consent_given}
-                    onChange={(e) => update(index, { consent_given: e.target.checked })}
+                    onChange={(e) =>
+                      update(index, {
+                        consent_given: e.target.checked,
+                        consent_method: e.target.checked ? "oral" : undefined,
+                      })
+                    }
                   />
                   {t("execution.consent")}
                 </label>
+              )}
+              {PEOPLE_KINDS.includes(item.meta.kind) && item.meta.consent_given && (
+                <select
+                  aria-label={t("execution.consentMethod")}
+                  className="rounded border border-slate-300 px-1 py-1 text-xs"
+                  value={item.meta.consent_method ?? "oral"}
+                  onChange={(e) =>
+                    update(index, { consent_method: e.target.value as ConsentMethod })
+                  }
+                >
+                  {CONSENT_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {t(`execution.consentMethods.${method}`)}
+                    </option>
+                  ))}
+                </select>
               )}
               <button
                 type="button"

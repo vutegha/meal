@@ -73,8 +73,8 @@ Le dépôt est actuellement vide (seulement un README). Tu poses toutes les fond
 - **Ancrage sur les sources** : les documents importés sont découpés, indexés (recherche vectorielle) et cités ; interdiction de produire un chiffre sans source.
 - **Choix du modèle selon la tâche** pour l'efficacité et le coût :
   - `claude-opus-5-5` : extraction du cadre logique et du budget sur de longs documents, rapports agrégés.
-  - `claude-sonnet-5` : TdR et rapports narratifs d'activité.
-  - `claude-haiku-4-5-20251001` : tâches courtes et volumineuses (légendes de photos, classification des plaintes, résumés de pièces).
+  - `claude-sonnet-5-5` : TdR et rapports narratifs d'activité.
+  - `claude-haiku-5-5` : tâches courtes et volumineuses (légendes de photos, classification des plaintes, résumés de pièces).
 - Mise en cache des prompts pour le contexte projet réutilisé, génération en tâche de fond avec streaming de l'avancement vers l'interface.
 - Couche d'abstraction `llm/` pour pouvoir changer de fournisseur ou de modèle sans toucher au métier.
 - Prompts versionnés dans le dépôt, avec un jeu de tests d'évaluation (documents de projet d'exemple et sorties attendues).

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import { CHILD_LEVEL, type LogframeNode, type NodeLevel, projectsApi } from "@/lib/api";
+import { suggestCode } from "@/lib/codes";
 import { permissions } from "@/lib/permissions";
 import { checkQuery, indicatorsQuery, logframeQuery } from "@/lib/queries";
 
@@ -28,11 +29,17 @@ function AddNodeForm({
   projectId,
   level,
   parentId,
+  defaultCode,
   onDone,
-}: Props & { level: NodeLevel; parentId: string | null; onDone: () => void }) {
+}: Props & {
+  level: NodeLevel;
+  parentId: string | null;
+  defaultCode: string;
+  onDone: () => void;
+}) {
   const { t } = useTranslation();
   const invalidate = useInvalidateProject(orgId, projectId);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(defaultCode);
   const [title, setTitle] = useState("");
   const add = useMutation({
     mutationFn: () =>
@@ -130,6 +137,11 @@ function NodeItem({
           {...props}
           level={childLevel}
           parentId={node.id}
+          defaultCode={suggestCode(
+            childLevel,
+            node.code,
+            node.children.filter((c) => c.level === childLevel).map((c) => c.code),
+          )}
           onDone={() => setAdding(false)}
         />
       )}
@@ -234,6 +246,11 @@ export function LogframeTab({ orgId, projectId }: Props) {
               projectId={projectId}
               level="goal"
               parentId={null}
+              defaultCode={suggestCode(
+                "goal",
+                null,
+                (logframe.data ?? []).map((n) => n.code),
+              )}
               onDone={() => setAddingGoal(false)}
             />
           ) : (

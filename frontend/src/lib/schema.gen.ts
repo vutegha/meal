@@ -4,6 +4,141 @@
  */
 
 export interface paths {
+  "/api/v1/admin/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Payments
+     * @description Tous les paiements, les plus récents d'abord ; ceux en attente sont à confirmer.
+     */
+    get: operations["list_payments_api_v1_admin_payments_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Confirm Payment
+     * @description Le virement ou l'envoi mobile money annoncé est arrivé : la formule s'applique.
+     */
+    post: operations["confirm_payment_api_v1_admin_payments__payment_id__confirm_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/receipt.pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Admin Receipt */
+    get: operations["admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/payments/{payment_id}/refund": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refund Payment */
+    post: operations["refund_payment_api_v1_admin_payments__payment_id__refund_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Subscriptions
+     * @description Tous les espaces, leur formule et leur usage. Les filtres ne changent pas le résumé.
+     */
+    get: operations["list_subscriptions_api_v1_admin_subscriptions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions/{org_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Subscription
+     * @description Change la formule, les dates ou les crédits d'un espace, sans paiement (geste commercial,
+     *     paiement reçu hors ligne, correction). Chaque changement est inscrit au journal de l'espace.
+     */
+    patch: operations["update_subscription_api_v1_admin_subscriptions__org_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/admin/subscriptions/{org_id}/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record Payment
+     * @description Enregistre un paiement reçu hors de l'application ; la formule payée s'applique.
+     */
+    post: operations["record_payment_api_v1_admin_subscriptions__org_id__payments_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/login": {
     parameters: {
       query?: never;
@@ -21,6 +156,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Logout
+     * @description Ferme la session en cours : ses jetons ne sont plus acceptés, même volés.
+     */
+    post: operations["logout_api_v1_auth_logout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Logout All
+     * @description Ferme toutes les sessions de la personne, sur tous ses appareils.
+     */
+    post: operations["logout_all_api_v1_auth_logout_all_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/me": {
     parameters: {
       query?: never;
@@ -32,6 +207,80 @@ export interface paths {
     get: operations["me_api_v1_auth_me_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/me/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Me
+     * @description Supprime son propre compte : il est anonymisé et ne peut plus se connecter.
+     */
+    post: operations["delete_me_api_v1_auth_me_delete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Change Password */
+    post: operations["change_password_api_v1_auth_password_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password/forgot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Forgot Password
+     * @description Envoie un lien par e-mail si l'adresse existe ; la réponse ne dit jamais si elle existe.
+     */
+    post: operations["forgot_password_api_v1_auth_password_forgot_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password/reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reset Password */
+    post: operations["reset_password_api_v1_auth_password_reset_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -66,6 +315,97 @@ export interface paths {
     put?: never;
     /** Register */
     post: operations["register_api_v1_auth_register_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Sessions */
+    get: operations["list_sessions_api_v1_auth_sessions_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Totp Disable */
+    post: operations["totp_disable_api_v1_auth_totp_disable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/enable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Totp Enable */
+    post: operations["totp_enable_api_v1_auth_totp_enable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/totp/setup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Totp Setup
+     * @description Prépare un nouveau secret ; il n'est actif qu'une fois confirmé par un code.
+     */
+    post: operations["totp_setup_api_v1_auth_totp_setup_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/billing/plans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Catalog
+     * @description Formules et tarifs, publics : la page Tarifs du site les affiche sans connexion.
+     */
+    get: operations["catalog_api_v1_billing_plans_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -134,6 +474,151 @@ export interface paths {
     };
     /** List Audit */
     get: operations["list_audit_api_v1_orgs__org_id__audit_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Billing */
+    get: operations["get_billing_api_v1_orgs__org_id__billing_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel
+     * @description Arrête le renouvellement : l'espace garde sa formule jusqu'à la fin de la période.
+     */
+    post: operations["cancel_api_v1_orgs__org_id__billing_cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/checkout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Checkout */
+    post: operations["checkout_api_v1_orgs__org_id__billing_checkout_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Payments */
+    get: operations["list_payments_api_v1_orgs__org_id__billing_payments_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel Payment
+     * @description Annule un virement ou un envoi mobile money annoncé et pas encore reçu.
+     */
+    post: operations["cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/billing/payments/{payment_id}/receipt.pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Payment Receipt */
+    get: operations["payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/close": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Close
+     * @description Ferme l'espace : projets, preuves, retours, réponses, journal et fichiers sont effacés.
+     */
+    post: operations["close_api_v1_orgs__org_id__close_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Org Dashboard */
+    get: operations["org_dashboard_api_v1_orgs__org_id__dashboard_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -213,6 +698,87 @@ export interface paths {
     head?: never;
     /** Update Member */
     patch: operations["update_member_api_v1_orgs__org_id__members__member_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/members/{member_id}/reset-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Member Reset Link
+     * @description Lien de réinitialisation à remettre à un membre qui a oublié son mot de passe.
+     *
+     *     Seulement pour une personne qui n'appartient qu'à cette organisation : sinon l'administrateur
+     *     pourrait prendre la main sur un compte qui a des droits ailleurs.
+     */
+    post: operations["member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/personal-data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Person
+     * @description Tout ce qui mentionne une personne : nom, numéro de téléphone ou adresse e-mail.
+     */
+    get: operations["search_person_api_v1_orgs__org_id__personal_data_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/personal-data/erase": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Erase Person
+     * @description Efface le contenu des retours choisis (et leurs SMS) et supprime les réponses choisies.
+     */
+    post: operations["erase_person_api_v1_orgs__org_id__personal_data_erase_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/privacy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Privacy */
+    get: operations["get_privacy_api_v1_orgs__org_id__privacy_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Privacy */
+    patch: operations["update_privacy_api_v1_orgs__org_id__privacy_patch"];
     trace?: never;
   };
   "/api/v1/orgs/{org_id}/projects": {
@@ -693,6 +1259,49 @@ export interface paths {
     head?: never;
     /** Update Feedback */
     patch: operations["update_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__patch"];
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Feedback Sms */
+    get: operations["list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get"];
+    put?: never;
+    /**
+     * Send Feedback Sms
+     * @description Envoie un SMS ou un message WhatsApp à la personne.
+     *
+     *     Un échec du prestataire est enregistré et renvoyé tel quel.
+     */
+    post: operations["send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/feedback/{feedback_id}/sms/simulate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Simulate Feedback Sms
+     * @description Mode simulé seulement : fait comme si la personne avait répondu (SMS ou WhatsApp).
+     */
+    post: operations["simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/v1/orgs/{org_id}/projects/{project_id}/forms": {
@@ -1427,6 +2036,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/sms/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Sms Config */
+    get: operations["sms_config_api_v1_orgs__org_id__sms_config_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/templates": {
     parameters: {
       query?: never;
@@ -1503,10 +2129,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/health/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Ready
+     * @description Base et Redis joignables : pour la surveillance et le contrôle de santé de Docker.
+     */
+    get: operations["ready_health_ready_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AccountDeleteIn */
+    AccountDeleteIn: {
+      /** Code */
+      code?: string | null;
+      /** Password */
+      password: string;
+    };
+    /**
+     * AccountType
+     * @enum {string}
+     */
+    AccountType: "individual" | "organization";
     /** ActivityBudget */
     ActivityBudget: {
       /** Activity Id */
@@ -1521,6 +2179,230 @@ export interface components {
       spent: string;
       /** Title */
       title: string;
+    };
+    /** AdminPaymentConfirm */
+    AdminPaymentConfirm: {
+      /** Method */
+      method?: ("online" | "mobile_money" | "bank_transfer" | "cash" | "other") | null;
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+    };
+    /**
+     * AdminPaymentRecord
+     * @description Paiement reçu hors de l'application (virement, mobile money, espèces).
+     */
+    AdminPaymentRecord: {
+      /** Amount */
+      amount?: number | string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "mobile_money" | "bank_transfer" | "cash" | "other";
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+      /** Pack */
+      pack?: number | null;
+      /** Plan */
+      plan: string;
+      /**
+       * Reference
+       * @default
+       */
+      reference: string;
+    };
+    /** AdminPaymentRefund */
+    AdminPaymentRefund: {
+      /** Note */
+      note: string;
+    };
+    /** AdminPaymentRow */
+    AdminPaymentRow: {
+      /** Amount */
+      amount: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Credits */
+      credits: number;
+      /** Currency */
+      currency: string;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer" | "cash" | "other";
+      /** Note */
+      note: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
+      /** Paid At */
+      paid_at: string | null;
+      /** Paid By Email */
+      paid_by_email: string | null;
+      /** Plan */
+      plan: string;
+      /** Provider */
+      provider: string;
+      /** Receipt Number */
+      receipt_number: string | null;
+      /** Reference */
+      reference: string;
+      /** Refunded At */
+      refunded_at: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "paid" | "canceled" | "failed" | "refunded";
+    };
+    /** AdminPayments */
+    AdminPayments: {
+      /** Items */
+      items: components["schemas"]["AdminPaymentRow"][];
+      summary: components["schemas"]["AdminPaymentsSummary"];
+    };
+    /** AdminPaymentsSummary */
+    AdminPaymentsSummary: {
+      /** Currency */
+      currency: string;
+      /** Paid Last 30 Days */
+      paid_last_30_days: string;
+      /** Pending */
+      pending: number;
+      /** Pending Amount */
+      pending_amount: string;
+      /** Refunded Last 30 Days */
+      refunded_last_30_days: string;
+    };
+    /** AdminSubscriptionRow */
+    AdminSubscriptionRow: {
+      account_type: components["schemas"]["AccountType"];
+      /** Cancel At Period End */
+      cancel_at_period_end: boolean;
+      /** Contact Email */
+      contact_email: string | null;
+      /** Contact Name */
+      contact_name: string | null;
+      /** Credits */
+      credits: number;
+      /** Credits Used This Month */
+      credits_used_this_month: number;
+      /** Current Period End */
+      current_period_end: string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Last Payment At */
+      last_payment_at: string | null;
+      /** Members */
+      members: number;
+      /**
+       * Organization Created At
+       * Format: date-time
+       */
+      organization_created_at: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
+      /** Plan */
+      plan: string;
+      /** Projects */
+      projects: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "trialing" | "active" | "canceled" | "expired";
+      /** Total Paid */
+      total_paid: string;
+      /** Trial Ends At */
+      trial_ends_at: string | null;
+    };
+    /** AdminSubscriptionUpdate */
+    AdminSubscriptionUpdate: {
+      /** Add Credits */
+      add_credits?: number | null;
+      /** Cancel At Period End */
+      cancel_at_period_end?: boolean | null;
+      /** Current Period End */
+      current_period_end?: string | null;
+      /** Cycle */
+      cycle?: ("monthly" | "annual" | "usage") | null;
+      /** Extend Days */
+      extend_days?: number | null;
+      /**
+       * Note
+       * @default
+       */
+      note: string;
+      /** Plan */
+      plan?: string | null;
+      /** Status */
+      status?: ("trialing" | "active") | null;
+      /** Trial Ends At */
+      trial_ends_at?: string | null;
+    };
+    /** AdminSubscriptions */
+    AdminSubscriptions: {
+      /** Items */
+      items: components["schemas"]["AdminSubscriptionRow"][];
+      summary: components["schemas"]["AdminSummary"];
+    };
+    /** AdminSummary */
+    AdminSummary: {
+      /** By Plan */
+      by_plan: {
+        [key: string]: number;
+      };
+      /** By Status */
+      by_status: {
+        [key: string]: number;
+      };
+      /** Currency */
+      currency: string;
+      /** Monthly Recurring */
+      monthly_recurring: string;
+      /** Organizations */
+      organizations: number;
+      /** Revenue Last 30 Days */
+      revenue_last_30_days: string;
     };
     /**
      * Aggregation
@@ -1623,7 +2505,53 @@ export interface components {
        */
       indicators: components["schemas"]["ExtractedIndicator"][];
       /** Nodes */
-      nodes: components["schemas"]["ExtractedNode"][];
+      nodes: components["schemas"]["ApplyNode"][];
+    };
+    /** ApplyNode */
+    ApplyNode: {
+      /**
+       * Assumptions
+       * @description Hypothèses ou risques associés, sinon chaîne vide
+       */
+      assumptions: string;
+      /**
+       * Code
+       * @description Code tel qu'écrit dans le document, sinon le ref
+       */
+      code: string;
+      /** End Month */
+      end_month?: number | null;
+      /**
+       * Level
+       * @enum {string}
+       */
+      level: "goal" | "outcome" | "output" | "activity" | "sub_activity";
+      /**
+       * Parent Ref
+       * @description ref du parent ; null pour l'objectif général
+       */
+      parent_ref: string | null;
+      /**
+       * Ref
+       * @description Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3
+       */
+      ref: string;
+      /**
+       * Source Document
+       * @description Numéro du document source (1, 2…)
+       */
+      source_document: number | null;
+      /** Source Page */
+      source_page: number | null;
+      /**
+       * Source Quote
+       * @description Extrait exact du document, 5 à 30 mots
+       */
+      source_quote: string;
+      /** Start Month */
+      start_month?: number | null;
+      /** Title */
+      title: string;
     };
     /** ApplySuggestionIn */
     ApplySuggestionIn: {
@@ -1658,6 +2586,15 @@ export interface components {
        */
       id: string;
     };
+    /** BillingUsage */
+    BillingUsage: {
+      /** Credits Used This Month */
+      credits_used_this_month: number;
+      /** Members */
+      members: number;
+      /** Projects */
+      projects: number;
+    };
     /** Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post */
     Body_upload_document_api_v1_orgs__org_id__projects__project_id__documents_post: {
       /** File */
@@ -1677,6 +2614,8 @@ export interface components {
        * @default false
        */
       consent_given: boolean;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       /** File */
       file: string;
       /** @default other */
@@ -1687,6 +2626,31 @@ export interface components {
       longitude?: number | string | null;
       /** Taken At */
       taken_at?: string | null;
+    };
+    /**
+     * Breakdown
+     * @description Une ligne de ventilation : un mois, un lieu, une zone ou un projet.
+     */
+    Breakdown: {
+      /**
+       * Executions
+       * @default 0
+       */
+      executions: number;
+      /** Key */
+      key: string;
+      /** Label */
+      label: string;
+      /**
+       * Masked
+       * @default false
+       */
+      masked: boolean;
+      /**
+       * People
+       * @default 0
+       */
+      people: number;
     };
     /** BudgetLineIn */
     BudgetLineIn: {
@@ -1811,6 +2775,84 @@ export interface components {
       /** Tor */
       tor: components["schemas"]["BuiltinSection"][];
     };
+    /** Catalog */
+    Catalog: {
+      /** Credit Packs */
+      credit_packs: number[];
+      /** Currency */
+      currency: string;
+      /** Payment Instructions */
+      payment_instructions: string;
+      /** Plans */
+      plans: components["schemas"]["PlanOut"][];
+      /** Trial Days */
+      trial_days: number;
+      /** Welcome Credits */
+      welcome_credits: number;
+    };
+    /** ChannelConfig */
+    ChannelConfig: {
+      /**
+       * Channel
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /**
+       * Error
+       * @default
+       */
+      error: string;
+      /** Provider */
+      provider: string;
+      /** Simulated */
+      simulated: boolean;
+    };
+    /** CheckoutIn */
+    CheckoutIn: {
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /**
+       * Method
+       * @default online
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer";
+      /** Pack */
+      pack?: number | null;
+      /** Plan */
+      plan: string;
+    };
+    /** CheckoutOut */
+    CheckoutOut: {
+      payment: components["schemas"]["PaymentOut"];
+      subscription: components["schemas"]["SubscriptionOut"];
+    };
+    /** DashboardOptions */
+    DashboardOptions: {
+      /** Locations */
+      locations: string[];
+      /** Projects */
+      projects: components["schemas"]["DashboardProject"][];
+      /** Years */
+      years: number[];
+      /** Zones */
+      zones: string[];
+    };
+    /** DashboardProject */
+    DashboardProject: {
+      /** Code */
+      code: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+    };
     /** DocumentOut */
     DocumentOut: {
       /**
@@ -1842,11 +2884,48 @@ export interface components {
      * @enum {string}
      */
     DocumentStatus: "uploaded" | "ocr" | "extracted" | "failed";
+    /** ErasureIn */
+    ErasureIn: {
+      /** Feedback Ids */
+      feedback_ids?: string[];
+      /** Reason */
+      reason: string;
+      /** Submission Ids */
+      submission_ids?: string[];
+    };
+    /** ErasureOut */
+    ErasureOut: {
+      /** Feedback */
+      feedback: number;
+      /** Submissions */
+      submissions: number;
+    };
     /**
      * EvidenceKind
      * @enum {string}
      */
     EvidenceKind: "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+    /**
+     * EvidenceMatch
+     * @description Preuve qui cite la personne (légende ou texte) : à vérifier, jamais effacée d'office.
+     */
+    EvidenceMatch: {
+      /** Caption */
+      caption: string;
+      /** Excerpt */
+      excerpt: string;
+      /** Filename */
+      filename: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Project Code */
+      project_code: string;
+    };
     /** EvidenceOut */
     EvidenceOut: {
       /**
@@ -1858,6 +2937,13 @@ export interface components {
       caption: string;
       /** Consent Given */
       consent_given: boolean;
+      /**
+       * Consent Method
+       * @default
+       */
+      consent_method: string;
+      /** Consent Recorded At */
+      consent_recorded_at?: string | null;
       /** Content Type */
       content_type: string;
       /**
@@ -1904,6 +2990,8 @@ export interface components {
       caption?: string | null;
       /** Consent Given */
       consent_given?: boolean | null;
+      /** Consent Method */
+      consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       kind?: components["schemas"]["EvidenceKind"] | null;
     };
     /**
@@ -2292,48 +3380,6 @@ export interface components {
       /** Unit */
       unit: string;
     };
-    /** ExtractedNode */
-    ExtractedNode: {
-      /**
-       * Assumptions
-       * @description Hypothèses ou risques associés, sinon chaîne vide
-       */
-      assumptions: string;
-      /**
-       * Code
-       * @description Code tel qu'écrit dans le document, sinon le ref
-       */
-      code: string;
-      /**
-       * Level
-       * @enum {string}
-       */
-      level: "goal" | "outcome" | "output" | "activity" | "sub_activity";
-      /**
-       * Parent Ref
-       * @description ref du parent ; null pour l'objectif général
-       */
-      parent_ref: string | null;
-      /**
-       * Ref
-       * @description Identifiant unique dans cette réponse, ex. OS1, R1.2, A1.2.3
-       */
-      ref: string;
-      /**
-       * Source Document
-       * @description Numéro du document source (1, 2…)
-       */
-      source_document: number | null;
-      /** Source Page */
-      source_page: number | null;
-      /**
-       * Source Quote
-       * @description Extrait exact du document, 5 à 30 mots
-       */
-      source_quote: string;
-      /** Title */
-      title: string;
-    };
     /**
      * FeedbackCategory
      * @enum {string}
@@ -2398,6 +3444,41 @@ export interface components {
       /** Sensitive */
       sensitive?: boolean | null;
     };
+    /** FeedbackMatch */
+    FeedbackMatch: {
+      /** Anonymized */
+      anonymized: boolean;
+      /** Category */
+      category: string;
+      /** Contact */
+      contact: string;
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Messages */
+      messages: {
+        [key: string]: unknown;
+      }[];
+      /** Project Code */
+      project_code: string;
+      /**
+       * Received On
+       * Format: date
+       */
+      received_on: string;
+      /** Reference */
+      reference: string;
+      /** Response */
+      response: string;
+      /** Sensitive */
+      sensitive: boolean;
+      /** Status */
+      status: string;
+    };
     /** FeedbackOut */
     FeedbackOut: {
       /** Activity Id */
@@ -2457,6 +3538,16 @@ export interface components {
       response_days: number | null;
       /** Sensitive */
       sensitive: boolean;
+      /**
+       * Sms Awaiting Reply
+       * @default false
+       */
+      sms_awaiting_reply: boolean;
+      /**
+       * Sms Count
+       * @default 0
+       */
+      sms_count: number;
       status: components["schemas"]["FeedbackStatus"];
       /**
        * Updated At
@@ -2558,6 +3649,11 @@ export interface components {
       mean?: number | null;
       /** Min */
       min?: number | null;
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /** Samples */
       samples?: string[];
       /** Total */
@@ -2581,6 +3677,11 @@ export interface components {
       label: string;
       /** Options */
       options?: string[];
+      /**
+       * Personal
+       * @default false
+       */
+      personal: boolean;
       /**
        * Required
        * @default false
@@ -3018,6 +4119,8 @@ export interface components {
        * Format: email
        */
       email: string;
+      /** Otp */
+      otp?: string | null;
       /** Password */
       password: string;
     };
@@ -3034,8 +4137,25 @@ export interface components {
       id: string;
       /** Is Active */
       is_active: boolean;
+      /** Is Platform Admin */
+      is_platform_admin: boolean;
+      /**
+       * Mfa Recommended
+       * @default false
+       */
+      mfa_recommended: boolean;
+      /**
+       * Must Change Password
+       * @default false
+       */
+      must_change_password: boolean;
       /** Organizations */
       organizations: components["schemas"]["MyOrganizationOut"][];
+      /**
+       * Totp Enabled
+       * @default false
+       */
+      totp_enabled: boolean;
     };
     /** MemberIn */
     MemberIn: {
@@ -3071,6 +4191,7 @@ export interface components {
     };
     /** MyOrganizationOut */
     MyOrganizationOut: {
+      account_type: components["schemas"]["AccountType"];
       /**
        * Created At
        * Format: date-time
@@ -3078,6 +4199,8 @@ export interface components {
       created_at: string;
       /** Default Language */
       default_language: string;
+      /** Features */
+      features: string[];
       /**
        * Id
        * Format: uuid
@@ -3085,6 +4208,8 @@ export interface components {
       id: string;
       /** Name */
       name: string;
+      /** Plan */
+      plan: string | null;
       role: components["schemas"]["Role"];
       /** Slug */
       slug: string;
@@ -3109,6 +4234,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id?: string | null;
+      /** Planned End */
+      planned_end?: string | null;
+      /** Planned Start */
+      planned_start?: string | null;
       /** Position */
       position?: number | null;
       /** Title */
@@ -3135,6 +4264,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id: string | null;
+      /** Planned End */
+      planned_end: string | null;
+      /** Planned Start */
+      planned_start: string | null;
       /** Position */
       position: number;
       /** Title */
@@ -3161,6 +4294,10 @@ export interface components {
       level: components["schemas"]["NodeLevel"];
       /** Parent Id */
       parent_id: string | null;
+      /** Planned End */
+      planned_end: string | null;
+      /** Planned Start */
+      planned_start: string | null;
       /** Position */
       position: number;
       /** Title */
@@ -3174,10 +4311,51 @@ export interface components {
       code?: string | null;
       /** Description */
       description?: string | null;
+      /** Planned End */
+      planned_end?: string | null;
+      /** Planned Start */
+      planned_start?: string | null;
       /** Position */
       position?: number | null;
       /** Title */
       title?: string | null;
+    };
+    /** OrgDashboard */
+    OrgDashboard: {
+      /** Active Projects */
+      active_projects: number;
+      /** By Location */
+      by_location: components["schemas"]["Breakdown"][];
+      /** By Month */
+      by_month: components["schemas"]["Breakdown"][];
+      /** By Project */
+      by_project: components["schemas"]["Breakdown"][];
+      /** By Zone */
+      by_zone: components["schemas"]["Breakdown"][];
+      /** Completed Executions */
+      completed_executions: number;
+      /** Executions */
+      executions: number;
+      options: components["schemas"]["DashboardOptions"];
+      people: components["schemas"]["People"];
+      /** Projects */
+      projects: number;
+      /** Spending */
+      spending: components["schemas"]["Spending"][];
+    };
+    /** OrganizationCloseIn */
+    OrganizationCloseIn: {
+      /** Code */
+      code?: string | null;
+      /**
+       * Delete Account
+       * @default false
+       */
+      delete_account: boolean;
+      /** Name */
+      name: string;
+      /** Password */
+      password: string;
     };
     /** OrganizationIn */
     OrganizationIn: {
@@ -3232,6 +4410,113 @@ export interface components {
        * @default 0
        */
       men: number;
+      /**
+       * With Disability
+       * @default 0
+       */
+      with_disability: number;
+      /**
+       * Women
+       * @default 0
+       */
+      women: number;
+    };
+    /** PasswordChangeIn */
+    PasswordChangeIn: {
+      /** Current Password */
+      current_password: string;
+      /** New Password */
+      new_password: string;
+    };
+    /** PasswordForgotIn */
+    PasswordForgotIn: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+    };
+    /** PasswordResetIn */
+    PasswordResetIn: {
+      /** New Password */
+      new_password: string;
+      /** Token */
+      token: string;
+    };
+    /** PaymentOut */
+    PaymentOut: {
+      /** Amount */
+      amount: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Credits */
+      credits: number;
+      /** Currency */
+      currency: string;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Description */
+      description: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "online" | "mobile_money" | "bank_transfer" | "cash" | "other";
+      /** Note */
+      note: string;
+      /** Paid At */
+      paid_at: string | null;
+      /** Plan */
+      plan: string;
+      /** Provider */
+      provider: string;
+      /** Receipt Number */
+      receipt_number: string | null;
+      /** Reference */
+      reference: string;
+      /** Refunded At */
+      refunded_at: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "pending" | "paid" | "canceled" | "failed" | "refunded";
+    };
+    /** People */
+    People: {
+      /**
+       * Boys
+       * @default 0
+       */
+      boys: number;
+      /**
+       * Girls
+       * @default 0
+       */
+      girls: number;
+      /** Masked */
+      masked?: string[];
+      /**
+       * Men
+       * @default 0
+       */
+      men: number;
+      /**
+       * Total
+       * @default 0
+       */
+      total: number;
       /**
        * With Disability
        * @default 0
@@ -3389,6 +4674,70 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** PersonalDataResult */
+    PersonalDataResult: {
+      /** Evidence */
+      evidence: components["schemas"]["EvidenceMatch"][];
+      /** Feedback */
+      feedback: components["schemas"]["FeedbackMatch"][];
+      /** Query */
+      query: string;
+      /** Submissions */
+      submissions: components["schemas"]["SubmissionMatch"][];
+    };
+    /** PlanLimits */
+    PlanLimits: {
+      /** Members */
+      members: number | null;
+      /** Monthly Credits */
+      monthly_credits: number;
+      /** Projects */
+      projects: number | null;
+    };
+    /** PlanOut */
+    PlanOut: {
+      account_type: components["schemas"]["AccountType"];
+      /** Features */
+      features: string[];
+      /** Id */
+      id: string;
+      limits: components["schemas"]["PlanLimits"];
+      prices: components["schemas"]["PlanPrices"];
+    };
+    /** PlanPrices */
+    PlanPrices: {
+      /** Annual */
+      annual: string;
+      /** Credit */
+      credit: string;
+      /** Monthly */
+      monthly: string;
+    };
+    /**
+     * PrivacySettings
+     * @description Réglages de protection des données de l'espace.
+     */
+    PrivacySettings: {
+      /** Ai Enabled */
+      ai_enabled: boolean;
+      /** Feedback Retention Months */
+      feedback_retention_months: number;
+      /** Privacy Contact */
+      privacy_contact: string;
+      /** Sms Acknowledgement */
+      sms_acknowledgement: boolean;
+    };
+    /** PrivacyUpdate */
+    PrivacyUpdate: {
+      /** Ai Enabled */
+      ai_enabled?: boolean | null;
+      /** Feedback Retention Months */
+      feedback_retention_months?: number | null;
+      /** Privacy Contact */
+      privacy_contact?: string | null;
+      /** Sms Acknowledgement */
+      sms_acknowledgement?: boolean | null;
+    };
     /** ProjectIn */
     ProjectIn: {
       /** Code */
@@ -3534,6 +4883,14 @@ export interface components {
     };
     /** RegisterIn */
     RegisterIn: {
+      /** @default organization */
+      account_type: components["schemas"]["AccountType"];
+      /**
+       * Cycle
+       * @default monthly
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
       /**
        * Email
        * Format: email
@@ -3542,9 +4899,11 @@ export interface components {
       /** Full Name */
       full_name: string;
       /** Organization Name */
-      organization_name: string;
+      organization_name?: string | null;
       /** Password */
       password: string;
+      /** Plan */
+      plan?: string | null;
     };
     /** ReportOut */
     ReportOut: {
@@ -3632,6 +4991,16 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** ResetLinkOut */
+    ResetLinkOut: {
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /** Path */
+      path: string;
+    };
     /**
      * Role
      * @enum {string}
@@ -3658,6 +5027,103 @@ export interface components {
       /** Snippet */
       snippet: string;
     };
+    /** SessionOut */
+    SessionOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Current */
+      current: boolean;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Rotated At */
+      rotated_at: string | null;
+      /** User Agent */
+      user_agent: string;
+    };
+    /** SmsConfig */
+    SmsConfig: {
+      /** Channels */
+      channels: components["schemas"]["ChannelConfig"][];
+      /** Inbound Enabled */
+      inbound_enabled: boolean;
+      /** Sender */
+      sender: string;
+    };
+    /**
+     * SmsDirection
+     * @enum {string}
+     */
+    SmsDirection: "inbound" | "outbound";
+    /** SmsOut */
+    SmsOut: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      direction: components["schemas"]["SmsDirection"];
+      /** Error */
+      error: string;
+      /** Feedback Id */
+      feedback_id: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Phone */
+      phone: string;
+      /** Provider */
+      provider: string;
+      /** Sent By */
+      sent_by: string | null;
+      /** Status */
+      status: string;
+    };
+    /** SmsSendIn */
+    SmsSendIn: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+      /** To */
+      to?: string | null;
+    };
+    /** SmsSimulateIn */
+    SmsSimulateIn: {
+      /** Body */
+      body: string;
+      /**
+       * Channel
+       * @default sms
+       * @enum {string}
+       */
+      channel: "sms" | "whatsapp";
+    };
+    /** Spending */
+    Spending: {
+      /** Amount */
+      amount: string;
+      /** Currency */
+      currency: string;
+    };
     /** SubmissionIn */
     SubmissionIn: {
       /** Answers */
@@ -3677,6 +5143,29 @@ export interface components {
       location: string;
       /** Longitude */
       longitude?: number | null;
+    };
+    /** SubmissionMatch */
+    SubmissionMatch: {
+      /** Answers */
+      answers: {
+        [key: string]: unknown;
+      };
+      /**
+       * Collected At
+       * Format: date-time
+       */
+      collected_at: string;
+      /** Form Title */
+      form_title: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Location */
+      location: string;
+      /** Project Code */
+      project_code: string;
     };
     /** SubmissionOut */
     SubmissionOut: {
@@ -3712,6 +5201,34 @@ export interface components {
        * @default
        */
       submitter_name: string;
+    };
+    /** SubscriptionOut */
+    SubscriptionOut: {
+      account_type: components["schemas"]["AccountType"];
+      /** Cancel At Period End */
+      cancel_at_period_end: boolean;
+      /** Credits */
+      credits: number;
+      /** Current Period End */
+      current_period_end: string | null;
+      /**
+       * Cycle
+       * @enum {string}
+       */
+      cycle: "monthly" | "annual" | "usage";
+      /** Features */
+      features: string[];
+      limits: components["schemas"]["PlanLimits"];
+      /** Plan */
+      plan: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "trialing" | "active" | "canceled" | "expired";
+      /** Trial Ends At */
+      trial_ends_at: string | null;
+      usage: components["schemas"]["BillingUsage"];
     };
     /** TemplateIn */
     TemplateIn: {
@@ -3809,6 +5326,11 @@ export interface components {
     TokenPair: {
       /** Access Token */
       access_token: string;
+      /**
+       * Must Change Password
+       * @default false
+       */
+      must_change_password: boolean;
       /** Refresh Token */
       refresh_token: string;
       /**
@@ -3938,6 +5460,20 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** TotpCodeIn */
+    TotpCodeIn: {
+      /** Code */
+      code: string;
+    };
+    /** TotpSetupOut */
+    TotpSetupOut: {
+      /** Qr Svg */
+      qr_svg: string;
+      /** Secret */
+      secret: string;
+      /** Uri */
+      uri: string;
+    };
     /** UserOut */
     UserOut: {
       /** Email */
@@ -3974,6 +5510,242 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  list_payments_api_v1_admin_payments_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        status?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPayments"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  confirm_payment_api_v1_admin_payments__payment_id__confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentConfirm"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  admin_receipt_api_v1_admin_payments__payment_id__receipt_pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  refund_payment_api_v1_admin_payments__payment_id__refund_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentRefund"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_subscriptions_api_v1_admin_subscriptions_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        status?: string | null;
+        plan?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptions"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_subscription_api_v1_admin_subscriptions__org_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminSubscriptionUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminSubscriptionRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  record_payment_api_v1_admin_subscriptions__org_id__payments_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminPaymentRecord"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPaymentRow"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   login_api_v1_auth_login_post: {
     parameters: {
       query?: never;
@@ -4005,6 +5777,49 @@ export interface operations {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
+      /** @description Trop de tentatives, réessayer plus tard */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  logout_api_v1_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  logout_all_api_v1_auth_logout_all_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
   me_api_v1_auth_me_get: {
@@ -4023,6 +5838,132 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MeOut"];
+        };
+      };
+    };
+  };
+  delete_me_api_v1_auth_me_delete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  change_password_api_v1_auth_password_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordChangeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  forgot_password_api_v1_auth_password_forgot_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordForgotIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reset_password_api_v1_auth_password_reset_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordResetIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TokenPair"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -4089,6 +6030,128 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_sessions_api_v1_auth_sessions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionOut"][];
+        };
+      };
+    };
+  };
+  totp_disable_api_v1_auth_totp_disable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TotpCodeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  totp_enable_api_v1_auth_totp_enable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TotpCodeIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  totp_setup_api_v1_auth_totp_setup_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TotpSetupOut"];
+        };
+      };
+    };
+  };
+  catalog_api_v1_billing_plans_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Catalog"];
         };
       };
     };
@@ -4264,6 +6327,269 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AuditLogOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_billing_api_v1_orgs__org_id__billing_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_api_v1_orgs__org_id__billing_cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  checkout_api_v1_orgs__org_id__billing_checkout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckoutIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckoutOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_payments_api_v1_orgs__org_id__billing_payments_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  cancel_payment_api_v1_orgs__org_id__billing_payments__payment_id__cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  payment_receipt_api_v1_orgs__org_id__billing_payments__payment_id__receipt_pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        payment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  close_api_v1_orgs__org_id__close_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OrganizationCloseIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  org_dashboard_api_v1_orgs__org_id__dashboard_get: {
+    parameters: {
+      query?: {
+        year?: number | null;
+        month?: number | null;
+        zone?: string;
+        location?: string;
+        project_id?: string | null;
+        beneficiary?: ("women" | "men" | "girls" | "boys" | "with_disability") | null;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrgDashboard"];
         };
       };
       /** @description Validation Error */
@@ -4462,6 +6788,172 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MemberOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  member_reset_link_api_v1_orgs__org_id__members__member_id__reset_link_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        member_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResetLinkOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_person_api_v1_orgs__org_id__personal_data_get: {
+    parameters: {
+      query: {
+        q: string;
+      };
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalDataResult"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  erase_person_api_v1_orgs__org_id__personal_data_erase_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ErasureIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErasureOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_privacy_api_v1_orgs__org_id__privacy_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_privacy_api_v1_orgs__org_id__privacy_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PrivacyUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacySettings"];
         };
       };
       /** @description Validation Error */
@@ -5828,6 +8320,113 @@ export interface operations {
       };
     };
   };
+  list_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  send_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSendIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  simulate_feedback_sms_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__sms_simulate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SmsSimulateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_forms_api_v1_orgs__org_id__projects__project_id__forms_get: {
     parameters: {
       query?: never;
@@ -5999,7 +8598,10 @@ export interface operations {
   };
   export_submissions_api_v1_orgs__org_id__projects__project_id__forms__form_id__export_xlsx_get: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Inclure les questions personnelles */
+        personal?: boolean;
+      };
       header?: never;
       path: {
         org_id: string;
@@ -7801,6 +10403,37 @@ export interface operations {
       };
     };
   };
+  sms_config_api_v1_orgs__org_id__sms_config_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SmsConfig"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_templates_api_v1_orgs__org_id__templates_get: {
     parameters: {
       query?: never;
@@ -7965,6 +10598,28 @@ export interface operations {
     };
   };
   health_health_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+  };
+  ready_health_ready_get: {
     parameters: {
       query?: never;
       header?: never;

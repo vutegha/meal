@@ -2,24 +2,25 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, params, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import bind_org, get_session
-from app.core.security import decode_token
+from app.core.security import Claims, decode_token
 from app.models import Membership, Role, User
+from app.services import billing, sessions
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 _bearer = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(
+async def get_claims(
     session: SessionDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-) -> User:
+) -> Claims:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentification requise",
@@ -27,12 +28,24 @@ async def get_current_user(
     )
     if credentials is None:
         raise unauthorized
-    user_id = decode_token(credentials.credentials, "access")
-    if user_id is None:
+    claims = decode_token(credentials.credentials, "access")
+    # Session révoquée (déconnexion, mot de passe changé) : le jeton d'accès ne vaut plus rien.
+    if claims is None or not await sessions.is_active(session, claims):
         raise unauthorized
-    user = await session.get(User, user_id)
+    return claims
+
+
+CurrentClaims = Annotated[Claims, Depends(get_claims)]
+
+
+async def get_current_user(session: SessionDep, claims: CurrentClaims) -> User:
+    user = await session.get(User, claims.user_id)
     if user is None or not user.is_active:
-        raise unauthorized
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentification requise",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 
@@ -62,3 +75,13 @@ def require_membership(
 
 AnyMember = Annotated[Membership, Depends(require_membership())]
 OrgAdmin = Annotated[Membership, Depends(require_membership(Role.ADMIN))]
+
+
+def plan_feature(feature: str) -> params.Depends:
+    """Réserve une route aux formules qui ouvrent `feature` (402 sinon), après le contrôle
+    d'appartenance : un non-membre reçoit toujours 404."""
+
+    async def dependency(org_id: UUID, _: AnyMember, session: SessionDep) -> None:
+        await billing.require_feature(session, org_id, feature)
+
+    return params.Depends(dependency)

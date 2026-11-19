@@ -135,7 +135,7 @@ async def transition_report(
 ) -> NarrativeReport:
     """submit (rédacteurs) ; approve, return, reopen (chef de projet ou administrateur)."""
     project = await svc.get_project(session, org_id, project_id)
-    report = await report_svc.get_report(session, project, report_id)
+    report = await report_svc.get_report(session, project, report_id, for_update=True)
     comment = (body.comment if body else "").strip()
     if action != "submit" and member.role.value not in ("admin", "project_manager"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Réservé au chef de projet")

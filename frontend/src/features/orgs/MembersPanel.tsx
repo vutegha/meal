@@ -45,6 +45,11 @@ export function MembersPanel({
     mutationFn: (id: string) => api.removeMember(orgId, id),
     onSettled: refresh,
   });
+  const [resetFor, setResetFor] = useState<{ name: string; url: string } | null>(null);
+  const resetLink = useMutation({
+    mutationFn: ({ id }: { id: string; name: string }) => api.memberResetLink(orgId, id),
+    onSuccess: (link, { name }) => setResetFor({ name, url: window.location.origin + link.path }),
+  });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -80,9 +85,19 @@ export function MembersPanel({
                     ))}
                   </select>
                   {member.user.id !== currentUserId && (
-                    <Button variant="danger" onClick={() => remove.mutate(member.id)}>
-                      {t("common.remove")}
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        onClick={() =>
+                          resetLink.mutate({ id: member.id, name: member.user.full_name })
+                        }
+                      >
+                        {t("orgs.resetLink")}
+                      </Button>
+                      <Button variant="danger" onClick={() => remove.mutate(member.id)}>
+                        {t("common.remove")}
+                      </Button>
+                    </>
                   )}
                 </>
               ) : (
@@ -92,7 +107,19 @@ export function MembersPanel({
           ))}
         </ul>
       )}
-      <ErrorText error={changeRole.error ?? remove.error} />
+      <ErrorText error={changeRole.error ?? remove.error ?? resetLink.error} />
+      {resetFor && (
+        <div role="status" className="mt-3 rounded-md bg-sky-50 p-3 text-sm text-sky-900">
+          <p>{t("orgs.resetLinkReady", { name: resetFor.name })}</p>
+          <input
+            readOnly
+            aria-label={t("orgs.resetLink")}
+            className="mt-2 w-full rounded border border-sky-200 bg-white px-2 py-1 font-mono text-xs"
+            value={resetFor.url}
+            onFocus={(e) => e.target.select()}
+          />
+        </div>
+      )}
 
       {isAdmin && (
         <form onSubmit={submit} className="mt-5 space-y-3 border-t border-slate-100 pt-5">

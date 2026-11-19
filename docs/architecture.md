@@ -78,7 +78,7 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - L'IA propose, un humain valide : l'extraction produit une **proposition** stockée (`ai_proposals`) qu'un planificateur relit, corrige et applique en partie ou rejette. Rien n'est écrit dans le cadre logique sans validation.
 - Chaque élément proposé cite un extrait du document. Le serveur vérifie que l'extrait figure bien dans le texte (normalisation des espaces, guillemets et casse) et marque les citations introuvables « à vérifier ».
 - Sorties structurées (schémas Pydantic dans `schemas/ai.py`), prompts versionnés dans `llm/prompts/`, cache de prompt sur les documents.
-- Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation (`AI_MONTHLY_BUDGET_USD`) bloque les appels au-delà.
+- Chaque appel est journalisé dans `ai_calls` (modèle, jetons, coût estimé, durée, version du prompt). Un plafond mensuel par organisation, fixé par sa formule et éventuellement abaissé pour toutes par `AI_MONTHLY_BUDGET_USD`, bloque les appels au-delà.
 - Les modèles sont configurables : `LLM_MODEL_EXTRACTION` (claude-opus-5-5 par défaut), `LLM_MODEL_DRAFTING`, `LLM_MODEL_LIGHT`.
 - Les TdR sont rédigés par l'IA (`LLM_MODEL_DRAFTING`) à partir du cadre logique, des indicateurs, des pages de documents les plus pertinentes (recherche plein texte) et des consignes de l'utilisateur. Les informations absentes sont laissées en « [À compléter] » et listées. La section budget est toujours calculée depuis le budget du projet, jamais rédigée par le modèle.
 - Le rapport narratif d'une exécution est rédigé à partir de sources numérotées : saisie et notes (S1), TdR, texte des comptes rendus et listes de présence, légendes des photos consenties (P1…). Chaque phrase factuelle renvoie à sa source ; un renvoi vers une source inexistante est remplacé par « [source introuvable] ». Les sections participants et budget sont calculées. Les valeurs d'indicateurs proposées ne sont enregistrées qu'après vérification humaine.
@@ -98,6 +98,32 @@ Toutes les ressources métier appartiennent à une organisation et sont exposée
 - Le registre des plaintes et retours applique la confidentialité côté serveur : une entrée sensible (fraude, exploitation et abus sexuels, sécurité) renvoie 404 à qui n'est ni chef de projet, ni administrateur, ni la personne qui l'a saisie, ni celle qui la traite. Les statistiques la comptent sans la détailler.
 - Le contact d'une personne n'est montré qu'à ceux qui traitent les retours, et jamais pour un retour anonyme. Le journal d'audit ne garde que la référence, pas le contenu.
 - Le rapport périodique ne transmet à l'IA que les retours non sensibles, sans donnée personnelle, et le nombre de cas sensibles.
+
+## Site public, comptes et abonnements
+
+- Le frontend sert un site public sans connexion : accueil (`/`), fonctionnalités (`/fonctionnalites`) et tarifs (`/tarifs`). Une personne connectée qui ouvre `/` va directement à son espace.
+- Chaque espace est un **compte individuel** (une personne) ou une **organisation** (équipe). Le type découle de la formule, définie dans `services/billing.py` : Solo (individuel), Équipe et Institution (organisation). La formule fixe les limites (projets, membres, crédits IA par mois) et les fonctions ouvertes :
+
+  | Fonction | Solo | Équipe | Institution |
+  |---|---|---|---|
+  | Projets, extraction IA, TdR, collecte hors ligne, rapports d'activité, tableau de bord, plaintes et retours, exports | oui | oui | oui |
+  | Formulaires de collecte personnalisés (`forms`), rapports périodiques (`periodic_reports`) | | oui | oui |
+  | Membres et rôles (`team`), modèles de documents, leçons de l'organisation, journal d'audit | | oui | oui |
+  | SMS et WhatsApp avec les communautés (`messaging`) | | | oui |
+
+  Côté API, une route se réserve à une fonction avec `dependencies=[plan_feature("forms")]` (`api/deps.py`), après le contrôle d'appartenance : un non-membre reçoit toujours 404, un membre dont la formule n'ouvre pas la fonction reçoit **402** avec le nom de la formule qui l'ouvre. Les écritures sont verrouillées, la lecture reste permise pour qu'un espace qui change de formule retrouve ses données. Côté interface, `FeatureGate` remplace la page ou la partie de page par une invitation à changer de formule, et les onglets concernés portent un cadenas.
+- Les formules mensuelles et annuelles comprennent un quota de crédits IA par mois (20, 100 ou 500), décompté sur les générations réussies du mois ; un plafond interne en dollars, jamais affiché, protège en plus des appels très coûteux.
+- Facturation au mois, à l'année (deux mois offerts) ou à l'usage : des crédits achetés par packs, une génération IA (extraction, TdR, rapport d'activité, rapport périodique) consommant un crédit. L'inscription ouvre un essai de 14 jours, ou 5 crédits offerts à l'usage.
+- Un abonnement expiré laisse les données consultables mais bloque la création de projets, l'ajout de membres et l'IA.
+- **Paiements.** Chaque paiement a un statut (`pending`, `paid`, `canceled`, `failed`, `refunded`) et un moyen (`online`, `mobile_money`, `bank_transfer`, `cash`, `other`).
+  - En ligne, le prestataire encaisse tout de suite.
+  - Un client peut aussi annoncer un virement ou un envoi mobile money. Le paiement reste alors en attente avec une référence `WM-…` et les coordonnées de `PAYMENT_INSTRUCTIONS`, et le client peut l'annuler. L'équipe de la plateforme le confirme depuis `/admin`, onglet Paiements, et la formule s'applique à ce moment (`billing.mark_paid`).
+  - L'administration peut aussi enregistrer un paiement reçu hors de l'application, avec son montant réel et sa référence, ou rembourser un paiement. Un remboursement retire les crédits achetés mais laisse la formule, à ajuster si besoin.
+  - Chaque encaissement reçoit un numéro de reçu continu (`WM-2026-000042`, séquence `payment_receipt_seq`) et un reçu PDF (`services/receipts.py`), téléchargeable par les administrateurs de l'espace et par la plateforme.
+  - Chaque étape est inscrite au journal d'audit de l'espace.
+- Le catalogue est public (`GET /api/v1/billing/plans`) ; l'abonnement de l'espace se lit et se paie sous `/api/v1/orgs/{org_id}/billing`. Le paiement passe par un prestataire **simulé** qui encaisse immédiatement (`PROVIDER` dans `services/billing.py`) : c'est le point à remplacer pour brancher carte bancaire ou mobile money. Les tarifs sont indicatifs et se modifient au même endroit.
+- **Administration de la plateforme** (`/admin`, API `/api/v1/admin/subscriptions`) : la liste de tous les espaces avec formule, statut, échéance, usage et paiements, et la modification d'un abonnement sans paiement (formule, cycle, statut, dates, prolongation, crédits, renouvellement). Chaque changement est inscrit au journal d'audit de l'espace avec l'état avant et après. Réservée aux comptes `users.is_platform_admin`, accordé par `uv run python -m app.scripts.platform_admin <email>` (`--revoke` pour le retirer) ; les autres comptes reçoivent 404.
+- `subscriptions` reste hors RLS, comme `memberships`, car `/auth/me` lit la formule de chaque organisation de l'utilisateur ; `payments` est filtrée par organisation.
 
 ## Journal d'audit
 

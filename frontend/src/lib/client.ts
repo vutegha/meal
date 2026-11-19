@@ -7,7 +7,11 @@ import type { paths } from "./schema.gen";
  * Client typé, généré depuis l'OpenAPI de l'API (`npm run api:generate`) : chemins,
  * paramètres et corps sont vérifiés par TypeScript. Les nouveaux modules l'utilisent.
  */
-export const client = createClient<paths>({ fetch: authFetch });
+export const client = createClient<paths>({
+  fetch: authFetch,
+  // Même origine que la page, en URL absolue : les tests (Node) refusent les chemins relatifs.
+  baseUrl: globalThis.location?.origin,
+});
 
 /** Données de la réponse, ou ApiError avec le message du serveur. */
 export async function unwrap<T>(

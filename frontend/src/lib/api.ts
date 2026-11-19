@@ -12,6 +12,8 @@ export const ROLES: Role[] = [
   "viewer",
 ];
 
+export type AccountType = "individual" | "organization";
+
 export interface Organization {
   id: string;
   name: string;
@@ -19,6 +21,11 @@ export interface Organization {
   default_language: string;
   created_at: string;
   role: Role;
+  /** Compte individuel ou organisation, d'après la formule de l'espace. */
+  account_type: AccountType;
+  plan: string | null;
+  /** Fonctions ouvertes par la formule (voir lib/billing.ts). */
+  features: string[];
 }
 
 export interface User {
@@ -29,7 +36,28 @@ export interface User {
 }
 
 export interface Me extends User {
+  /** Équipe qui exploite la plateforme : accès à /admin. */
+  is_platform_admin: boolean;
   organizations: Organization[];
+  /** Mot de passe initial fixé par un administrateur : à remplacer. */
+  must_change_password: boolean;
+  totp_enabled: boolean;
+  /** Administrateur sans double authentification. */
+  mfa_recommended: boolean;
+}
+
+export interface UserSessionInfo {
+  id: string;
+  created_at: string;
+  rotated_at: string | null;
+  user_agent: string;
+  current: boolean;
+}
+
+export interface TotpSetup {
+  secret: string;
+  uri: string;
+  qr_svg: string;
 }
 
 export interface Member {
@@ -49,10 +77,53 @@ export interface AuditEntry {
   created_at: string;
 }
 
+export interface PrivacySettings {
+  ai_enabled: boolean;
+  feedback_retention_months: number;
+  sms_acknowledgement: boolean;
+  privacy_contact: string;
+}
+
+export interface PersonalData {
+  query: string;
+  feedback: {
+    id: string;
+    project_code: string;
+    reference: string;
+    received_on: string;
+    category: string;
+    status: string;
+    sensitive: boolean;
+    contact: string;
+    description: string;
+    response: string;
+    anonymized: boolean;
+    messages: { date: string; direction: string; channel: string; phone: string; body: string }[];
+  }[];
+  submissions: {
+    id: string;
+    project_code: string;
+    form_title: string;
+    collected_at: string;
+    location: string;
+    answers: Record<string, unknown>;
+  }[];
+  evidence: {
+    id: string;
+    project_code: string;
+    filename: string;
+    kind: string;
+    caption: string;
+    excerpt: string;
+  }[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Mot de passe correct, mais le code de double authentification est attendu. */
+    public otpRequired = false,
   ) {
     super(message);
   }
@@ -69,6 +140,11 @@ async function send(path: string, init: RequestInit, token?: string): Promise<Re
 
 let refreshing: Promise<Tokens | null> | null = null;
 
+/**
+ * Renouvelle le jeton d'accès. Seul un refus du serveur met fin à la session (renvoie null) ;
+ * une coupure réseau ou un serveur indisponible lève une erreur et garde la session, pour que
+ * l'agent sur le terrain reste connecté et réessaie plus tard.
+ */
 async function refreshTokens(): Promise<Tokens | null> {
   const tokens = tokenStore.get();
   if (!tokens) return null;
@@ -76,13 +152,17 @@ async function refreshTokens(): Promise<Tokens | null> {
     method: "POST",
     body: JSON.stringify({ refresh_token: tokens.refresh_token }),
   })
-    .then(async (r) => (r.ok ? ((await r.json()) as Tokens) : null))
-    .catch(() => null)
+    .then(async (r) => {
+      if (r.ok) return (await r.json()) as Tokens;
+      if (r.status >= 500) throw new ApiError(r.status, await errorMessage(r));
+      return null;
+    })
     .finally(() => {
       refreshing = null;
     });
   const fresh = await refreshing;
-  tokenStore.set(fresh);
+  // Une autre requête a pu fermer ou ouvrir une session entre-temps : on ne l'écrase pas.
+  if (tokenStore.get()?.refresh_token === tokens.refresh_token) tokenStore.set(fresh);
   return fresh;
 }
 
@@ -122,7 +202,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fresh = await refreshTokens();
     if (fresh) response = await send(path, init, fresh.access_token);
   }
-  if (!response.ok) throw new ApiError(response.status, await errorMessage(response));
+  if (!response.ok) {
+    const otpRequired = response.headers.get("X-OTP-Required") === "1";
+    throw new ApiError(response.status, await errorMessage(response), otpRequired);
+  }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
@@ -132,13 +215,39 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<Tokens>("/auth/login", json("POST", { email, password })),
+  login: (email: string, password: string, otp?: string) =>
+    request<Tokens>("/auth/login", json("POST", { email, password, otp: otp || undefined })),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  logoutAll: () => request<void>("/auth/logout-all", { method: "POST" }),
+  sessions: () => request<UserSessionInfo[]>("/auth/sessions"),
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>("/auth/password", json("POST", { current_password, new_password })),
+  forgotPassword: (email: string) =>
+    request<void>("/auth/password/forgot", json("POST", { email })),
+  resetPassword: (token: string, new_password: string) =>
+    request<Tokens>("/auth/password/reset", json("POST", { token, new_password })),
+  totpSetup: () => request<TotpSetup>("/auth/totp/setup", { method: "POST" }),
+  totpEnable: (code: string) => request<void>("/auth/totp/enable", json("POST", { code })),
+  totpDisable: (code: string) => request<void>("/auth/totp/disable", json("POST", { code })),
+  deleteAccount: (password: string, code?: string) =>
+    request<void>("/auth/me/delete", json("POST", { password, code: code || undefined })),
+  closeOrganization: (
+    orgId: string,
+    body: { name: string; password: string; code?: string; delete_account: boolean },
+  ) =>
+    request<void>(`/orgs/${orgId}/close`, json("POST", { ...body, code: body.code || undefined })),
+  memberResetLink: (orgId: string, memberId: string) =>
+    request<{ path: string; expires_at: string }>(`/orgs/${orgId}/members/${memberId}/reset-link`, {
+      method: "POST",
+    }),
   register: (body: {
     email: string;
     full_name: string;
     password: string;
-    organization_name: string;
+    organization_name?: string;
+    account_type?: AccountType;
+    plan?: string;
+    cycle?: "monthly" | "annual" | "usage";
   }) => request<Tokens>("/auth/register", json("POST", body)),
   me: () => request<Me>("/auth/me"),
   createOrganization: (name: string) => request<Organization>("/orgs", json("POST", { name })),
@@ -152,6 +261,19 @@ export const api = {
   removeMember: (orgId: string, memberId: string) =>
     request<void>(`/orgs/${orgId}/members/${memberId}`, { method: "DELETE" }),
   audit: (orgId: string) => request<AuditEntry[]>(`/orgs/${orgId}/audit`),
+  privacy: (orgId: string) => request<PrivacySettings>(`/orgs/${orgId}/privacy`),
+  updatePrivacy: (orgId: string, body: Partial<PrivacySettings>) =>
+    request<PrivacySettings>(`/orgs/${orgId}/privacy`, json("PATCH", body)),
+  searchPerson: (orgId: string, q: string) =>
+    request<PersonalData>(`/orgs/${orgId}/personal-data?q=${encodeURIComponent(q)}`),
+  erasePerson: (
+    orgId: string,
+    body: { feedback_ids: string[]; submission_ids: string[]; reason: string },
+  ) =>
+    request<{ feedback: number; submissions: number }>(
+      `/orgs/${orgId}/personal-data/erase`,
+      json("POST", body),
+    ),
 };
 
 // --- Projets (étape 2) -----------------------------------------------------
@@ -211,6 +333,9 @@ export interface LogframeNode {
   description: string;
   assumptions: string;
   position: number;
+  /** Période au chronogramme (activités et sous-activités), dates AAAA-MM-JJ. */
+  planned_start: string | null;
+  planned_end: string | null;
   children: LogframeNode[];
 }
 
@@ -320,6 +445,18 @@ export const projectsApi = {
     projectId: string,
     body: { level: NodeLevel; title: string; code?: string; parent_id?: string | null },
   ) => request<LogframeNode>(`${project(orgId, projectId)}/logframe/nodes`, json("POST", body)),
+  updateNode: (
+    orgId: string,
+    projectId: string,
+    nodeId: string,
+    body: Partial<
+      Pick<LogframeNode, "code" | "title" | "assumptions" | "planned_start" | "planned_end">
+    >,
+  ) =>
+    request<LogframeNode>(
+      `${project(orgId, projectId)}/logframe/nodes/${nodeId}`,
+      json("PATCH", body),
+    ),
   deleteNode: (orgId: string, projectId: string, nodeId: string) =>
     request<void>(`${project(orgId, projectId)}/logframe/nodes/${nodeId}`, { method: "DELETE" }),
   budgetLines: (orgId: string, projectId: string) =>
@@ -356,7 +493,11 @@ export const projectsApi = {
     orgId: string,
     projectId: string,
     indicatorId: string,
-    body: { period_targets?: PeriodTarget[] },
+    body: {
+      period_targets?: PeriodTarget[];
+      source_of_verification?: string;
+      disaggregations?: string[];
+    },
   ) =>
     request<Indicator>(
       `${project(orgId, projectId)}/indicators/${indicatorId}`,
@@ -374,6 +515,7 @@ export const projectsApi = {
       target: string | null;
       aggregation: "sum" | "latest";
       source_of_verification: string;
+      disaggregations: string[];
     },
   ) => request<Indicator>(`${project(orgId, projectId)}/indicators`, json("POST", body)),
   deleteIndicator: (orgId: string, projectId: string, indicatorId: string) =>
@@ -439,6 +581,9 @@ export interface ProposedNode extends Sourced {
   code: string;
   title: string;
   assumptions: string;
+  /** Mois prévus au chronogramme, comptés depuis le début du projet (1 = premier mois). */
+  start_month?: number | null;
+  end_month?: number | null;
 }
 
 export interface ProposedIndicator extends Sourced {
@@ -465,9 +610,19 @@ export interface ProposedBudgetLine extends Sourced {
   is_estimate: boolean;
 }
 
+export interface ExtractedProject {
+  donor: string;
+  start_date: string | null;
+  end_date: string | null;
+  duration_months: number | null;
+  zones: string[];
+  target_groups: string[];
+}
+
 export interface LogframeProposal {
   summary: string;
   currency: string | null;
+  project?: ExtractedProject | null;
   documents: string[];
   nodes: ProposedNode[];
   indicators: ProposedIndicator[];
@@ -693,6 +848,8 @@ export interface Evidence {
   latitude: string | null;
   longitude: string | null;
   consent_given: boolean;
+  consent_method: ConsentMethod | "";
+  consent_recorded_at: string | null;
   has_thumbnail: boolean;
   page_count: number;
   faces: number;
@@ -715,10 +872,15 @@ export interface ExecutionDetail extends Execution {
   planned: string;
 }
 
+/** Façon dont le consentement a été recueilli (preuve en cas de contrôle). */
+export type ConsentMethod = "oral" | "written" | "guardian" | "community";
+export const CONSENT_METHODS: ConsentMethod[] = ["oral", "written", "guardian", "community"];
+
 export interface EvidenceInput {
   kind: EvidenceKind;
   caption: string;
   consent_given: boolean;
+  consent_method?: ConsentMethod;
   client_uuid: string;
   // Lus sur le téléphone avant compression (la photo envoyée n'a plus d'EXIF).
   taken_at?: string;
@@ -760,6 +922,8 @@ export const executionsApi = {
     body.append("kind", meta.kind);
     body.append("caption", meta.caption);
     body.append("consent_given", String(meta.consent_given));
+    if (meta.consent_given && meta.consent_method)
+      body.append("consent_method", meta.consent_method);
     body.append("client_uuid", meta.client_uuid);
     if (meta.taken_at) body.append("taken_at", meta.taken_at);
     if (meta.latitude !== undefined && meta.longitude !== undefined) {
@@ -775,7 +939,7 @@ export const executionsApi = {
     orgId: string,
     projectId: string,
     evidenceId: string,
-    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given">> & {
+    body: Partial<Pick<EvidenceInput, "kind" | "caption" | "consent_given" | "consent_method">> & {
       blur_faces?: boolean;
     },
   ) =>
@@ -1027,6 +1191,39 @@ export interface FeedbackEntry {
   due_on: string;
   overdue: boolean;
   response_days: number | null;
+  sms_count: number;
+  // Le dernier SMS de l'échange vient de la personne : elle attend une réponse.
+  sms_awaiting_reply: boolean;
+}
+
+export type MessageChannel = "sms" | "whatsapp";
+export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
+
+export interface SmsMessage {
+  id: string;
+  feedback_id: string | null;
+  channel: MessageChannel;
+  direction: "inbound" | "outbound";
+  phone: string;
+  body: string;
+  status: string;
+  provider: string;
+  error: string;
+  sent_by: string | null;
+  created_at: string;
+}
+
+export interface ChannelConfig {
+  channel: MessageChannel;
+  provider: string;
+  simulated: boolean;
+  error: string;
+}
+
+export interface SmsConfig {
+  channels: ChannelConfig[];
+  sender: string;
+  inbound_enabled: boolean;
 }
 
 export interface FeedbackIn {
@@ -1115,6 +1312,31 @@ export const accountabilityApi = {
     ),
   deleteFeedback: (orgId: string, projectId: string, feedbackId: string) =>
     request<void>(`${project(orgId, projectId)}/feedback/${feedbackId}`, { method: "DELETE" }),
+  smsConfig: (orgId: string) => request<SmsConfig>(`/orgs/${orgId}/sms/config`),
+  feedbackSms: (orgId: string, projectId: string, feedbackId: string) =>
+    request<SmsMessage[]>(`${project(orgId, projectId)}/feedback/${feedbackId}/sms`),
+  sendSms: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms`,
+      json("POST", { body, channel }),
+    ),
+  simulateSmsReply: (
+    orgId: string,
+    projectId: string,
+    feedbackId: string,
+    body: string,
+    channel: MessageChannel,
+  ) =>
+    request<SmsMessage>(
+      `${project(orgId, projectId)}/feedback/${feedbackId}/sms/simulate`,
+      json("POST", { body, channel }),
+    ),
   lessons: (orgId: string, projectId: string | null, q = "", tag = "") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -1201,6 +1423,8 @@ export interface FormField {
   required: boolean;
   options: string[];
   hint: string;
+  /** Identifie une personne ou la concerne de près : hors synthèse et hors export par défaut. */
+  personal: boolean;
 }
 
 export interface CollectionForm {
@@ -1238,6 +1462,7 @@ export interface FieldSummary {
   label: string;
   type: FieldType;
   answered: number;
+  personal: boolean;
   counts: Record<string, number>;
   total: number | null;
   mean: number | null;
@@ -1251,5 +1476,59 @@ export interface FormSummary {
   fields: FieldSummary[];
 }
 
-export const formExportPath = (orgId: string, projectId: string, formId: string) =>
-  `${project(orgId, projectId)}/forms/${formId}/export.xlsx`;
+export const formExportPath = (
+  orgId: string,
+  projectId: string,
+  formId: string,
+  personal = false,
+) => `${project(orgId, projectId)}/forms/${formId}/export.xlsx${personal ? "?personal=true" : ""}`;
+
+// --- Tableau de bord de l'organisation ------------------------------------------------
+
+export const BENEFICIARIES = ["women", "men", "girls", "boys", "with_disability"] as const;
+export type Beneficiary = (typeof BENEFICIARIES)[number];
+
+export interface DashboardFilters {
+  year?: string;
+  month?: string;
+  zone?: string;
+  location?: string;
+  project_id?: string;
+  beneficiary?: Beneficiary;
+}
+
+export interface DashboardBreakdown {
+  key: string;
+  label: string;
+  executions: number;
+  people: number;
+  /** Effectif de 1 à 4 caché dans une vue restreinte (people vaut alors 0). */
+  masked: boolean;
+}
+
+export interface OrgDashboard {
+  options: {
+    years: number[];
+    zones: string[];
+    locations: string[];
+    projects: { id: string; code: string; title: string }[];
+  };
+  projects: number;
+  active_projects: number;
+  executions: number;
+  completed_executions: number;
+  people: Record<Beneficiary | "total", number> & { masked: (Beneficiary | "total")[] };
+  spending: { currency: string; amount: string }[];
+  by_month: DashboardBreakdown[];
+  by_location: DashboardBreakdown[];
+  by_zone: DashboardBreakdown[];
+  by_project: DashboardBreakdown[];
+}
+
+export const dashboardApi = {
+  org: (orgId: string, filters: DashboardFilters) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+    return request<OrgDashboard>(`/orgs/${orgId}/dashboard${params.size ? `?${params}` : ""}`);
+  },
+};

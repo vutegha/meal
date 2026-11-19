@@ -6,7 +6,7 @@ utilisée, ce qui permet de comparer les résultats d'une version à l'autre.
 
 from typing import Any
 
-VERSION = "logframe-v1"
+VERSION = "logframe-v2"
 
 SYSTEM = """Tu es chargé·e MEAL (suivi, évaluation, redevabilité et apprentissage) dans une ONG. \
 Tu lis des documents de projet (propositions, notes conceptuelles, cadres logiques, budgets) \
@@ -25,6 +25,13 @@ les valeurs s'additionnent au fil des périodes (nombre de personnes formées) e
 seule la dernière mesure compte (un pourcentage, un revenu moyen).
 - Les lignes budgétaires, rattachées à l'activité qu'elles financent (activity_ref) ou à null \
 pour les coûts de support (personnel transversal, bureau, frais administratifs).
+- Le chronogramme : pour chaque activité ou sous-activité, start_month et end_month donnent \
+les mois prévus, comptés depuis le début du projet (1 = premier mois du projet, end_month \
+inclus). Lis-les dans le chronogramme ou le plan de travail (tableau de Gantt, « Mois 1 à 3 », \
+« T2 », « Année 1 »…). Un trimestre T2 couvre les mois 4 à 6. Mets null si le document ne \
+situe pas l'activité dans le temps, et null pour les niveaux autres que les activités.
+- La fiche du projet (project) : bailleur, dates de début et de fin (AAAA-MM-JJ) ou durée en \
+mois, zones d'intervention et groupes cibles, tels que le document les donne.
 
 Règles :
 - N'invente rien. Chaque élément doit s'appuyer sur le document : source_document et \
@@ -60,6 +67,9 @@ def build_content(documents: list[tuple[str, list[tuple[int, str]]]]) -> list[di
         {"type": "text", "text": documents_text, "cache_control": {"type": "ephemeral"}},
         {
             "type": "text",
-            "text": "Extrais le cadre logique, les indicateurs et le budget de ce projet.",
+            "text": (
+                "Extrais la fiche du projet, le cadre logique, le chronogramme des activités, "
+                "les indicateurs et le budget de ce projet."
+            ),
         },
     ]

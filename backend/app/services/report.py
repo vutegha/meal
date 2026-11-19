@@ -74,12 +74,14 @@ async def get_execution(
     return execution
 
 
-async def get_report(session: AsyncSession, project: Project, report_id: UUID) -> NarrativeReport:
-    report = await session.scalar(
-        select(NarrativeReport).where(
-            NarrativeReport.id == report_id, NarrativeReport.project_id == project.id
-        )
+async def get_report(
+    session: AsyncSession, project: Project, report_id: UUID, *, for_update: bool = False
+) -> NarrativeReport:
+    """`for_update` : ligne verrouillée jusqu'à la fin de la transaction (changement de statut)."""
+    query = select(NarrativeReport).where(
+        NarrativeReport.id == report_id, NarrativeReport.project_id == project.id
     )
+    report = await session.scalar(query.with_for_update() if for_update else query)
     if report is None:
         raise svc.not_found("Rapport")
     return report
@@ -206,6 +208,10 @@ async def build_sources(
 
     for evidence in execution.evidence:
         if evidence.kind == EvidenceKind.PHOTO or not evidence.text.strip():
+            continue
+        # Une liste de présence ne contient que des noms, numéros et signatures : elle reste dans
+        # le dossier, sans être envoyée au modèle. Les effectifs viennent de la saisie (S1).
+        if evidence.kind == EvidenceKind.ATTENDANCE:
             continue
         ref = f"S{len(sources) + 1}"
         label = f"{evidence.filename}"

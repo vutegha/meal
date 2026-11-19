@@ -1,7 +1,11 @@
 name: wemeal
 
 x-backend-env: &backend-env
-  DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
+  # production : SECRET_KEY faible refusée, documentation de l'API fermée.
+  ENVIRONMENT: ${ENVIRONMENT:-production}
+  # Compte dédié de l'API et du worker, créé par le service migrate : ni superutilisateur ni
+  # propriétaire des tables, il ne voit les données qu'à travers la Row Level Security.
+  DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-meal_api}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/meal
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
   # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
@@ -12,8 +16,29 @@ x-backend-env: &backend-env
   S3_ACCESS_KEY: ${MINIO_ROOT_USER:-meal}
   S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-  AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-50}
+  AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-0}
   VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+  PAYMENT_INSTRUCTIONS: ${PAYMENT_INSTRUCTIONS:-}
+  SMS_PROVIDER: ${SMS_PROVIDER:-simulated}
+  SMS_SENDER: ${SMS_SENDER:-}
+  SMS_WEBHOOK_TOKEN: ${SMS_WEBHOOK_TOKEN:-}
+  TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+  TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+  AFRICASTALKING_USERNAME: ${AFRICASTALKING_USERNAME:-}
+  AFRICASTALKING_API_KEY: ${AFRICASTALKING_API_KEY:-}
+  WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-simulated}
+  TWILIO_WHATSAPP_SENDER: ${TWILIO_WHATSAPP_SENDER:-}
+  META_WHATSAPP_TOKEN: ${META_WHATSAPP_TOKEN:-}
+  META_WHATSAPP_PHONE_NUMBER_ID: ${META_WHATSAPP_PHONE_NUMBER_ID:-}
+  META_APP_SECRET: ${META_APP_SECRET:-}
+  # Liens envoyés par e-mail (mot de passe oublié). Sans SMTP_HOST, aucun e-mail ne part :
+  # un administrateur remet le lien depuis la page Membres.
+  PUBLIC_URL: ${PUBLIC_URL:-https://${SITE_ADDRESS:-localhost}}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-}
 
 services:
   db:
@@ -42,20 +67,65 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
     volumes: [minio-data:/data]
 
+  # Migrations et compte de connexion de l'API, avec le compte propriétaire des tables. Se lance
+  # à chaque `docker compose up`, puis s'arrête ; l'API et le worker attendent qu'il ait réussi.
+  migrate:
+    build: ./backend
+    command: ["sh", "-c", "alembic upgrade head && python -m app.scripts.db_login"]
+    environment:
+      <<: *backend-env
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://meal:${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}@db:5432/meal
+      APP_DB_USER: ${APP_DB_USER:-meal_api}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+    depends_on:
+      db: { condition: service_healthy }
+
   api:
     build: ./backend
     environment: *backend-env
     volumes: [files:/data/files]
     depends_on:
-      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       redis: { condition: service_started }
+    # Base et Redis joignables (GET /health/ready) : `docker compose ps` signale une panne.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   worker:
     build: ./backend
     command: arq app.workers.settings.WorkerSettings
     environment: *backend-env
     volumes: [files:/data/files]
-    depends_on: [api, redis]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      api: { condition: service_started }
+      redis: { condition: service_started }
+
+  # Sauvegarde chiffrée quotidienne de la base et des fichiers dans BACKUP_DIR (ops/backup.sh).
+  # Copier ce dossier hors du serveur : une sauvegarde sur la même machine ne protège pas
+  # d'une panne de disque ni d'un vol.
+  backup:
+    image: pgvector/pgvector:pg16
+    entrypoint: ["/ops/backup.sh"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?Définir BACKUP_PASSPHRASE dans .env}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./ops:/ops:ro
+      - files:/data/files
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
 
   web:
     build: ./frontend

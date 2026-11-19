@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import Membership, Role
+from app.models import AccountType, Membership, Role
+from app.services.billing import account_type_of, features_of
 
 
 class ORMModel(BaseModel):
@@ -21,6 +22,31 @@ class OrganizationUpdate(BaseModel):
     default_language: str | None = Field(default=None, pattern="^(fr|en)$")
 
 
+class PrivacySettings(ORMModel):
+    """Réglages de protection des données de l'espace."""
+
+    ai_enabled: bool
+    feedback_retention_months: int = Field(ge=0, le=240)
+    sms_acknowledgement: bool
+    privacy_contact: str = Field(max_length=200)
+
+
+class OrganizationCloseIn(BaseModel):
+    # Nom de l'espace recopié et mot de passe : deux confirmations pour un geste définitif.
+    name: str = Field(max_length=200)
+    password: str = Field(max_length=128)
+    code: str | None = Field(default=None, max_length=10)
+    # Supprimer aussi son compte quand cet espace était le seul.
+    delete_account: bool = False
+
+
+class PrivacyUpdate(BaseModel):
+    ai_enabled: bool | None = None
+    feedback_retention_months: int | None = Field(default=None, ge=0, le=240)
+    sms_acknowledgement: bool | None = None
+    privacy_contact: str | None = Field(default=None, max_length=200)
+
+
 class OrganizationOut(ORMModel):
     id: UUID
     name: str
@@ -31,6 +57,9 @@ class OrganizationOut(ORMModel):
 
 class MyOrganizationOut(OrganizationOut):
     role: Role
+    account_type: AccountType
+    plan: str | None
+    features: list[str]
 
 
 class UserOut(ORMModel):
@@ -41,7 +70,11 @@ class UserOut(ORMModel):
 
 
 class MeOut(UserOut):
+    is_platform_admin: bool
     organizations: list[MyOrganizationOut]
+    must_change_password: bool = False
+    totp_enabled: bool = False
+    mfa_recommended: bool = False
 
 
 class MemberIn(BaseModel):
@@ -73,9 +106,14 @@ class AuditLogOut(ORMModel):
 
 
 def my_organization(membership: Membership) -> MyOrganizationOut:
+    """L'organisation doit être chargée (avec son abonnement, chargé d'office avec elle)."""
+    org = membership.organization
     return MyOrganizationOut.model_validate(
         {
-            **OrganizationOut.model_validate(membership.organization).model_dump(),
+            **OrganizationOut.model_validate(org).model_dump(),
             "role": membership.role,
+            "account_type": account_type_of(org.subscription),
+            "plan": org.subscription.plan if org.subscription else None,
+            "features": features_of(org.subscription),
         }
     )

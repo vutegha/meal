@@ -1,5 +1,4 @@
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -27,11 +26,12 @@ from app.schemas.ai import (
     ApplyLogframeIn,
     DocumentOut,
     JobOut,
+    LogframeProposal,
     ProposalOut,
     SearchHit,
 )
+from app.services import billing, search
 from app.services import projects as svc
-from app.services import search
 from app.services.ai import month_cost, month_start
 from app.services.documents import ingest, pending_ocr
 from app.services.jobs import enqueue
@@ -257,7 +257,8 @@ async def apply_proposal(
     proposal = await _get_proposal(session, org_id, project_id, proposal_id)
     _ensure_pending(proposal)
     project = await svc.get_project(session, org_id, project_id)
-    counts = await apply_logframe(session, project, body)
+    stored = LogframeProposal.model_validate(proposal.payload)
+    counts = await apply_logframe(session, project, body, stored.project, stored.summary)
     proposal.status = ProposalStatus.APPLIED
     proposal.reviewed_by = member.user_id
     proposal.reviewed_at = datetime.now(UTC)
@@ -340,10 +341,10 @@ async def ai_usage(org_id: UUID, _: OrgAdmin, session: SessionDep) -> AiUsage:
         .limit(25)
     )
     purpose_rows = rows(by_purpose)
-    cap = Decimal(str(get_settings().ai_monthly_budget_usd))
+    cap = await billing.ai_cap(session, org_id)
     return AiUsage(
         month_cost_usd=await month_cost(session, org_id),
-        monthly_budget_usd=cap if cap > 0 else None,
+        monthly_budget_usd=cap,
         calls_this_month=sum(r.calls for r in purpose_rows),
         by_purpose=purpose_rows,
         by_project=rows(by_project, projects),

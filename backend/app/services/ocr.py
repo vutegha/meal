@@ -80,3 +80,11 @@ async def _read_pages(session: AsyncSession, job: Job, document_id: UUID) -> dic
             listed = ", ".join(str(n) for n in illegible)
             document.error = f"Pages peu lisibles, à vérifier : {listed}."
     return {"document_id": str(document.id), "pages": len(job.params["pages"])}
+
+
+async def abandon(session: AsyncSession, job: Job, message: str) -> None:
+    """Tâche interrompue ou jamais démarrée : le document ne reste pas « en cours »."""
+    document = await session.get(SourceDocument, UUID(job.params["document_id"]))
+    if document is not None and document.status == DocumentStatus.OCR:
+        document.status = DocumentStatus.FAILED
+        document.error = f"Reconnaissance du texte impossible : {message}"

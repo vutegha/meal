@@ -64,6 +64,7 @@ def verify(extraction: LogframeExtraction, documents: list[SourceDocument]) -> L
     return LogframeProposal(
         summary=extraction.summary,
         currency=extraction.currency,
+        project=extraction.project,
         documents=[d.filename for d in documents],
         nodes=[mark(n, ProposedNode) for n in extraction.nodes],
         indicators=[mark(i, ProposedIndicator) for i in extraction.indicators],
@@ -110,6 +111,8 @@ async def run_logframe_extraction(session: AsyncSession, job: Job) -> dict[str, 
         system=prompt.SYSTEM,
         content=content,
         output_type=LogframeExtraction,
+        # Réflexion comprise : un cadre logique complet dépasse souvent 64 000 jetons.
+        max_tokens=128000,
     )
     proposal_payload = verify(result.output, documents)
     proposal = AiProposal(
