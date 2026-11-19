@@ -48,6 +48,7 @@ async def database() -> AsyncIterator[None]:
         ):
             await conn.execute(text(f"DROP TYPE IF EXISTS {enum_type}"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.run_sync(Base.metadata.create_all)
         for statement in rls.all_statements():
             await conn.execute(text(statement))

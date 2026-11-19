@@ -83,7 +83,7 @@ async def test_feedback_register_and_response_delays(client: AsyncClient) -> Non
     assert stats["response_rate"] == 0.5 and stats["average_response_days"] == 5
     assert stats["by_category"] == {"complaint": 1, "information": 1}
 
-    listed = (await client.get(f"{base}/feedback?status=closed", headers=h)).json()
+    listed = (await client.get(f"{base}/feedback?status=closed", headers=h)).json()["items"]
     assert [e["reference"] for e in listed] == ["RET-0001"]
 
 
@@ -110,19 +110,20 @@ async def test_sensitive_feedback_is_confidential(client: AsyncClient) -> None:
     url = f"{base}/feedback/{entry['id']}"
 
     # Le chargé MEAL ne voit ni l'entrée ni son détail, seulement qu'elle existe.
-    assert (await client.get(f"{base}/feedback", headers=meal)).json() == []
+    assert (await client.get(f"{base}/feedback", headers=meal)).json()["items"] == []
     assert (
         await client.patch(url, headers=meal, json={"status": "in_progress"})
     ).status_code == 404
     stats = (await client.get(f"{base}/feedback/stats", headers=meal)).json()
     assert stats["total"] == 1 and stats["hidden_sensitive"] == 1
     # La personne qui l'a saisie le voit ; le chef de projet aussi, et l'attribue.
-    assert len((await client.get(f"{base}/feedback", headers=field)).json()) == 1
+    assert len((await client.get(f"{base}/feedback", headers=field)).json()["items"]) == 1
     r = await client.patch(url, headers=h, json={"assigned_to": meal_member["user"]["id"]})
     assert r.status_code == 200, r.text
-    assert (await client.get(f"{base}/feedback", headers=meal)).json()[0][
-        "contact"
-    ] == "confidentiel"
+    listed = (await client.get(f"{base}/feedback", headers=meal)).json()["items"][0]
+    # Le contact n'est pas dans la liste : il se lit sur la fiche, dont l'ouverture est journalisée.
+    assert listed["contact"] == "" and listed["has_contact"] is True
+    assert (await client.get(url, headers=meal)).json()["contact"] == "confidentiel"
     r = await client.patch(url, headers=meal, json={"sensitive": False})
     assert r.status_code == 403
 
@@ -151,7 +152,7 @@ async def test_sensitive_category_cannot_be_made_public(client: AsyncClient) -> 
     assert r.status_code == 201, r.text
     entry = r.json()
     assert entry["sensitive"] is True
-    assert (await client.get(f"{base}/feedback", headers=meal)).json() == []
+    assert (await client.get(f"{base}/feedback", headers=meal)).json()["items"] == []
     # Un renvoi du même identifiant par une autre personne ne révèle pas l'entrée.
     r = await client.post(f"{base}/feedback", headers=meal, json=body)
     assert r.status_code == 409 and "description" not in r.json()
@@ -288,4 +289,14 @@ async def test_viewing_sensitive_feedback_is_audited(client: AsyncClient) -> Non
     for _ in range(2):
         assert (await client.get(f"{base}/feedback", headers=h)).status_code == 200
     [entry] = viewed((await client.get(audit_url, headers=h)).json())
-    assert entry["data"] == {"sensitive": [reference], "contacts": 1}
+    assert entry["data"] == {"sensitive": [reference], "contacts": 0}
+    # L'ouverture de la fiche, qui donne le contact, est inscrite à part.
+    feedback_id = (await client.get(f"{base}/feedback", headers=h)).json()["items"][0]["id"]
+    detail = await client.get(f"{base}/feedback/{feedback_id}", headers=h)
+    assert detail.json()["contact"] == "+243990000002"
+    opened = [
+        e
+        for e in viewed((await client.get(audit_url, headers=h)).json())
+        if e["entity_id"] == feedback_id
+    ]
+    assert opened[0]["data"] == {"sensitive": [reference], "contacts": 1}

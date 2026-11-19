@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,6 +34,10 @@ class EvidenceKind(enum.StrEnum):
 
 class ActivityExecution(IdMixin, TimestampMixin, Base):
     __tablename__ = "activity_executions"
+    # Liste d'un projet, la plus récente d'abord (pagination).
+    __table_args__ = (
+        Index("ix_activity_executions_project_recent", "project_id", "start_date", "created_at"),
+    )
 
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
@@ -56,7 +60,9 @@ class ActivityExecution(IdMixin, TimestampMixin, Base):
     status: Mapped[ExecutionStatus] = mapped_column(
         _enum(ExecutionStatus, "execution_status"), default=ExecutionStatus.IN_PROGRESS
     )
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     # Identifiant créé par le client hors ligne : renvoyer deux fois la même saisie ne la
     # duplique pas.
     client_uuid: Mapped[UUID | None] = mapped_column(unique=True)
@@ -95,13 +101,15 @@ class Evidence(IdMixin, TimestampMixin, Base):
     # Preuve du consentement : comment il a été recueilli, par qui et quand.
     consent_method: Mapped[str] = mapped_column(String(20), default="", server_default="")
     consent_recorded_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL")
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     consent_recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Texte extrait des documents (comptes rendus, rapports) pour le rapport narratif.
     text: Mapped[str] = mapped_column(Text, default="")
     page_count: Mapped[int] = mapped_column(default=0)
-    uploaded_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    uploaded_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     client_uuid: Mapped[UUID | None] = mapped_column(unique=True)
     extra: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 

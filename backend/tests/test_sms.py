@@ -78,7 +78,7 @@ async def test_send_and_receive_sms_on_feedback(client: AsyncClient, webhook: st
     assert [m["direction"] for m in thread] == ["outbound", "inbound"]
     assert thread[1]["body"] == "Il manquait 3 bâches"
 
-    listed = (await client.get(f"{base}/feedback", headers=h)).json()[0]
+    listed = (await client.get(f"{base}/feedback", headers=h)).json()["items"][0]
     assert listed["sms_count"] == 2 and listed["sms_awaiting_reply"] is True
     assert listed["status"] == "in_progress"  # écrire à la personne lance le traitement
 
@@ -96,13 +96,15 @@ async def test_inbound_sms_with_project_code_creates_feedback(
         await client.post(webhook, data={"from": "+243810000009", "text": "bonjour"})
     ).status_code == 204
 
-    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()
+    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()["items"]
     assert len(entries) == 2
     created = next(e for e in entries if e["channel"] == "sms")
     assert created["reference"] == "RET-0002" and created["category"] == "other"
     assert created["description"] == "Personne n'est venu au point d'eau"
     # Message reçu, puis accusé de réception avec la notice d'information.
-    assert created["contact"] == "+24381000000" and created["sms_count"] == 2
+    assert created["has_contact"] is True and created["sms_count"] == 2
+    detail = (await client.get(f"{base}/feedback/{created['id']}", headers=ctx["headers"])).json()
+    assert detail["contact"] == "+24381000000"
     thread = (
         await client.get(f"{base}/feedback/{created['id']}/sms", headers=ctx["headers"])
     ).json()
@@ -113,7 +115,7 @@ async def test_inbound_sms_with_project_code_creates_feedback(
     assert created["sensitive"] is True
     await add_member(client, ctx, "suivi@example.org", "meal_officer")
     officer = await login(client, "suivi@example.org")
-    seen = (await client.get(f"{base}/feedback", headers=officer)).json()
+    seen = (await client.get(f"{base}/feedback", headers=officer)).json()["items"]
     assert [e["channel"] for e in seen] == ["hotline"]
 
 
@@ -250,7 +252,7 @@ async def test_whatsapp_conversation_and_inbound(client: AsyncClient, webhook: s
     # Nouveau retour reçu par WhatsApp grâce au code du projet.
     r = await client.post(whatsapp, json={"from": "+243820000000", "text": "KIW Pas d'eau"})
     assert r.status_code == 204
-    entries = (await client.get(f"{base}/feedback", headers=h)).json()
+    entries = (await client.get(f"{base}/feedback", headers=h)).json()["items"]
     assert any(e["description"] == "Pas d'eau" and e["channel"] == "sms" for e in entries)
 
     r = await client.post(
@@ -308,9 +310,10 @@ async def test_meta_whatsapp_webhook(
         whatsapp, content=raw, headers={**headers, "x-hub-signature-256": signature}
     )
     assert r.status_code == 204
-    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()
+    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()["items"]
     created = next(e for e in entries if e["description"] == "La latrine est cassée")
-    assert created["contact"] == "+243830000000"
+    detail = (await client.get(f"{base}/feedback/{created['id']}", headers=ctx["headers"])).json()
+    assert detail["contact"] == "+243830000000"
 
 
 async def test_whatsapp_adapters() -> None:

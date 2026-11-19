@@ -8,11 +8,10 @@ import type { Participants, Project } from "@/lib/api";
 import { flattenTree, formatMoney, formatNumber, formatRate } from "@/lib/format";
 import {
   budgetSummaryQuery,
-  executionsQuery,
+  executionsSummaryQuery,
   feedbackStatsQuery,
   indicatorsQuery,
   logframeQuery,
-  reportsQuery,
   torsQuery,
 } from "@/lib/queries";
 
@@ -58,19 +57,20 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
   const logframe = useQuery(logframeQuery(orgId, project.id));
   const budget = useQuery(budgetSummaryQuery(orgId, project.id));
   const indicators = useQuery(indicatorsQuery(orgId, project.id));
-  const executions = useQuery(executionsQuery(orgId, project.id));
+  const executions = useQuery(executionsSummaryQuery(orgId, project.id));
   const tors = useQuery(torsQuery(orgId, project.id));
-  const reports = useQuery(reportsQuery(orgId, project.id));
   const feedback = useQuery(feedbackStatsQuery(orgId, project.id));
 
-  if ([logframe, budget, indicators, executions, tors, reports].some((q) => q.isPending))
+  if ([logframe, budget, indicators, executions, tors].some((q) => q.isPending))
     return <p className="text-sm text-slate-500">{t("common.loading")}</p>;
 
   const activities = flattenTree(logframe.data ?? []).filter(
     (n) => n.level === "activity" || n.level === "sub_activity",
   );
+  // Bilan par activité calculé par le serveur : aucune exécution n'est chargée une à une.
   const runs = executions.data ?? [];
-  const done = new Set(runs.filter((e) => e.status === "completed").map((e) => e.activity_id));
+  const runsByActivity = new Map(runs.map((r) => [r.activity_id, r]));
+  const done = new Set(runs.filter((r) => r.completed > 0).map((r) => r.activity_id));
   const people = runs.reduce(
     (sum, e) => {
       for (const key of [...PEOPLE, "with_disability"] as const) sum[key] += e.participants[key];
@@ -82,13 +82,6 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
   const measured = (indicators.data ?? []).filter((i) => i.achievement_rate !== null);
   const onTrack = measured.filter((i) => (i.achievement_rate ?? 0) >= 0.5).length;
   const torByActivity = new Map((tors.data ?? []).map((tor) => [tor.activity_id, tor]));
-  const executionActivity = new Map(runs.map((e) => [e.id, e.activity_id]));
-  const reportsByActivity = new Map<string, number>();
-  for (const report of reports.data ?? []) {
-    const activity = executionActivity.get(report.execution_id);
-    if (activity && report.status === "approved")
-      reportsByActivity.set(activity, (reportsByActivity.get(activity) ?? 0) + 1);
-  }
   const budgetByActivity = new Map(
     (budget.data?.by_activity ?? []).map((row) => [row.activity_id, row]),
   );
@@ -231,7 +224,7 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
               <tbody className="divide-y divide-slate-100">
                 {activities.map((activity) => {
                   const tor = torByActivity.get(activity.id);
-                  const count = runs.filter((e) => e.activity_id === activity.id).length;
+                  const count = runsByActivity.get(activity.id)?.count ?? 0;
                   const line = budgetByActivity.get(activity.id);
                   return (
                     <tr key={activity.id}>
@@ -264,7 +257,7 @@ export function DashboardTab({ orgId, project }: { orgId: string; project: Proje
                         )}
                       </td>
                       <td className="py-2 text-right tabular-nums">
-                        {reportsByActivity.get(activity.id) ?? 0}
+                        {runsByActivity.get(activity.id)?.approved_reports ?? 0}
                       </td>
                       <td className="py-2 pl-4">
                         {line ? (

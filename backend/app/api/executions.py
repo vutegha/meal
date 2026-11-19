@@ -12,9 +12,9 @@ from decimal import Decimal
 from typing import Annotated, BinaryIO
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import Date, func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import AnyMember, SessionDep, require_membership
@@ -33,13 +33,17 @@ from app.models import (
     BudgetLine,
     Evidence,
     EvidenceKind,
+    ExecutionStatus,
     Expense,
     LogframeNode,
     Membership,
+    NarrativeReport,
     Project,
+    ReportStatus,
     Role,
 )
 from app.schemas.execution import (
+    ActivityRuns,
     ConsentMethod,
     EvidenceOut,
     EvidenceUpdate,
@@ -48,6 +52,7 @@ from app.schemas.execution import (
     ExecutionExpenseOut,
     ExecutionIn,
     ExecutionOut,
+    ExecutionPage,
     ExecutionUpdate,
     Participants,
 )
@@ -96,7 +101,9 @@ async def _spent(session: SessionDep, execution_ids: list[UUID]) -> dict[UUID, D
     return {execution_id: total for execution_id, total in rows if execution_id}
 
 
-def execution_out(execution: ActivityExecution, spent: Decimal | None) -> ExecutionOut:
+def execution_out(
+    execution: ActivityExecution, spent: Decimal | None, evidence_count: int | None = None
+) -> ExecutionOut:
     participants = Participants.model_validate(execution.participants)
     return ExecutionOut.model_validate(
         {
@@ -107,7 +114,7 @@ def execution_out(execution: ActivityExecution, spent: Decimal | None) -> Execut
             },
             "participants": participants,
             "participants_total": participants.total,
-            "evidence_count": len(execution.evidence),
+            "evidence_count": len(execution.evidence) if evidence_count is None else evidence_count,
             "spent": spent or Decimal(0),
         }
     )
@@ -162,26 +169,113 @@ async def _detail(session: SessionDep, execution: ActivityExecution) -> Executio
 # --- Exécutions ------------------------------------------------------------------
 
 
-@router.get("/executions", response_model=list[ExecutionOut])
+@router.get("/executions", response_model=ExecutionPage)
 async def list_executions(
     org_id: UUID,
     project_id: UUID,
     _: AnyMember,
     session: SessionDep,
     activity_id: UUID | None = None,
-) -> list[ExecutionOut]:
+    status_filter: Annotated[ExecutionStatus | None, Query(alias="status")] = None,
+    q: Annotated[str, Query(max_length=200)] = "",
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ExecutionPage:
     project = await svc.get_project(session, org_id, project_id)
-    query = (
-        select(ActivityExecution)
-        .where(ActivityExecution.project_id == project.id)
-        .options(selectinload(ActivityExecution.evidence))
-        .order_by(ActivityExecution.start_date.desc(), ActivityExecution.created_at.desc())
-    )
+    where = [ActivityExecution.project_id == project.id]
     if activity_id:
-        query = query.where(ActivityExecution.activity_id == activity_id)
-    executions = list(await session.scalars(query))
-    spent = await _spent(session, [e.id for e in executions])
-    return [execution_out(e, spent.get(e.id)) for e in executions]
+        where.append(ActivityExecution.activity_id == activity_id)
+    if status_filter:
+        where.append(ActivityExecution.status == status_filter)
+    if q.strip():
+        pattern = f"%{q.strip()}%"
+        where.append(
+            ActivityExecution.title.ilike(pattern) | ActivityExecution.location.ilike(pattern)
+        )
+    total = await session.scalar(select(func.count()).select_from(ActivityExecution).where(*where))
+    evidence_count = (
+        select(func.count(Evidence.id))
+        .where(Evidence.execution_id == ActivityExecution.id)
+        .correlate(ActivityExecution)
+        .scalar_subquery()
+    )
+    rows = (
+        await session.execute(
+            select(ActivityExecution, evidence_count)
+            .where(*where)
+            .order_by(ActivityExecution.start_date.desc(), ActivityExecution.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    spent = await _spent(session, [e.id for e, _ in rows])
+    return ExecutionPage(
+        items=[execution_out(e, spent.get(e.id), count) for e, count in rows],
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/executions/summary", response_model=list[ActivityRuns])
+async def executions_summary(
+    org_id: UUID, project_id: UUID, _: AnyMember, session: SessionDep
+) -> list[ActivityRuns]:
+    """Par activité : nombre d'exécutions, terminées, participants et rapports approuvés."""
+    project = await svc.get_project(session, org_id, project_id)
+    people = {
+        key: func.coalesce(func.sum(ActivityExecution.participants[key].as_integer()), 0).label(key)
+        for key in Participants.model_fields
+    }
+    approved = (
+        select(
+            ActivityExecution.activity_id.label("activity_id"),
+            func.count(NarrativeReport.id).label("approved"),
+        )
+        .join(NarrativeReport, NarrativeReport.execution_id == ActivityExecution.id)
+        .where(
+            ActivityExecution.project_id == project.id,
+            NarrativeReport.status == ReportStatus.APPROVED,
+        )
+        .group_by(ActivityExecution.activity_id)
+        .subquery()
+    )
+    runs = (
+        select(
+            ActivityExecution.activity_id,
+            func.count().label("n"),
+            func.count()
+            .filter(ActivityExecution.status == ExecutionStatus.COMPLETED)
+            .label("completed"),
+            func.max(ActivityExecution.start_date).label("last_start_date"),
+            func.array_agg(
+                func.date_trunc("month", ActivityExecution.start_date).cast(Date).distinct()
+            ).label("months"),
+            *people.values(),
+        )
+        .where(ActivityExecution.project_id == project.id)
+        .group_by(ActivityExecution.activity_id)
+        .subquery()
+    )
+    rows = await session.execute(
+        select(runs, func.coalesce(approved.c.approved, 0).label("approved")).outerjoin(
+            approved, approved.c.activity_id == runs.c.activity_id
+        )
+    )
+    return [
+        ActivityRuns(
+            activity_id=row.activity_id,
+            count=row.n,
+            completed=row.completed,
+            last_start_date=row.last_start_date,
+            months=sorted(row.months),
+            participants=Participants.model_construct(
+                **{key: getattr(row, key) for key in Participants.model_fields}
+            ),
+            approved_reports=row.approved,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/executions", response_model=ExecutionDetail, status_code=status.HTTP_201_CREATED)

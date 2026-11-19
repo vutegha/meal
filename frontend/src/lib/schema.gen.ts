@@ -1082,6 +1082,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/executions/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Executions Summary
+     * @description Par activité : nombre d'exécutions, terminées, participants et rapports approuvés.
+     */
+    get: operations["executions_summary_api_v1_orgs__org_id__projects__project_id__executions_summary_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/projects/{project_id}/executions/{execution_id}": {
     parameters: {
       query?: never;
@@ -1250,7 +1270,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Get Feedback
+     * @description Fiche d'un retour, avec le contact pour qui peut le lire ; l'ouverture est journalisée.
+     */
+    get: operations["get_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__get"];
     put?: never;
     post?: never;
     /** Delete Feedback */
@@ -2179,6 +2203,29 @@ export interface components {
       spent: string;
       /** Title */
       title: string;
+    };
+    /**
+     * ActivityRuns
+     * @description Bilan des exécutions d'une activité, calculé par la base (tableau de bord, chronogramme).
+     */
+    ActivityRuns: {
+      /**
+       * Activity Id
+       * Format: uuid
+       */
+      activity_id: string;
+      /** Approved Reports */
+      approved_reports: number;
+      /** Completed */
+      completed: number;
+      /** Count */
+      count: number;
+      /**
+       * Last Start Date
+       * Format: date
+       */
+      last_start_date: string;
+      participants: components["schemas"]["Participants"];
     };
     /** AdminPaymentConfirm */
     AdminPaymentConfirm: {
@@ -3234,6 +3281,20 @@ export interface components {
       title: string;
     };
     /**
+     * ExecutionPage
+     * @description Une page de la liste des exécutions, la plus récente d'abord.
+     */
+    ExecutionPage: {
+      /** Items */
+      items: components["schemas"]["ExecutionOut"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+    };
+    /**
      * ExecutionStatus
      * @enum {string}
      */
@@ -3510,6 +3571,11 @@ export interface components {
        */
       due_on: string;
       /**
+       * Has Contact
+       * @default false
+       */
+      has_contact: boolean;
+      /**
        * Id
        * Format: uuid
        */
@@ -3554,6 +3620,20 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /**
+     * FeedbackPage
+     * @description Une page du registre. Le contact n'y figure pas : il se lit sur la fiche (journalisée).
+     */
+    FeedbackPage: {
+      /** Items */
+      items: components["schemas"]["FeedbackOut"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
     };
     /** FeedbackStats */
     FeedbackStats: {
@@ -7778,6 +7858,10 @@ export interface operations {
     parameters: {
       query?: {
         activity_id?: string | null;
+        status?: components["schemas"]["ExecutionStatus"] | null;
+        q?: string;
+        limit?: number;
+        offset?: number;
       };
       header?: never;
       path: {
@@ -7794,7 +7878,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ExecutionOut"][];
+          "application/json": components["schemas"]["ExecutionPage"];
         };
       };
       /** @description Validation Error */
@@ -7831,6 +7915,38 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ExecutionDetail"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  executions_summary_api_v1_orgs__org_id__projects__project_id__executions_summary_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ActivityRuns"][];
         };
       };
       /** @description Validation Error */
@@ -8117,7 +8233,11 @@ export interface operations {
     parameters: {
       query?: {
         status?: components["schemas"]["FeedbackStatus"] | null;
+        open?: boolean;
         category?: components["schemas"]["FeedbackCategory"] | null;
+        q?: string;
+        limit?: number;
+        offset?: number;
       };
       header?: never;
       path: {
@@ -8134,7 +8254,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FeedbackOut"][];
+          "application/json": components["schemas"]["FeedbackPage"];
         };
       };
       /** @description Validation Error */
@@ -8239,6 +8359,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FeedbackStats"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FeedbackOut"];
         };
       };
       /** @description Validation Error */

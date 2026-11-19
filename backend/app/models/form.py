@@ -30,9 +30,11 @@ class CollectionForm(IdMixin, TimestampMixin, Base):
     # [{"key", "label", "type", "required", "options": [...], "hint"}]
     fields: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
     activity_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("logframe_nodes.id", ondelete="SET NULL")
+        ForeignKey("logframe_nodes.id", ondelete="SET NULL"), index=True
     )
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
 
 class FormSubmission(IdMixin, TimestampMixin, Base):
@@ -57,4 +59,6 @@ class FormSubmission(IdMixin, TimestampMixin, Base):
         DateTime(timezone=True), server_default=func.now()
     )
     client_uuid: Mapped[UUID | None]
-    submitted_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    submitted_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

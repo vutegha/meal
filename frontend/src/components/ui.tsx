@@ -69,3 +69,39 @@ export function ErrorText({ error }: { error: unknown }) {
     </p>
   );
 }
+
+/** Pagination d'une liste longue : « 51–100 sur 3 000 », page précédente et suivante. */
+export function Pager({
+  total,
+  offset,
+  limit,
+  onChange,
+  labels,
+}: {
+  total: number;
+  offset: number;
+  limit: number;
+  onChange: (offset: number) => void;
+  labels: { range: string; previous: string; next: string };
+}) {
+  if (total <= limit && offset === 0) return null;
+  return (
+    <nav className="mt-3 flex items-center gap-3 text-sm text-slate-600" aria-label={labels.range}>
+      <span className="flex-1">{labels.range}</span>
+      <Button
+        variant="ghost"
+        disabled={offset === 0}
+        onClick={() => onChange(Math.max(0, offset - limit))}
+      >
+        {labels.previous}
+      </Button>
+      <Button
+        variant="ghost"
+        disabled={offset + limit >= total}
+        onClick={() => onChange(offset + limit)}
+      >
+        {labels.next}
+      </Button>
+    </nav>
+  );
+}

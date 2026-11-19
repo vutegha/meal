@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from app.models import ActivityExecution, ExecutionStatus, Project, ProjectStatus
+from app.models import ExecutionStatus, Project, ProjectStatus
 from app.schemas.dashboard import (
     Beneficiary,
     Breakdown,
@@ -46,33 +46,54 @@ class Filters:
 
 @dataclass
 class ExpenseRow:
+    """Dépenses d'un projet sur un mois (`spent_on` = premier jour du mois)."""
+
     project_id: UUID
     amount: Decimal
     spent_on: date
 
 
-def _people(execution: ActivityExecution, beneficiary: Beneficiary | None) -> int:
+@dataclass
+class RunGroup:
+    """Exécutions regroupées par la base : même projet, mois, lieu et statut.
+
+    `start_date` est le premier jour du mois et `participants` la somme des effectifs. Le tableau
+    de bord n'a jamais besoin des exécutions une à une, et une organisation en saisit des milliers.
+    """
+
+    project_id: UUID
+    start_date: date
+    location: str
+    status: ExecutionStatus
+    count: int
+    participants: dict[str, int]
+
+
+def _people(execution: RunGroup, beneficiary: Beneficiary | None) -> int:
     counts = execution.participants or {}
     if beneficiary:
         return int(counts.get(beneficiary, 0))
     return sum(int(counts.get(c, 0)) for c in CATEGORIES)
 
 
-def _location(execution: ActivityExecution) -> str:
+def _location(execution: RunGroup) -> str:
     return execution.location.strip() or "—"
 
 
 def build_dashboard(
     projects: list[Project],
-    executions: list[ActivityExecution],
+    executions: list[RunGroup],
     expenses: list[ExpenseRow],
     filters: Filters,
+    years: set[int],
+    locations: set[str],
 ) -> OrgDashboard:
-    years = {e.start_date.year for e in executions} | {x.spent_on.year for x in expenses}
+    """`executions` est déjà restreint au type de bénéficiaires du filtre ; `years` et
+    `locations` couvrent toutes les exécutions et dépenses (choix des filtres)."""
     options = DashboardOptions(
-        years=sorted(years, reverse=True),
+        years=sorted(years | {x.spent_on.year for x in expenses}, reverse=True),
         zones=sorted({z.strip() for p in projects for z in p.zones if z.strip()}),
-        locations=sorted({e.location.strip() for e in executions if e.location.strip()}),
+        locations=sorted({loc.strip() for loc in locations if loc.strip()}),
         projects=[
             DashboardProject(id=p.id, code=p.code, title=p.title)
             for p in sorted(projects, key=lambda p: p.code)
@@ -107,13 +128,13 @@ def build_dashboard(
     )
 
     def breakdown(
-        key_of: Callable[[ActivityExecution], list[str]], label_of: Callable[[str], str]
+        key_of: Callable[[RunGroup], list[str]], label_of: Callable[[str], str]
     ) -> list[Breakdown]:
         rows: dict[str, Breakdown] = {}
         for e in selected:
             for key in key_of(e):
                 row = rows.setdefault(key, Breakdown(key=key, label=label_of(key)))
-                row.executions += 1
+                row.executions += e.count
                 row.people += _people(e, filters.beneficiary)
         return list(rows.values())
 
@@ -158,8 +179,10 @@ def build_dashboard(
         options=options,
         projects=len(kept),
         active_projects=sum(p.status == ProjectStatus.ACTIVE for p in kept),
-        executions=len(selected),
-        completed_executions=sum(e.status == ExecutionStatus.COMPLETED for e in selected),
+        executions=sum(e.count for e in selected),
+        completed_executions=sum(
+            e.count for e in selected if e.status == ExecutionStatus.COMPLETED
+        ),
         people=people,
         spending=[Spending(currency=c, amount=a) for c, a in sorted(spending.items())],
         by_month=by_month,

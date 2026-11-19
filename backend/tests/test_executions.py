@@ -84,7 +84,9 @@ async def test_execution_is_idempotent_and_validated(client: AsyncClient) -> Non
     )
     assert r.json()["status"] == "completed" and r.json()["title"] == "Formation AVEC de Kiwanja"
 
-    listed = (await client.get(f"{base}/executions?activity_id={activity}", headers=field)).json()
+    listed = (await client.get(f"{base}/executions?activity_id={activity}", headers=field)).json()[
+        "items"
+    ]
     assert [e["id"] for e in listed] == [execution["id"]]
 
 

@@ -6,7 +6,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import AnyMember, SessionDep, require_membership
 from app.documents.render import to_docx, to_pdf
@@ -221,7 +220,7 @@ async def check_logframe(
     measured = {i.node_id for i in indicators}
     budgeted = set(
         await session.scalars(
-            select(BudgetLine.activity_id).where(BudgetLine.project_id == project.id)
+            select(BudgetLine.activity_id).where(BudgetLine.project_id == project.id).distinct()
         )
     )
     return LogframeCheck(
@@ -231,9 +230,9 @@ async def check_logframe(
             if n.level in (NodeLevel.GOAL, NodeLevel.OUTCOME, NodeLevel.OUTPUT)
             and n.id not in measured
         ],
-        indicators_without_source=[
-            svc.indicator_out(i) for i in indicators if not i.source_of_verification.strip()
-        ],
+        indicators_without_source=await svc.indicator_outs(
+            session, [i for i in indicators if not i.source_of_verification.strip()]
+        ),
         activities_without_budget=[
             NodeOut.model_validate(n)
             for n in nodes
@@ -585,9 +584,7 @@ async def delete_expense(
 
 async def _get_indicator(session: SessionDep, project: Project, indicator_id: UUID) -> Indicator:
     indicator = await session.scalar(
-        select(Indicator)
-        .where(Indicator.id == indicator_id, Indicator.project_id == project.id)
-        .options(selectinload(Indicator.values))
+        select(Indicator).where(Indicator.id == indicator_id, Indicator.project_id == project.id)
     )
     if indicator is None:
         raise svc.not_found("Indicateur")
@@ -614,7 +611,7 @@ async def list_indicators(
     org_id: UUID, project_id: UUID, _: AnyMember, session: SessionDep
 ) -> list[IndicatorOut]:
     project = await svc.get_project(session, org_id, project_id)
-    return [svc.indicator_out(i) for i in await svc.list_indicators(session, project.id)]
+    return await svc.indicator_outs(session, await svc.list_indicators(session, project.id))
 
 
 @router.post(
@@ -631,7 +628,7 @@ async def create_indicator(
     await session.flush()
     _log(session, member, "indicator.created", "indicator", indicator.id, {"name": body.name})
     await session.commit()
-    return svc.indicator_out(await _get_indicator(session, project, indicator.id))
+    return await svc.indicator_out(session, await _get_indicator(session, project, indicator.id))
 
 
 @router.patch("/{project_id}/indicators/{indicator_id}", response_model=IndicatorOut)
@@ -665,7 +662,7 @@ async def update_indicator(
     )
     await session.commit()
     session.expunge(indicator)
-    return svc.indicator_out(await _get_indicator(session, project, indicator_id))
+    return await svc.indicator_out(session, await _get_indicator(session, project, indicator_id))
 
 
 @router.delete("/{project_id}/indicators/{indicator_id}", status_code=status.HTTP_204_NO_CONTENT)

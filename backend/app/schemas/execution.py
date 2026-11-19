@@ -141,6 +141,28 @@ class ExecutionOut(BaseModel):
     created_at: datetime
 
 
+class ExecutionPage(BaseModel):
+    """Une page de la liste des exécutions, la plus récente d'abord."""
+
+    items: list[ExecutionOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ActivityRuns(BaseModel):
+    """Bilan des exécutions d'une activité, calculé par la base (tableau de bord, chronogramme)."""
+
+    activity_id: UUID
+    count: int
+    completed: int
+    last_start_date: date
+    # Mois où l'activité a été exécutée (premier jour du mois), pour le chronogramme.
+    months: list[date]
+    participants: Participants
+    approved_reports: int
+
+
 class ExecutionDetail(ExecutionOut):
     evidence: list[EvidenceOut]
     expenses: list[ExecutionExpenseOut]

@@ -65,7 +65,7 @@ async def test_find_export_and_erase_a_person(client: AsyncClient, webhook: str)
         json={"feedback_ids": [entry["id"]], "reason": "Demande de la personne"},
     )
     assert r.json() == {"feedback": 1, "submissions": 0}
-    erased = (await client.get(f"{base}/feedback", headers=h)).json()
+    erased = (await client.get(f"{base}/feedback", headers=h)).json()["items"]
     erased_entry = next(e for e in erased if e["id"] == entry["id"])
     assert erased_entry["description"] == ERASED and erased_entry["contact"] == ""
     assert next(e for e in erased if e["id"] == other.json()["id"])["description"] == "Sans rapport"
@@ -123,7 +123,9 @@ async def test_retention_purge(client: AsyncClient, webhook: str) -> None:
     assert counts["unmatched_sms"] == 1
     assert counts["feedback"] == {ctx["org_id"]: 1}
 
-    entries = {e["id"]: e for e in (await client.get(f"{base}/feedback", headers=h)).json()}
+    entries = {
+        e["id"]: e for e in (await client.get(f"{base}/feedback", headers=h)).json()["items"]
+    }
     assert entries[old.json()["id"]]["description"] == ERASED
     assert entries[old.json()["id"]]["category"] == "complaint"  # statistiques préservées
     assert entries[recent.json()["id"]]["description"] == "Récent"

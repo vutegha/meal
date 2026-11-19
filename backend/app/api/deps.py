@@ -4,12 +4,12 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, params, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import bind_org, get_session
 from app.core.security import Claims, decode_token
-from app.models import Membership, Role, User
+from app.models import Membership, Role, User, UserSession
 from app.services import billing, sessions
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -17,35 +17,53 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 _bearer = HTTPBearer(auto_error=False)
 
 
-async def get_claims(
-    session: SessionDep,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-) -> Claims:
-    unauthorized = HTTPException(
+def _unauthorized() -> HTTPException:
+    return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentification requise",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+def _decode(credentials: HTTPAuthorizationCredentials | None) -> Claims:
     if credentials is None:
-        raise unauthorized
+        raise _unauthorized()
     claims = decode_token(credentials.credentials, "access")
+    if claims is None:
+        raise _unauthorized()
+    return claims
+
+
+Credentials = Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]
+
+
+async def get_claims(session: SessionDep, credentials: Credentials) -> Claims:
+    claims = _decode(credentials)
     # Session révoquée (déconnexion, mot de passe changé) : le jeton d'accès ne vaut plus rien.
-    if claims is None or not await sessions.is_active(session, claims):
-        raise unauthorized
+    if not await sessions.is_active(session, claims):
+        raise _unauthorized()
     return claims
 
 
 CurrentClaims = Annotated[Claims, Depends(get_claims)]
 
 
-async def get_current_user(session: SessionDep, claims: CurrentClaims) -> User:
-    user = await session.get(User, claims.user_id)
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentification requise",
-            headers={"WWW-Authenticate": "Bearer"},
+async def get_current_user(session: SessionDep, credentials: Credentials) -> User:
+    """Utilisateur actif d'une session ouverte : une seule requête, à chaque appel de l'API."""
+    claims = _decode(credentials)
+    user = await session.scalar(
+        select(User)
+        .join(UserSession, UserSession.user_id == User.id)
+        .where(
+            User.id == claims.user_id,
+            User.is_active.is_(True),
+            UserSession.id == claims.session_id,
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > func.now(),
         )
+    )
+    if user is None:
+        raise _unauthorized()
     return user
 
 

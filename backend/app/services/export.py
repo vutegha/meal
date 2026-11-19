@@ -149,8 +149,7 @@ async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
         ],
         [10, 50, 40, 10, 11, 11, 11, 9, 24, 30, 30, 14],
     )
-    for indicator in indicators:
-        out = svc.indicator_out(indicator)
+    for out in await svc.indicator_outs(session, indicators):
         sheet.append(
             [
                 out.code,
@@ -223,7 +222,7 @@ async def logframe_document(session: AsyncSession, project: Project) -> Rendered
     walk(svc.build_tree(nodes), 0)
     logframe = _table(["Niveau", "Code", "Intitulé", "Indicateurs", "Hypothèses"], rows)
 
-    outs = [svc.indicator_out(i) for i in indicators]
+    outs = await svc.indicator_outs(session, indicators)
     parts = [
         _table(
             ["Code", "Indicateur", "Référence", "Cible", "Atteint", "Taux"],

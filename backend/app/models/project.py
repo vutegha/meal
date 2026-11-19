@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -174,7 +174,9 @@ class Indicator(IdMixin, TimestampMixin, Base):
     frequency: Mapped[str] = mapped_column(String(40), default="")
     # Cibles intermédiaires : [{period_start, period_end, target}].
     period_targets: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
-    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    owner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
     values: Mapped[list["IndicatorValue"]] = relationship(
         back_populates="indicator",
@@ -185,6 +187,15 @@ class Indicator(IdMixin, TimestampMixin, Base):
 
 class IndicatorValue(IdMixin, TimestampMixin, Base):
     __tablename__ = "indicator_values"
+    # Avancement des indicateurs : seules les valeurs totales (sans désagrégation) comptent.
+    __table_args__ = (
+        Index(
+            "ix_indicator_values_totals",
+            "indicator_id",
+            "period_end",
+            postgresql_where=text("disaggregation = '{}'::jsonb"),
+        ),
+    )
 
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
@@ -197,7 +208,9 @@ class IndicatorValue(IdMixin, TimestampMixin, Base):
     value: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     disaggregation: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     source: Mapped[str] = mapped_column(Text, default="")
-    recorded_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    recorded_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     # Exécution d'activité dont provient la valeur (étape 6), pour la traçabilité.
     execution_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("activity_executions.id", ondelete="SET NULL"), index=True

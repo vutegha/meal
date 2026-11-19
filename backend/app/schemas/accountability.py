@@ -89,9 +89,20 @@ class FeedbackOut(BaseModel):
     due_on: date
     overdue: bool
     response_days: int | None
+    # Contact connu et lisible par la personne connectée (la valeur est sur la fiche seulement).
+    has_contact: bool = False
     # Échange par SMS avec la personne : nombre de messages, dernier message venu d'elle.
     sms_count: int = 0
     sms_awaiting_reply: bool = False
+
+
+class FeedbackPage(BaseModel):
+    """Une page du registre. Le contact n'y figure pas : il se lit sur la fiche (journalisée)."""
+
+    items: list[FeedbackOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class FeedbackStats(BaseModel):

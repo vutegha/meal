@@ -12,6 +12,10 @@ export const en: Messages = {
     loading: "Loading…",
     logout: "Sign out",
     error: "Something went wrong. Please try again.",
+    pageRange: "{{from}}–{{to}} of {{total}}",
+    previous: "Previous",
+    next: "Next",
+    search: "Search",
   },
   auth: {
     otpCode: "Verification code",
@@ -637,6 +641,7 @@ export const en: Messages = {
     refresh: "Recompute tables",
   },
   feedback: {
+    showContact: "Show contact",
     title: "Complaints and community feedback",
     intro:
       "Each entry gets a reference and a response deadline: 14 days, 3 days for sensitive cases. Sensitive cases (fraud, sexual exploitation and abuse, safety) are only visible to managers, the person who recorded them and the person handling them.",
