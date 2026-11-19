@@ -46,9 +46,38 @@ docker compose run --rm backup list    # les sauvegardes présentes
 docker compose stop api worker
 docker compose run --rm --entrypoint /ops/restore.sh backup wemeal-AAAAMMJJ-HHMMSS.tar.gpg
 docker compose start api worker
+# Refaire les effacements RGPD faits depuis la sauvegarde (indispensable)
+docker compose run --rm api python -m app.scripts.replay_erasures
 ```
 
+Les effacements demandés (demande d'une personne, compte supprimé, espace fermé) sont inscrits,
+par identifiant seulement, dans un registre gardé hors de la base et des sauvegardes (volume
+`erasures`). La dernière commande les refait : sans elle, une sauvegarde plus ancienne ferait
+réapparaître des personnes effacées. Pour copier chaque sauvegarde hors du serveur,
+`BACKUP_COPY_CMD` reçoit le chemin du fichier chiffré.
+
 Testez une restauration au moins une fois par trimestre.
+
+## Exploitation et performance
+
+- **Processus** : l'API tourne en `API_WORKERS` processus (2 par cœur conseillé) ; tous les
+  services redémarrent seuls après une panne ou un redémarrage du serveur, avec une limite de
+  mémoire chacun (`*_MEM_LIMIT`).
+- **PostgreSQL** : réglages mémoire dans `.env` (`PG_*`, pour 4 Go par défaut). Les requêtes de
+  plus de `PG_SLOW_QUERY_MS` ms sont journalisées sans leurs paramètres, et
+  `pg_stat_statements` donne le temps passé par requête :
+  `docker compose exec db psql -U meal -c "SELECT calls, round(mean_exec_time) AS ms, left(query, 80) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10"`.
+- **Journaux** : une ligne JSON par requête (route, statut, durée, identifiant `X-Request-ID`),
+  sans paramètres d'adresse ; téléphones et e-mails sont masqués. Requêtes de plus d'une seconde
+  en avertissement.
+- **Mesures** : `/metrics` (format Prometheus : nombre et durée des requêtes par route), joignable
+  seulement depuis le réseau Docker.
+- **Erreurs** : `SENTRY_DSN` (Sentry ou GlitchTip auto-hébergé) ; ni corps de requête, ni
+  utilisateur, ni variables locales ne sont envoyés.
+- **Redis** : mot de passe avec `REDIS_PASSWORD`, jamais exposé hors du réseau Docker.
+- **Listes longues** (activités réalisées, plaintes) : paginées par 50 côté serveur, avec
+  recherche. Les preuves de plus de 2 Mo partent par morceaux de 512 Ko et reprennent après une
+  coupure.
 
 ## Données personnelles (RGPD)
 

@@ -115,6 +115,14 @@
             "title": "Last Start Date",
             "type": "string"
           },
+          "months": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Months",
+            "type": "array"
+          },
           "participants": {
             "$ref": "#/components/schemas/Participants"
           }
@@ -124,6 +132,7 @@
           "count",
           "completed",
           "last_start_date",
+          "months",
           "participants",
           "approved_reports"
         ],
@@ -1285,9 +1294,16 @@
             "title": "Consent Method"
           },
           "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
           },
           "kind": {
             "$ref": "#/components/schemas/EvidenceKind",
@@ -1338,11 +1354,32 @@
               }
             ],
             "title": "Taken At"
+          },
+          "upload_content_type": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Upload Content Type",
+            "type": "string"
+          },
+          "upload_filename": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Upload Filename",
+            "type": "string"
+          },
+          "upload_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Id"
           }
         },
-        "required": [
-          "file"
-        ],
         "title": "Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post",
         "type": "object"
       },
@@ -8883,6 +8920,20 @@
         "title": "TotpSetupOut",
         "type": "object"
       },
+      "UploadProgress": {
+        "description": "Octets déjà reçus d'un envoi par morceaux.",
+        "properties": {
+          "received": {
+            "title": "Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "received"
+        ],
+        "title": "UploadProgress",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "email": {
@@ -13441,8 +13492,7 @@
                 "$ref": "#/components/schemas/Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -18579,6 +18629,151 @@
         "summary": "List Versions",
         "tags": [
           "TdR"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/projects/{project_id}/uploads/{upload_id}": {
+      "get": {
+        "description": "Où en est un envoi par morceaux : le téléphone reprend à partir de `received`.",
+        "operationId": "upload_progress_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Progress",
+        "tags": [
+          "exécution"
+        ]
+      },
+      "put": {
+        "description": "Ajoute un morceau (`Content-Range: bytes début-fin/total`) à un envoi en cours.",
+        "operationId": "upload_chunk_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "content-range",
+            "required": true,
+            "schema": {
+              "title": "Content-Range",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Chunk",
+        "tags": [
+          "exécution"
         ]
       }
     },

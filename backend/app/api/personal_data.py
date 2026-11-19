@@ -27,7 +27,7 @@ from app.schemas.personal_data import (
     PersonalDataResult,
     SubmissionMatch,
 )
-from app.services import audit, sms
+from app.services import audit, erasures, sms
 from app.services.retention import anonymize_feedback
 
 router = APIRouter(prefix="/orgs/{org_id}/personal-data", tags=["données personnelles"])
@@ -203,6 +203,9 @@ async def erase_person(
             delete(FormSubmission).where(FormSubmission.id.in_(body.submission_ids))
         )
         removed = result.rowcount  # type: ignore[attr-defined]
+    # Refaits après une restauration de sauvegarde (registre hors de la base).
+    erasures.record(session, "feedback", [e.id for e in entries], org_id)
+    erasures.record(session, "submission", body.submission_ids, org_id)
     audit.record(
         session,
         organization_id=org_id,

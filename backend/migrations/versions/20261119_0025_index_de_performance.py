@@ -22,6 +22,8 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    # Statistiques par requête (actives avec shared_preload_libraries, voir docker-compose.yml).
+    op.execute("CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
     op.create_index(
         op.f("ix_activity_executions_created_by"),
         "activity_executions",
@@ -246,3 +248,4 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_ai_proposals_job_id"), table_name="ai_proposals")
     op.drop_index("ix_activity_executions_project_recent", table_name="activity_executions")
     op.drop_index(op.f("ix_activity_executions_created_by"), table_name="activity_executions")
+    op.execute("DROP EXTENSION IF EXISTS pg_stat_statements")

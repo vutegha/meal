@@ -9,6 +9,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
 
+# Mesures Prometheus partagées entre les processus de l'API (voir app/core/observability.py).
+ENV PROMETHEUS_MULTIPROC_DIR=/tmp/metrics API_WORKERS=2
+
 EXPOSE 8000
 # Migrations : service `migrate` de docker-compose.yml, avec le compte propriétaire des tables.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# Plusieurs processus (API_WORKERS) : un export ou un pic d'usage n'arrête pas les autres.
+CMD ["sh", "-c", "mkdir -p \"$PROMETHEUS_MULTIPROC_DIR\" && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers \"$API_WORKERS\" --proxy-headers --forwarded-allow-ips '*' --no-access-log"]

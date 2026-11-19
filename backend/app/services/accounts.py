@@ -19,7 +19,7 @@ from app.core.db import bind_org
 from app.core.security import hash_password, verify_password
 from app.documents.storage import get_storage
 from app.models import Membership, Organization, PasswordReset, Role, User, UserSession
-from app.services import audit
+from app.services import audit, erasures
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ async def delete_account(session: AsyncSession, user: User) -> None:
     user.totp_enabled_at = None
     user.must_change_password = False
     user.is_active = False
+    erasures.record(session, "user", [user.id])
 
 
 async def close_organization(session: AsyncSession, org_id: UUID) -> int:
@@ -93,6 +94,7 @@ async def close_organization(session: AsyncSession, org_id: UUID) -> int:
     fichiers effacés."""
     # Suppression en SQL : la base efface elle-même, en cascade, tout ce qui en dépend.
     await session.execute(delete(Organization).where(Organization.id == org_id))
+    erasures.record(session, "organization", [org_id], org_id)
     await session.commit()
     files = await get_storage().delete_prefix(f"{org_id}/")
     logger.info("Espace %s fermé : %s fichier(s) effacé(s)", org_id, files)

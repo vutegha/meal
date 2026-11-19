@@ -8,6 +8,9 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-with-enough-length-01234567
 os.environ["JOBS_INLINE"] = "true"
 os.environ["LOGIN_RATE_LIMIT_STORAGE"] = "memory"
 os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="wemeal-test-files-")
+os.environ["ERASURE_LOG_PATH"] = os.path.join(
+    tempfile.mkdtemp(prefix="wemeal-test-erasures-"), "erasures.jsonl"
+)
 
 import pytest
 from httpx import ASGITransport, AsyncClient

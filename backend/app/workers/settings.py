@@ -8,6 +8,7 @@ from arq.connections import RedisSettings
 
 from app.core.config import get_settings
 from app.core.db import check_role, system_session
+from app.core.observability import init_sentry, setup_logging
 from app.services.jobs import JOB_TIMEOUT, fail_stale, run_job
 from app.services.retention import purge
 
@@ -27,6 +28,8 @@ async def fail_stale_task(ctx: dict[str, Any]) -> None:
 
 
 async def startup(ctx: dict[str, Any]) -> None:
+    setup_logging()
+    init_sentry()
     await check_role()
 
 

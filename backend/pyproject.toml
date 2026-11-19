@@ -28,6 +28,8 @@ dependencies = [
     "redis>=5.0",
     "cryptography>=43",
     "segno>=1.6",
+    "prometheus-client>=0.20",
+    "sentry-sdk[fastapi]>=2.0",
 ]
 
 [dependency-groups]

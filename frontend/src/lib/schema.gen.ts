@@ -2060,6 +2060,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/orgs/{org_id}/projects/{project_id}/uploads/{upload_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Upload Progress
+     * @description Où en est un envoi par morceaux : le téléphone reprend à partir de `received`.
+     */
+    get: operations["upload_progress_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__get"];
+    /**
+     * Upload Chunk
+     * @description Ajoute un morceau (`Content-Range: bytes début-fin/total`) à un envoi en cours.
+     */
+    put: operations["upload_chunk_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/orgs/{org_id}/sms/config": {
     parameters: {
       query?: never;
@@ -2225,6 +2249,8 @@ export interface components {
        * Format: date
        */
       last_start_date: string;
+      /** Months */
+      months: string[];
       participants: components["schemas"]["Participants"];
     };
     /** AdminPaymentConfirm */
@@ -2664,7 +2690,7 @@ export interface components {
       /** Consent Method */
       consent_method?: ("oral" | "written" | "guardian" | "community") | null;
       /** File */
-      file: string;
+      file?: string | null;
       /** @default other */
       kind: components["schemas"]["EvidenceKind"];
       /** Latitude */
@@ -2673,6 +2699,18 @@ export interface components {
       longitude?: number | string | null;
       /** Taken At */
       taken_at?: string | null;
+      /**
+       * Upload Content Type
+       * @default
+       */
+      upload_content_type: string;
+      /**
+       * Upload Filename
+       * @default
+       */
+      upload_filename: string;
+      /** Upload Id */
+      upload_id?: string | null;
     };
     /**
      * Breakdown
@@ -5554,6 +5592,14 @@ export interface components {
       /** Uri */
       uri: string;
     };
+    /**
+     * UploadProgress
+     * @description Octets déjà reçus d'un envoi par morceaux.
+     */
+    UploadProgress: {
+      /** Received */
+      received: number;
+    };
     /** UserOut */
     UserOut: {
       /** Email */
@@ -8072,7 +8118,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody: {
+    requestBody?: {
       content: {
         "multipart/form-data": components["schemas"]["Body_upload_evidence_api_v1_orgs__org_id__projects__project_id__executions__execution_id__evidence_post"];
       };
@@ -10543,6 +10589,74 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TorVersionOut"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_progress_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        upload_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadProgress"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  upload_chunk_api_v1_orgs__org_id__projects__project_id__uploads__upload_id__put: {
+    parameters: {
+      query?: never;
+      header: {
+        "content-range": string;
+      };
+      path: {
+        org_id: string;
+        project_id: string;
+        upload_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadProgress"];
         };
       };
       /** @description Validation Error */

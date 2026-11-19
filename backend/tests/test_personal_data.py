@@ -7,6 +7,8 @@ from sqlalchemy import select, update
 from app.core.config import get_settings
 from app.core.db import system_session
 from app.models import AuditLog, FeedbackEntry, SmsMessage
+from app.scripts.replay_erasures import replay
+from app.services import erasures
 from app.services.retention import ERASED, purge
 from tests.conftest import owner_engine, register
 from tests.test_organizations import add_member, login
@@ -138,3 +140,50 @@ async def test_retention_purge(client: AsyncClient, webhook: str) -> None:
     # Une seconde passe ne refait rien.
     async with system_session() as session:
         assert (await purge(session))["feedback"] == {}
+
+
+async def test_erasures_are_replayed_after_a_restore(client: AsyncClient) -> None:
+    """Un effacement est inscrit au registre (identifiants seulement) ; si une sauvegarde plus
+    ancienne ramène la donnée, le registre la refait disparaître."""
+    ctx = await register(client, "rgpd@example.org")
+    h = ctx["headers"]
+    base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx)}"
+    r = await client.post(
+        f"{base}/feedback",
+        headers=h,
+        json={
+            "received_on": "2026-03-02",
+            "channel": "hotline",
+            "category": "complaint",
+            "description": "Mama Kahindo signale un oubli",
+            "contact": "+243970000123",
+        },
+    )
+    feedback_id = r.json()["id"]
+    r = await client.post(
+        f"/api/v1/orgs/{ctx['org_id']}/personal-data/erase",
+        headers=h,
+        json={"feedback_ids": [feedback_id], "submission_ids": [], "reason": "Demande orale"},
+    )
+    assert r.status_code == 200, r.text
+    logged = [e for e in erasures.read() if e.entity_id.hex == feedback_id.replace("-", "")]
+    assert [e.kind for e in logged] == ["feedback"]
+    assert "Kahindo" not in erasures.log_path().read_text()
+
+    # Une restauration ramène le retour d'avant l'effacement.
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            update(FeedbackEntry)
+            .where(FeedbackEntry.id == feedback_id)
+            .values(
+                description="Mama Kahindo signale un oubli",
+                contact="+243970000123",
+                anonymized_at=None,
+            )
+        )
+    done = await replay()
+    assert done["feedback"] == 1
+    entry = (await client.get(f"{base}/feedback/{feedback_id}", headers=h)).json()
+    assert "Kahindo" not in entry["description"] and entry["has_contact"] is False
+    # Rejouer une deuxième fois ne change plus rien.
+    assert (await replay())["feedback"] == 0

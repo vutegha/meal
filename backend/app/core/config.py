@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     s3_bucket: str = "wemeal"
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
+    # Registre des effacements (identifiants seulement), hors de la base et des sauvegardes :
+    # rejoué après une restauration (app/services/erasures.py).
+    erasure_log_path: str = "./data/erasures/erasures.jsonl"
     max_upload_mb: int = 25
     # Enregistrements audio et vidéo déposés comme preuves.
     max_media_mb: int = 200
