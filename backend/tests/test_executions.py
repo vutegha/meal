@@ -352,3 +352,51 @@ async def test_audio_video_and_phone_metadata(client: AsyncClient) -> None:
     )
     assert r.json()["latitude"] == "-1.675000"
     assert r.json()["taken_at"].startswith("2026-03-14T10:30")
+
+
+async def test_chunked_upload_resumes_after_a_cut(client: AsyncClient) -> None:
+    """Une vidéo envoyée par morceaux : un morceau renvoyé est ignoré, un trou est refusé avec
+    la position où reprendre, et l'envoi complet devient une preuve."""
+    ctx, base, nodes, _ = await setup(client)
+    h = ctx["headers"]
+    body = execution_body(nodes["activity"]["id"])
+    execution = (await client.post(f"{base}/executions", headers=h, json=body)).json()["id"]
+    data = b"\x1aE\xdf\xa3" + bytes(range(256)) * 40  # 10 244 octets
+    upload = f"{base}/uploads/{uuid4()}"
+    total = len(data)
+
+    def chunk(start: int, end: int) -> dict[str, str]:
+        return {**h, "Content-Range": f"bytes {start}-{end - 1}/{total}"}
+
+    assert (await client.get(upload, headers=h)).json() == {"received": 0}
+    r = await client.put(upload, headers=chunk(0, 4000), content=data[:4000])
+    assert r.status_code == 200 and r.json() == {"received": 4000}
+    # Le même morceau renvoyé après une coupure ne double rien.
+    r = await client.put(upload, headers=chunk(0, 4000), content=data[:4000])
+    assert r.json() == {"received": 4000}
+    # Un morceau qui laisserait un trou : refusé, avec la position attendue.
+    r = await client.put(upload, headers=chunk(8000, total), content=data[8000:])
+    assert r.status_code == 409 and r.json()["received"] == 4000
+    r = await client.put(upload, headers=chunk(4000, total), content=data[4000:])
+    assert r.json() == {"received": total}
+    # Une autre personne ne voit pas cet envoi.
+    other = await register(client, "autre@example.org")
+    assert (await client.get(upload, headers=other["headers"])).status_code == 404
+
+    r = await client.post(
+        f"{base}/executions/{execution}/evidence",
+        headers=h,
+        data={
+            "upload_id": upload.rsplit("/", 1)[1],
+            "upload_filename": "temoignage.webm",
+            "upload_content_type": "video/webm",
+            "caption": "Témoignage",
+        },
+    )
+    assert r.status_code == 201, r.text
+    evidence = r.json()
+    assert evidence["kind"] == "video" and evidence["size_bytes"] == total
+    played = await client.get(f"{base}/evidence/{evidence['id']}/file", headers=h)
+    assert played.content == data
+    # Le fichier partiel a servi : il n'existe plus.
+    assert (await client.get(upload, headers=h)).json() == {"received": 0}

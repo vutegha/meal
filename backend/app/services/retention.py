@@ -4,6 +4,7 @@ Lancé chaque nuit par le worker (app/workers/settings.py) ou à la main :
 `uv run python -m app.scripts.purge`.
 """
 
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,7 @@ from app.models import (
     SmsMessage,
     UserSession,
 )
+from app.services import uploads
 
 # SMS qu'aucun projet n'a reconnus : gardés le temps d'un éventuel rattachement manuel.
 UNMATCHED_SMS_DAYS = 30
@@ -117,6 +119,7 @@ async def purge(session: AsyncSession, today: date | None = None) -> dict[str, A
         )
     )
     counts["access_logs"] = result.rowcount  # type: ignore[attr-defined]
+    counts["partial_uploads"] = await asyncio.to_thread(uploads.purge_stale)
     return counts
 
 

@@ -167,3 +167,9 @@ class ExecutionDetail(ExecutionOut):
     evidence: list[EvidenceOut]
     expenses: list[ExecutionExpenseOut]
     planned: Decimal
+
+
+class UploadProgress(BaseModel):
+    """Octets déjà reçus d'un envoi par morceaux."""
+
+    received: int

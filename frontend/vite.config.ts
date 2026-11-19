@@ -31,6 +31,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // L'éditeur riche des TdR (le plus gros fichier) et la version anglaise ne sont pas
+        // installés d'avance : ils se téléchargent à la première ouverture, puis restent en cache.
+        globIgnores: ["**/RichEditor-*.js", "**/en-*.js"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /^\/health/],
         runtimeCaching: [
@@ -40,13 +43,23 @@ export default defineConfig({
               request.method === "GET" &&
               !url.pathname.includes("/export") &&
               // Photos, audios et vidéos des bénéficiaires : jamais gardés sur le téléphone.
-              !url.pathname.includes("/evidence/"),
+              !url.pathname.includes("/evidence/") &&
+              // Plaintes (contacts, signalements sensibles) et recherches de personnes : jamais
+              // gardées sur le téléphone, qui peut être perdu ou partagé.
+              !url.pathname.includes("/feedback") &&
+              !url.pathname.includes("/personal-data") &&
+              !url.pathname.includes("/sms"),
             handler: "NetworkFirst",
             options: {
               cacheName: "api",
               networkTimeoutSeconds: 6,
               expiration: { maxEntries: 400, maxAgeSeconds: 7 * 24 * 3600 },
             },
+          },
+          {
+            urlPattern: ({ url }) => /\/assets\/(RichEditor|en)-.*\.js$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: { cacheName: "lazy-assets", expiration: { maxEntries: 20 } },
           },
         ],
       },

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Card, ErrorText } from "@/components/ui";
@@ -9,20 +10,30 @@ import { useCurrentOrg } from "@/features/orgs/useCurrentOrg";
 import { hasFeature } from "@/lib/billing";
 import { projectQuery } from "@/lib/queries";
 
-import { BudgetTab } from "./BudgetTab";
-import { DashboardTab } from "./DashboardTab";
-import { DocumentsTab } from "./DocumentsTab";
-import { ExecutionTab } from "./ExecutionTab";
-import { FeedbackTab } from "./FeedbackTab";
-import { FormsTab } from "./FormsTab";
-import { IndicatorsTab } from "./IndicatorsTab";
-import { LessonsTab } from "./LessonsTab";
-import { LogframeTab } from "./LogframeTab";
-import { PeriodicTab } from "./PeriodicTab";
-import { ScheduleTab } from "./ScheduleTab";
 import { StatusBadge } from "./StatusBadge";
-import { TorTab } from "./TorTab";
 import { TAB_FEATURES, TAB_GROUPS } from "./tabs";
+
+// Onglets chargés à la demande : ouvrir un projet ne télécharge que l'onglet affiché.
+const BudgetTab = lazy(() => import("./BudgetTab").then((m) => ({ default: m.BudgetTab })));
+const DashboardTab = lazy(() =>
+  import("./DashboardTab").then((m) => ({ default: m.DashboardTab })),
+);
+const DocumentsTab = lazy(() =>
+  import("./DocumentsTab").then((m) => ({ default: m.DocumentsTab })),
+);
+const ExecutionTab = lazy(() =>
+  import("./ExecutionTab").then((m) => ({ default: m.ExecutionTab })),
+);
+const FeedbackTab = lazy(() => import("./FeedbackTab").then((m) => ({ default: m.FeedbackTab })));
+const FormsTab = lazy(() => import("./FormsTab").then((m) => ({ default: m.FormsTab })));
+const IndicatorsTab = lazy(() =>
+  import("./IndicatorsTab").then((m) => ({ default: m.IndicatorsTab })),
+);
+const LessonsTab = lazy(() => import("./LessonsTab").then((m) => ({ default: m.LessonsTab })));
+const LogframeTab = lazy(() => import("./LogframeTab").then((m) => ({ default: m.LogframeTab })));
+const PeriodicTab = lazy(() => import("./PeriodicTab").then((m) => ({ default: m.PeriodicTab })));
+const ScheduleTab = lazy(() => import("./ScheduleTab").then((m) => ({ default: m.ScheduleTab })));
+const TorTab = lazy(() => import("./TorTab").then((m) => ({ default: m.TorTab })));
 
 export function ProjectPage() {
   const { t, i18n } = useTranslation();
@@ -137,26 +148,28 @@ export function ProjectPage() {
         </nav>
 
         <div className="min-w-0 flex-1 space-y-6">
-          {tab === "dashboard" && <DashboardTab orgId={orgId} project={p} />}
-          {tab === "logframe" && <LogframeTab orgId={orgId} projectId={projectId} />}
-          {tab === "schedule" && <ScheduleTab orgId={orgId} project={p} />}
-          {tab === "budget" && <BudgetTab orgId={orgId} project={p} />}
-          {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
-          {tab === "tor" && <TorTab orgId={orgId} project={p} />}
-          {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
-          {tab === "forms" && (
-            <FeatureGate feature="forms">
-              <FormsTab orgId={orgId} projectId={projectId} />
-            </FeatureGate>
-          )}
-          {tab === "reports" && (
-            <FeatureGate feature="periodic_reports">
-              <PeriodicTab project={p} />
-            </FeatureGate>
-          )}
-          {tab === "feedback" && <FeedbackTab orgId={orgId} projectId={projectId} />}
-          {tab === "lessons" && <LessonsTab orgId={orgId} projectId={projectId} />}
-          {tab === "documents" && <DocumentsTab orgId={orgId} project={p} />}
+          <Suspense fallback={<p className="text-sm text-slate-500">{t("common.loading")}</p>}>
+            {tab === "dashboard" && <DashboardTab orgId={orgId} project={p} />}
+            {tab === "logframe" && <LogframeTab orgId={orgId} projectId={projectId} />}
+            {tab === "schedule" && <ScheduleTab orgId={orgId} project={p} />}
+            {tab === "budget" && <BudgetTab orgId={orgId} project={p} />}
+            {tab === "indicators" && <IndicatorsTab orgId={orgId} projectId={projectId} />}
+            {tab === "tor" && <TorTab orgId={orgId} project={p} />}
+            {tab === "execution" && <ExecutionTab orgId={orgId} project={p} />}
+            {tab === "forms" && (
+              <FeatureGate feature="forms">
+                <FormsTab orgId={orgId} projectId={projectId} />
+              </FeatureGate>
+            )}
+            {tab === "reports" && (
+              <FeatureGate feature="periodic_reports">
+                <PeriodicTab project={p} />
+              </FeatureGate>
+            )}
+            {tab === "feedback" && <FeedbackTab orgId={orgId} projectId={projectId} />}
+            {tab === "lessons" && <LessonsTab orgId={orgId} projectId={projectId} />}
+            {tab === "documents" && <DocumentsTab orgId={orgId} project={p} />}
+          </Suspense>
         </div>
       </div>
     </>

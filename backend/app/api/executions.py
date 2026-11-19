@@ -12,10 +12,22 @@ from decimal import Decimal
 from typing import Annotated, BinaryIO
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import Date, func, select
 from sqlalchemy.orm import selectinload
+from starlette.datastructures import Headers
 
 from app.api.deps import AnyMember, SessionDep, require_membership
 from app.api.projects import Collector, ProjectAdmin, _flush, _log
@@ -55,8 +67,9 @@ from app.schemas.execution import (
     ExecutionPage,
     ExecutionUpdate,
     Participants,
+    UploadProgress,
 )
-from app.services import audit
+from app.services import audit, uploads
 from app.services import projects as svc
 from app.services.evidence import UnsupportedFile, media_file, process, render_thumbnail
 
@@ -412,6 +425,49 @@ def _measure(source: BinaryIO, limit: int) -> tuple[int, str]:
     return size, digest.hexdigest()
 
 
+@router.get("/uploads/{upload_id}", response_model=UploadProgress)
+async def upload_progress(
+    org_id: UUID, project_id: UUID, upload_id: UUID, member: Collector, session: SessionDep
+) -> UploadProgress:
+    """Où en est un envoi par morceaux : le téléphone reprend à partir de `received`."""
+    await svc.get_project(session, org_id, project_id)
+    return UploadProgress(
+        received=uploads.received(uploads.part_path(org_id, member.user_id, upload_id))
+    )
+
+
+@router.put("/uploads/{upload_id}", response_model=UploadProgress)
+async def upload_chunk(
+    org_id: UUID,
+    project_id: UUID,
+    upload_id: UUID,
+    request: Request,
+    member: Collector,
+    session: SessionDep,
+    content_range: Annotated[str, Header()],
+) -> UploadProgress | JSONResponse:
+    """Ajoute un morceau (`Content-Range: bytes début-fin/total`) à un envoi en cours."""
+    await svc.get_project(session, org_id, project_id)
+    await session.commit()  # rien à garder ouvert pendant la réception du morceau
+    path = uploads.part_path(org_id, member.user_id, upload_id)
+    try:
+        start, end, total = uploads.parse_range(content_range)
+        if end - start + 1 > uploads.MAX_CHUNK_BYTES:
+            raise uploads.RangeError("Morceau trop gros", uploads.received(path))
+        chunk = await request.body()
+        if len(chunk) != end - start + 1:
+            raise uploads.RangeError(
+                "Taille du morceau différente du Content-Range", uploads.received(path)
+            )
+        limit = _limit(max(get_settings().max_media_mb, get_settings().max_upload_mb))
+        done = await asyncio.to_thread(uploads.append, path, start, chunk, total, limit)
+    except uploads.RangeError as exc:
+        return JSONResponse(
+            {"detail": str(exc), "received": exc.received}, status_code=status.HTTP_409_CONFLICT
+        )
+    return UploadProgress(received=done)
+
+
 @router.post(
     "/executions/{execution_id}/evidence",
     response_model=EvidenceOut,
@@ -421,10 +477,14 @@ async def upload_evidence(
     org_id: UUID,
     project_id: UUID,
     execution_id: UUID,
-    file: UploadFile,
     member: Collector,
     session: SessionDep,
     response: Response,
+    file: UploadFile | None = None,
+    # Fichier envoyé par morceaux (PUT /uploads/{id}) : nom et type d'origine à part.
+    upload_id: Annotated[UUID | None, Form()] = None,
+    upload_filename: Annotated[str, Form(max_length=300)] = "",
+    upload_content_type: Annotated[str, Form(max_length=200)] = "",
     kind: Annotated[EvidenceKind, Form()] = EvidenceKind.OTHER,
     caption: Annotated[str, Form(max_length=2000)] = "",
     consent_given: Annotated[bool, Form()] = False,
@@ -448,6 +508,56 @@ async def upload_evidence(
             response.status_code = status.HTTP_200_OK
             return evidence_out(existing)
 
+    part = None
+    if file is None:
+        if upload_id is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Fichier manquant")
+        part = uploads.part_path(org_id, member.user_id, upload_id)
+        if not part.exists():
+            raise HTTPException(status.HTTP_409_CONFLICT, "Envoi par morceaux introuvable")
+        file = UploadFile(
+            file=part.open("rb"),
+            filename=upload_filename or "piece",
+            headers=Headers({"content-type": upload_content_type or "application/octet-stream"}),
+        )
+    try:
+        return await _store_evidence(
+            session,
+            project,
+            execution,
+            member,
+            file,
+            kind,
+            caption,
+            consent_given,
+            consent_method,
+            client_uuid,
+            taken_at,
+            latitude,
+            longitude,
+        )
+    finally:
+        if part is not None:
+            await file.close()
+            part.unlink(missing_ok=True)
+
+
+async def _store_evidence(
+    session: SessionDep,
+    project: Project,
+    execution: ActivityExecution,
+    member: Membership,
+    file: UploadFile,
+    kind: EvidenceKind,
+    caption: str,
+    consent_given: bool,
+    consent_method: ConsentMethod | None,
+    client_uuid: UUID | None,
+    taken_at: datetime | None,
+    latitude: Decimal | None,
+    longitude: Decimal | None,
+) -> EvidenceOut:
+    org_id = project.organization_id
     filename = file.filename or "piece"
     settings = get_settings()
     storage = get_storage()
