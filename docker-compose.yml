@@ -6,7 +6,8 @@ x-backend-env: &backend-env
   # Compte dédié de l'API et du worker, créé par le service migrate : ni superutilisateur ni
   # propriétaire des tables, il ne voit les données qu'à travers la Row Level Security.
   DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-meal_api}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/meal
-  REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+  REDIS_URL: redis://redis:6379/0
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
   SECRET_KEY: ${SECRET_KEY:?Définir SECRET_KEY dans .env}
   # Fichiers sur un volume Docker par défaut ; STORAGE_BACKEND=s3 et le profil « s3 »
   # (docker compose --profile s3 up) pour les stocker dans MinIO.

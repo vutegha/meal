@@ -230,3 +230,11 @@ async def test_double_confirmation_applies_the_payment_once(client: AsyncClient)
         client.post(confirm, headers=admin["headers"], json={}),
     )
     assert sorted([first.status_code, second.status_code]) == [200, 409]
+
+
+def test_redis_password_is_added_to_the_address() -> None:
+    from app.core.config import Settings
+
+    settings = Settings(redis_url="redis://redis:6379/0", redis_password="a b/c")
+    assert settings.redis_dsn == "redis://:a%20b%2Fc@redis:6379/0"
+    assert Settings(redis_url="redis://redis:6379/0").redis_dsn == "redis://redis:6379/0"

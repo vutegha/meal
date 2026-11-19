@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Self
+from urllib.parse import quote
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,6 +27,8 @@ class Settings(BaseSettings):
     app_db_user: str = "meal_api"
     app_db_password: str = ""
     redis_url: str = "redis://localhost:6379/0"
+    # Mot de passe de Redis, gardé à part de REDIS_URL et ajouté à l'adresse par `redis_dsn`.
+    redis_password: str = ""
     secret_key: str = "change-me-in-production"
     access_token_minutes: int = 15
     refresh_token_days: int = 7
@@ -107,6 +110,14 @@ class Settings(BaseSettings):
     meta_whatsapp_phone_number_id: str | None = None
     # Secret de l'application Meta : contrôle de la signature des notifications reçues.
     meta_app_secret: str | None = None
+
+    @property
+    def redis_dsn(self) -> str:
+        """REDIS_URL, avec REDIS_PASSWORD s'il est défini et absent de l'adresse."""
+        if not self.redis_password or "@" in self.redis_url:
+            return self.redis_url
+        scheme, rest = self.redis_url.split("://", 1)
+        return f"{scheme}://:{quote(self.redis_password, safe='')}@{rest}"
 
     @property
     def is_production(self) -> bool:

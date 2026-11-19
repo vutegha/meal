@@ -43,5 +43,5 @@ class WorkerSettings:
         # 10 minutes.
         cron(fail_stale_task, minute=set(range(0, 60, 10)), run_at_startup=True),
     ]
-    redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
+    redis_settings = RedisSettings.from_dsn(get_settings().redis_dsn)
     job_timeout = int(JOB_TIMEOUT.total_seconds())
