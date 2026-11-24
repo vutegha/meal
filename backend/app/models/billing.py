@@ -76,7 +76,9 @@ class Payment(IdMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(String(300))
     provider: Mapped[str] = mapped_column(String(40))
     reference: Mapped[str] = mapped_column(String(80))
-    paid_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    paid_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     status: Mapped[str] = mapped_column(String(20), server_default=text("'paid'"))
     method: Mapped[str] = mapped_column(String(30), server_default=text("'online'"))
     # Numéro de reçu, attribué à l'encaissement : WM-2026-000042.
@@ -85,4 +87,6 @@ class Payment(IdMixin, TimestampMixin, Base):
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     note: Mapped[str] = mapped_column(String(500), server_default=text("''"))
     # Membre de l'équipe de la plateforme qui a confirmé, saisi ou remboursé le paiement.
-    recorded_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    recorded_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

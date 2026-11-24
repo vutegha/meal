@@ -35,14 +35,17 @@ async def open_session(session: AsyncSession, user: User, user_agent: str = "") 
     return tokens(user, record)
 
 
-async def is_active(session: AsyncSession, claims: Claims) -> bool:
-    record = await session.get(UserSession, claims.session_id)
+def record_is_active(record: UserSession | None, claims: Claims) -> bool:
     return (
         record is not None
         and record.user_id == claims.user_id
         and record.revoked_at is None
         and record.expires_at > datetime.now(UTC)
     )
+
+
+async def is_active(session: AsyncSession, claims: Claims) -> bool:
+    return record_is_active(await session.get(UserSession, claims.session_id), claims)
 
 
 async def rotate(session: AsyncSession, user: User, claims: Claims) -> TokenPair | None:
