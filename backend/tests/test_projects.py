@@ -305,6 +305,102 @@ async def test_indicators_achievement_and_checks(client: AsyncClient) -> None:
     assert r.json()["achievement_rate"] is None
 
 
+async def test_indicator_period_targets(client: AsyncClient) -> None:
+    ctx = await register(client, "pm@example.org")
+    base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx)}"
+    nodes = await build_logframe(client, ctx, base)
+    h = ctx["headers"]
+
+    def quarters(*targets: int) -> list[dict[str, Any]]:
+        periods = (
+            ("2026-01-01", "2026-03-31"),
+            ("2026-04-01", "2026-06-30"),
+            ("2026-07-01", "2026-09-30"),
+        )
+        return [
+            {"period_start": start, "period_end": end, "target": target}
+            for (start, end), target in zip(periods, targets, strict=False)
+        ]
+
+    trained = (
+        await client.post(
+            f"{base}/indicators",
+            headers=h,
+            json={
+                "node_id": nodes["output"]["id"],
+                "code": "I1",
+                "name": "Nombre de membres d'AVEC formés",
+                "target": 600,
+                "disaggregations": ["sexe"],
+                "period_targets": quarters(100, 200, 300),
+            },
+        )
+    ).json()
+    income = (
+        await client.post(
+            f"{base}/indicators",
+            headers=h,
+            json={
+                "node_id": nodes["outcome"]["id"],
+                "code": "I2",
+                "name": "Revenu mensuel moyen des ménages",
+                "baseline": 40,
+                "target": 80,
+                "aggregation": "latest",
+                "period_targets": quarters(60),
+            },
+        )
+    ).json()
+    assert [t["achieved"] for t in trained["period_targets"]] == [None, None, None]
+
+    async def record(indicator: dict[str, Any], value: float, start: str, end: str) -> None:
+        r = await client.post(
+            f"{base}/indicators/{indicator['id']}/values",
+            headers=h,
+            json={"period_start": start, "period_end": end, "value": value},
+        )
+        assert r.status_code == 201, r.text
+
+    await record(trained, 50, "2026-01-01", "2026-01-31")
+    await record(trained, 30, "2026-02-01", "2026-03-31")
+    await record(trained, 50, "2026-04-01", "2026-06-30")
+    # À cheval sur deux périodes : compte dans le total, dans aucune des deux périodes.
+    await record(trained, 7, "2026-03-01", "2026-04-30")
+    r = await client.post(
+        f"{base}/indicators/{trained['id']}/values",
+        headers=h,
+        json={
+            "period_start": "2026-01-01",
+            "period_end": "2026-03-31",
+            "value": 20,
+            "disaggregation": {"sexe": "femmes"},
+        },
+    )
+    assert r.status_code == 201, r.text
+    await record(income, 45, "2026-01-01", "2026-01-31")
+    await record(income, 50, "2026-03-01", "2026-03-31")
+    await record(income, 70, "2026-04-01", "2026-04-30")
+
+    indicators = {i["code"]: i for i in (await client.get(f"{base}/indicators", headers=h)).json()}
+    assert indicators["I1"]["achieved"] == "137.0000"
+    assert [(t["achieved"], t["achievement_rate"]) for t in indicators["I1"]["period_targets"]] == [
+        ("80.0000", 0.8),
+        ("50.0000", 0.25),
+        (None, None),
+    ]
+    # Dernière valeur : celle de la période pour la cible de période, la plus récente au total.
+    assert indicators["I2"]["achieved"] == "70.0000"
+    assert indicators["I2"]["achievement_rate"] == 0.75
+    assert [(t["achieved"], t["achievement_rate"]) for t in indicators["I2"]["period_targets"]] == [
+        ("50.0000", 0.5)
+    ]
+
+    # Même résultat pour un indicateur lu seul (après modification).
+    r = await client.patch(f"{base}/indicators/{trained['id']}", headers=h, json={"unit": "pers."})
+    assert r.json()["achieved"] == "137.0000"
+    assert [t["achieved"] for t in r.json()["period_targets"]] == ["80.0000", "50.0000", None]
+
+
 async def test_export_xlsx(client: AsyncClient) -> None:
     ctx = await register(client, "pm@example.org")
     base = f"/api/v1/orgs/{ctx['org_id']}/projects/{await create_project(client, ctx)}"

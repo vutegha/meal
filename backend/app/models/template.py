@@ -33,4 +33,6 @@ class DocumentTemplate(IdMixin, TimestampMixin, Base):
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
     # {"header": "…", "footer": "…", "color": "#0f5b52"}
     layout: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

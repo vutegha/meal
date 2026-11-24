@@ -41,12 +41,18 @@ class TermsOfReference(IdMixin, TimestampMixin, Base):
     version: Mapped[int] = mapped_column(default=1)
     review_comment: Mapped[str] = mapped_column(Text, default="")
     template_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("document_templates.id", ondelete="SET NULL")
+        ForeignKey("document_templates.id", ondelete="SET NULL"), index=True
     )
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    submitted_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    submitted_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    approved_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    approved_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -69,4 +75,6 @@ class TorVersion(IdMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(300))
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     note: Mapped[str] = mapped_column(String(200), default="")
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

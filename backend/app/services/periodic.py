@@ -165,7 +165,7 @@ def activities_markdown(
 async def indicators_markdown(
     session: AsyncSession, project: Project, start: date, end: date
 ) -> str:
-    indicators = await svc.list_indicators(session, project.id)
+    indicators = await svc.list_indicators(session, project.id, with_values=True)
     if not indicators:
         return "[À compléter : aucun indicateur n'est défini pour ce projet.]"
     rows = [

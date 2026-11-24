@@ -6,9 +6,21 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
-from app.models import ActivityExecution, ExecutionStatus, Project, ProjectStatus
+from sqlalchemy import Date, Numeric, cast, func, literal_column, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
+
+from app.models import (
+    ActivityExecution,
+    BudgetLine,
+    ExecutionStatus,
+    Expense,
+    Project,
+    ProjectStatus,
+)
 from app.schemas.dashboard import (
     Beneficiary,
     Breakdown,
@@ -46,28 +58,112 @@ class Filters:
 
 @dataclass
 class ExpenseRow:
+    """Dépenses d'un projet sur un mois (`spent_on` : premier jour du mois)."""
+
     project_id: UUID
     amount: Decimal
     spent_on: date
 
 
-def _people(execution: ActivityExecution, beneficiary: Beneficiary | None) -> int:
-    counts = execution.participants or {}
+@dataclass
+class ExecutionGroup:
+    """Activités réalisées d'un projet, d'un mois et d'un lieu, additionnées par la base."""
+
+    project_id: UUID
+    start_date: date  # premier jour du mois
+    location: str
+    completed: bool
+    executions: int
+    participants: dict[str, int]
+
+
+def _participants(key: str) -> ColumnElement[Any]:
+    """Effectif d'une catégorie (clé du JSON `participants`), NULL s'il n'est pas renseigné."""
+    return cast(func.jsonb_extract_path_text(ActivityExecution.participants, key), Numeric)
+
+
+def _count(key: str) -> ColumnElement[Any]:
+    value = _participants(key)
+    return cast(func.coalesce(func.sum(func.trunc(value)), 0), Numeric)
+
+
+def _month(column: Any) -> ColumnElement[date]:
+    return cast(func.date_trunc(literal_column("'month'"), column), Date)
+
+
+async def execution_groups(
+    session: AsyncSession, org_id: UUID, beneficiary: Beneficiary | None = None
+) -> list[ExecutionGroup]:
+    """Une ligne par (projet, mois, lieu, terminée ou non) au lieu d'une par activité réalisée.
+
+    Avec `beneficiary`, seules comptent les activités qui ont touché ce type de bénéficiaires.
+    """
+    keys = (*CATEGORIES, "with_disability")
+    query = (
+        select(
+            ActivityExecution.project_id,
+            _month(ActivityExecution.start_date).label("month"),
+            func.btrim(ActivityExecution.location).label("place"),
+            (ActivityExecution.status == ExecutionStatus.COMPLETED).label("completed"),
+            func.count().label("executions"),
+            *(_count(key).label(key) for key in keys),
+        )
+        .where(ActivityExecution.organization_id == org_id)
+        .group_by(ActivityExecution.project_id, "month", "place", "completed")
+    )
     if beneficiary:
-        return int(counts.get(beneficiary, 0))
-    return sum(int(counts.get(c, 0)) for c in CATEGORIES)
+        query = query.where(_participants(beneficiary) >= 1)
+    return [
+        ExecutionGroup(
+            project_id=row.project_id,
+            start_date=row.month,
+            location=row.place,
+            completed=row.completed,
+            executions=row.executions,
+            participants={key: int(getattr(row, key)) for key in keys},
+        )
+        for row in await session.execute(query)
+    ]
 
 
-def _location(execution: ActivityExecution) -> str:
-    return execution.location.strip() or "—"
+async def expense_months(session: AsyncSession, org_id: UUID) -> list[ExpenseRow]:
+    """Dépenses additionnées par projet et par mois."""
+    query = (
+        select(
+            BudgetLine.project_id,
+            _month(Expense.spent_on).label("month"),
+            func.sum(Expense.amount).label("amount"),
+        )
+        .join(Expense.budget_line)
+        .where(Expense.organization_id == org_id)
+        .group_by(BudgetLine.project_id, "month")
+    )
+    return [
+        ExpenseRow(project_id=row.project_id, amount=row.amount, spent_on=row.month)
+        for row in await session.execute(query)
+    ]
+
+
+def _people(group: ExecutionGroup, beneficiary: Beneficiary | None) -> int:
+    counts = group.participants
+    if beneficiary:
+        return counts.get(beneficiary, 0)
+    return sum(counts.get(c, 0) for c in CATEGORIES)
+
+
+def _location(group: ExecutionGroup) -> str:
+    return group.location.strip() or "—"
 
 
 def build_dashboard(
     projects: list[Project],
-    executions: list[ActivityExecution],
+    executions: list[ExecutionGroup],
     expenses: list[ExpenseRow],
     filters: Filters,
+    matching: list[ExecutionGroup] | None = None,
 ) -> OrgDashboard:
+    """`executions` : tous les groupes de l'organisation (ils donnent les choix des filtres).
+    `matching` : les groupes restreints au type de bénéficiaires demandé, quand il y en a un."""
     years = {e.start_date.year for e in executions} | {x.spent_on.year for x in expenses}
     options = DashboardOptions(
         years=sorted(years, reverse=True),
@@ -88,18 +184,16 @@ def build_dashboard(
     by_id = {p.id: p for p in kept}
     selected = [
         e
-        for e in executions
+        for e in (executions if matching is None else matching)
         if e.project_id in by_id
         and filters.in_period(e.start_date)
         and (not filters.location or _location(e) == filters.location)
-        and (not filters.beneficiary or _people(e, filters.beneficiary) > 0)
     ]
 
     people = People()
     for e in selected:
-        counts = e.participants or {}
         for category in (*CATEGORIES, "with_disability"):
-            setattr(people, category, getattr(people, category) + int(counts.get(category, 0)))
+            setattr(people, category, getattr(people, category) + e.participants.get(category, 0))
     people.total = (
         getattr(people, filters.beneficiary)
         if filters.beneficiary
@@ -107,13 +201,13 @@ def build_dashboard(
     )
 
     def breakdown(
-        key_of: Callable[[ActivityExecution], list[str]], label_of: Callable[[str], str]
+        key_of: Callable[[ExecutionGroup], list[str]], label_of: Callable[[str], str]
     ) -> list[Breakdown]:
         rows: dict[str, Breakdown] = {}
         for e in selected:
             for key in key_of(e):
                 row = rows.setdefault(key, Breakdown(key=key, label=label_of(key)))
-                row.executions += 1
+                row.executions += e.executions
                 row.people += _people(e, filters.beneficiary)
         return list(rows.values())
 
@@ -158,8 +252,8 @@ def build_dashboard(
         options=options,
         projects=len(kept),
         active_projects=sum(p.status == ProjectStatus.ACTIVE for p in kept),
-        executions=len(selected),
-        completed_executions=sum(e.status == ExecutionStatus.COMPLETED for e in selected),
+        executions=sum(e.executions for e in selected),
+        completed_executions=sum(e.executions for e in selected if e.completed),
         people=people,
         spending=[Spending(currency=c, amount=a) for c, a in sorted(spending.items())],
         by_month=by_month,

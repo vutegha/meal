@@ -5,7 +5,17 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -51,12 +61,18 @@ class PeriodicReport(IdMixin, TimestampMixin, Base):
     version: Mapped[int] = mapped_column(default=1)
     review_comment: Mapped[str] = mapped_column(Text, default="")
     template_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("document_templates.id", ondelete="SET NULL")
+        ForeignKey("document_templates.id", ondelete="SET NULL"), index=True
     )
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    submitted_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    submitted_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    approved_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    approved_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -77,7 +93,9 @@ class PeriodicReportVersion(IdMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(300))
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     note: Mapped[str] = mapped_column(String(200), default="")
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
 
 # --- Plaintes et retours communautaires -------------------------------------------------
@@ -113,7 +131,10 @@ class FeedbackStatus(enum.StrEnum):
 
 class FeedbackEntry(IdMixin, TimestampMixin, Base):
     __tablename__ = "feedback_entries"
-    __table_args__ = (UniqueConstraint("project_id", "reference"),)
+    __table_args__ = (
+        UniqueConstraint("project_id", "reference"),
+        Index("ix_feedback_entries_project_id_received_on", "project_id", "received_on"),
+    )
 
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
@@ -131,18 +152,22 @@ class FeedbackEntry(IdMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text)
     location: Mapped[str] = mapped_column(String(300), default="")
     activity_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("logframe_nodes.id", ondelete="SET NULL")
+        ForeignKey("logframe_nodes.id", ondelete="SET NULL"), index=True
     )
     anonymous: Mapped[bool] = mapped_column(default=False)
     contact: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[FeedbackStatus] = mapped_column(
         _enum(FeedbackStatus, "feedback_status"), default=FeedbackStatus.RECEIVED
     )
-    assigned_to: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    assigned_to: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     response: Mapped[str] = mapped_column(Text, default="")
     responded_on: Mapped[date | None] = mapped_column(Date)
     closed_on: Mapped[date | None] = mapped_column(Date)
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     client_uuid: Mapped[UUID | None] = mapped_column(unique=True)
     # Contenu personnel effacé (délai de conservation ou demande d'effacement) ; la catégorie,
     # le statut et les dates restent pour les statistiques.
@@ -187,7 +212,9 @@ class SmsMessage(IdMixin, TimestampMixin, Base):
     provider: Mapped[str] = mapped_column(String(30))
     provider_message_id: Mapped[str] = mapped_column(String(100), default="")
     error: Mapped[str] = mapped_column(Text, default="")
-    sent_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    sent_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
 
 # --- Leçons apprises ----------------------------------------------------------------------
@@ -207,9 +234,11 @@ class Lesson(IdMixin, TimestampMixin, Base):
     recommendation: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[list[str]] = mapped_column(JSONB, default=list)
     activity_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("logframe_nodes.id", ondelete="SET NULL")
+        ForeignKey("logframe_nodes.id", ondelete="SET NULL"), index=True
     )
     source_report_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("narrative_reports.id", ondelete="SET NULL")
+        ForeignKey("narrative_reports.id", ondelete="SET NULL"), index=True
     )
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

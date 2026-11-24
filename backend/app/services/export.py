@@ -49,6 +49,7 @@ def _wrap(ws: Worksheet) -> None:
 async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
     nodes = await svc.list_nodes(session, project.id)
     indicators = await svc.list_indicators(session, project.id)
+    totals = await svc.indicator_totals(session, project.id)
     by_node: dict[object, list[str]] = {}
     sources: dict[object, list[str]] = {}
     for indicator in indicators:
@@ -150,7 +151,7 @@ async def logframe_workbook(session: AsyncSession, project: Project) -> bytes:
         [10, 50, 40, 10, 11, 11, 11, 9, 24, 30, 30, 14],
     )
     for indicator in indicators:
-        out = svc.indicator_out(indicator)
+        out = svc.indicator_out(indicator, totals)
         sheet.append(
             [
                 out.code,
@@ -199,6 +200,7 @@ async def logframe_document(session: AsyncSession, project: Project) -> Rendered
     """Cadre logique, indicateurs (avec cibles par période) et budget, en un document."""
     nodes = await svc.list_nodes(session, project.id)
     indicators = await svc.list_indicators(session, project.id)
+    totals = await svc.indicator_totals(session, project.id)
     by_node: dict[object, list[str]] = {}
     for indicator in indicators:
         by_node.setdefault(indicator.node_id, []).append(
@@ -223,7 +225,7 @@ async def logframe_document(session: AsyncSession, project: Project) -> Rendered
     walk(svc.build_tree(nodes), 0)
     logframe = _table(["Niveau", "Code", "Intitulé", "Indicateurs", "Hypothèses"], rows)
 
-    outs = [svc.indicator_out(i) for i in indicators]
+    outs = [svc.indicator_out(i, totals) for i in indicators]
     parts = [
         _table(
             ["Code", "Indicateur", "Référence", "Cible", "Atteint", "Taux"],

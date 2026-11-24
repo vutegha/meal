@@ -7,9 +7,9 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select
 
 from app.api.deps import AnyMember, SessionDep
-from app.models import ActivityExecution, BudgetLine, Expense, Project
+from app.models import Project
 from app.schemas.dashboard import Beneficiary, OrgDashboard
-from app.services.dashboard import ExpenseRow, Filters, build_dashboard
+from app.services.dashboard import Filters, build_dashboard, execution_groups, expense_months
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["tableau de bord"])
 
@@ -27,19 +27,10 @@ async def org_dashboard(
     beneficiary: Beneficiary | None = None,
 ) -> OrgDashboard:
     projects = list(await session.scalars(select(Project).where(Project.organization_id == org_id)))
-    executions = list(
-        await session.scalars(
-            select(ActivityExecution).where(ActivityExecution.organization_id == org_id)
-        )
-    )
-    expenses = [
-        ExpenseRow(project_id=project, amount=amount, spent_on=spent_on)
-        for project, amount, spent_on in await session.execute(
-            select(BudgetLine.project_id, Expense.amount, Expense.spent_on)
-            .join(Expense.budget_line)
-            .where(Expense.organization_id == org_id)
-        )
-    ]
+    # La base additionne par projet, mois et lieu : l'API ne charge plus chaque activité réalisée.
+    executions = await execution_groups(session, org_id)
+    matching = await execution_groups(session, org_id, beneficiary) if beneficiary else None
+    expenses = await expense_months(session, org_id)
     filters = Filters(
         year=year,
         month=month,
@@ -48,4 +39,4 @@ async def org_dashboard(
         project_id=project_id,
         beneficiary=beneficiary,
     )
-    return build_dashboard(projects, executions, expenses, filters)
+    return build_dashboard(projects, executions, expenses, filters, matching)

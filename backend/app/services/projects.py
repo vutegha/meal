@@ -2,13 +2,14 @@
 
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import Uuid, bindparam, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -162,10 +163,39 @@ async def budget_summary(session: AsyncSession, project: Project) -> BudgetSumma
 # --- Indicateurs -----------------------------------------------------------
 
 
-def achievement(
-    indicator: Indicator, values: Sequence[IndicatorValue], target: Decimal | None = None
+@dataclass(frozen=True)
+class Totals:
+    """Agrégat des valeurs totales (sans désagrégation) d'un indicateur ou d'une période."""
+
+    count: int
+    total: Decimal
+    latest: Decimal | None
+
+
+@dataclass
+class IndicatorTotals:
+    """Agrégats calculés par la base pour les indicateurs d'un projet."""
+
+    overall: dict[UUID, Totals] = field(default_factory=dict)
+    # Clé : (indicateur, rang de la cible dans `period_targets`, à partir de 0).
+    periods: dict[tuple[UUID, int], Totals] = field(default_factory=dict)
+
+
+def _totals(values: Sequence[IndicatorValue]) -> Totals | None:
+    totals = [v for v in values if not v.disaggregation]
+    if not totals:
+        return None
+    return Totals(
+        count=len(totals),
+        total=sum((v.value for v in totals), Decimal(0)),
+        latest=max(totals, key=lambda v: (v.period_end, v.created_at)).value,
+    )
+
+
+def achievement_from(
+    indicator: Indicator, totals: Totals | None, target: Decimal | None = None
 ) -> tuple[Decimal | None, float | None]:
-    """Valeur atteinte et taux d'atteinte à partir des valeurs totales (sans désagrégation).
+    """Valeur atteinte et taux d'atteinte à partir de l'agrégat des valeurs totales.
 
     - agrégation `sum` : somme des valeurs, taux = atteint / cible ;
     - agrégation `latest` : dernière valeur, taux = (atteint - référence) / (cible - référence).
@@ -173,34 +203,94 @@ def achievement(
     `target` remplace la cible finale (cible d'une période).
     """
     target = indicator.target if target is None else target
-    totals = [v for v in values if not v.disaggregation]
-    if not totals:
+    if totals is None or totals.count == 0:
         return None, None
     if indicator.aggregation == Aggregation.SUM:
-        achieved = sum((v.value for v in totals), Decimal(0))
+        achieved = totals.total
         return achieved, rate(achieved, target) if target else None
-    achieved = max(totals, key=lambda v: (v.period_end, v.created_at)).value
-    if target is None:
+    achieved = totals.latest
+    if achieved is None or target is None:
         return achieved, None
     base = indicator.baseline or Decimal(0)
     return achieved, rate(achieved - base, target - base)
 
 
-def period_progress(indicator: Indicator, values: Sequence[IndicatorValue]) -> list[PeriodProgress]:
+def achievement(
+    indicator: Indicator, values: Sequence[IndicatorValue], target: Decimal | None = None
+) -> tuple[Decimal | None, float | None]:
+    """Comme `achievement_from`, à partir de valeurs déjà chargées (rapports sur une période)."""
+    return achievement_from(indicator, _totals(values), target)
+
+
+# Une ligne par indicateur : la base additionne et trouve la dernière valeur, sans que l'API
+# charge les valeurs. `latest` suit le même ordre que `_totals` (fin de période, puis saisie).
+_OVERALL_SQL = text(
+    """
+    SELECT v.indicator_id,
+           count(*) AS n,
+           sum(v.value) AS total,
+           (array_agg(v.value ORDER BY v.period_end DESC, v.created_at DESC))[1] AS latest
+    FROM indicator_values v
+    JOIN indicators i ON i.id = v.indicator_id
+    WHERE i.project_id = :project_id
+      AND (CAST(:indicator_id AS uuid) IS NULL OR i.id = CAST(:indicator_id AS uuid))
+      AND v.disaggregation = '{}'::jsonb
+    GROUP BY v.indicator_id
+    """
+).bindparams(bindparam("project_id", type_=Uuid), bindparam("indicator_id", type_=Uuid))
+
+# Une ligne par cible de période qui contient au moins une valeur : valeurs saisies entièrement
+# dans la période.
+_PERIODS_SQL = text(
+    """
+    SELECT i.id AS indicator_id,
+           t.ord,
+           count(*) AS n,
+           sum(v.value) AS total,
+           (array_agg(v.value ORDER BY v.period_end DESC, v.created_at DESC))[1] AS latest
+    FROM indicators i
+    CROSS JOIN LATERAL jsonb_array_elements(
+        CASE WHEN jsonb_typeof(i.period_targets) = 'array' THEN i.period_targets
+             ELSE '[]'::jsonb END
+    ) WITH ORDINALITY AS t(target, ord)
+    JOIN indicator_values v
+      ON v.indicator_id = i.id
+     AND v.disaggregation = '{}'::jsonb
+     AND v.period_start >= (t.target ->> 'period_start')::date
+     AND v.period_end <= (t.target ->> 'period_end')::date
+    WHERE i.project_id = :project_id
+      AND (CAST(:indicator_id AS uuid) IS NULL OR i.id = CAST(:indicator_id AS uuid))
+    GROUP BY i.id, t.ord
+    """
+).bindparams(bindparam("project_id", type_=Uuid), bindparam("indicator_id", type_=Uuid))
+
+
+async def indicator_totals(
+    session: AsyncSession, project_id: UUID, indicator_id: UUID | None = None
+) -> IndicatorTotals:
+    """Agrégats des indicateurs d'un projet (ou d'un seul), en deux requêtes quel que soit le
+    nombre de valeurs saisies."""
+    params = {"project_id": project_id, "indicator_id": indicator_id}
+    totals = IndicatorTotals()
+    for row in await session.execute(_OVERALL_SQL, params):
+        totals.overall[row.indicator_id] = Totals(row.n, row.total, row.latest)
+    for row in await session.execute(_PERIODS_SQL, params):
+        totals.periods[row.indicator_id, row.ord - 1] = Totals(row.n, row.total, row.latest)
+    return totals
+
+
+def period_progress(indicator: Indicator, totals: IndicatorTotals) -> list[PeriodProgress]:
     """Valeur atteinte sur chaque période cible (valeurs saisies entièrement dans la période).
 
     La cible d'une période s'entend comme l'agrégation : somme de la période (`sum`) ou niveau
     à atteindre en fin de période (`latest`).
     """
     progress = []
-    for raw in indicator.period_targets or []:
+    for rank, raw in enumerate(indicator.period_targets or []):
         target = PeriodTarget.model_validate(raw)
-        inside = [
-            v
-            for v in values
-            if target.period_start <= v.period_start and v.period_end <= target.period_end
-        ]
-        achieved, achievement_rate = achievement(indicator, inside, target.target)
+        achieved, achievement_rate = achievement_from(
+            indicator, totals.periods.get((indicator.id, rank)), target.target
+        )
         progress.append(
             PeriodProgress(
                 **target.model_dump(), achieved=achieved, achievement_rate=achievement_rate
@@ -209,8 +299,8 @@ def period_progress(indicator: Indicator, values: Sequence[IndicatorValue]) -> l
     return progress
 
 
-def indicator_out(indicator: Indicator) -> IndicatorOut:
-    achieved, achievement_rate = achievement(indicator, indicator.values)
+def indicator_out(indicator: Indicator, totals: IndicatorTotals) -> IndicatorOut:
+    achieved, achievement_rate = achievement_from(indicator, totals.overall.get(indicator.id))
     return IndicatorOut.model_validate(
         {
             **{
@@ -220,7 +310,7 @@ def indicator_out(indicator: Indicator) -> IndicatorOut:
             },
             "achieved": achieved,
             "achievement_rate": achievement_rate,
-            "period_targets": period_progress(indicator, indicator.values),
+            "period_targets": period_progress(indicator, totals),
         }
     )
 
@@ -261,12 +351,22 @@ def convert_expense(
     }
 
 
-async def list_indicators(session: AsyncSession, project_id: UUID) -> Sequence[Indicator]:
-    return (
-        await session.scalars(
-            select(Indicator)
-            .where(Indicator.project_id == project_id)
-            .options(selectinload(Indicator.values))
-            .order_by(Indicator.code, Indicator.created_at)
-        )
-    ).all()
+async def list_indicators(
+    session: AsyncSession, project_id: UUID, with_values: bool = False
+) -> Sequence[Indicator]:
+    """Indicateurs du projet. Les valeurs ne sont chargées que sur demande (`with_values`) :
+    les taux d'atteinte viennent de `indicator_totals`."""
+    query = (
+        select(Indicator)
+        .where(Indicator.project_id == project_id)
+        .order_by(Indicator.code, Indicator.created_at)
+    )
+    if with_values:
+        query = query.options(selectinload(Indicator.values))
+    return (await session.scalars(query)).all()
+
+
+async def indicators_out(session: AsyncSession, project_id: UUID) -> list[IndicatorOut]:
+    indicators = await list_indicators(session, project_id)
+    totals = await indicator_totals(session, project_id)
+    return [indicator_out(i, totals) for i in indicators]
