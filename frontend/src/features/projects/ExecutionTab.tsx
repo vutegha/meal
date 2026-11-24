@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +9,7 @@ import type { Project } from "@/lib/api";
 import { flattenTree, formatMoney } from "@/lib/format";
 import { discard, syncOutbox, usePending } from "@/lib/outbox";
 import { permissions } from "@/lib/permissions";
-import { executionsQuery, logframeQuery } from "@/lib/queries";
+import { executionPagesQuery, logframeQuery } from "@/lib/queries";
 import { useOnline } from "@/lib/useOnline";
 
 import { ExecutionBadge } from "./ExecutionBadge";
@@ -22,7 +22,8 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
   const online = useOnline();
   const { role } = useCurrentOrg();
   const canCollect = permissions.recordValues(role);
-  const executions = useQuery(executionsQuery(orgId, project.id));
+  const executions = useInfiniteQuery(executionPagesQuery(orgId, project.id));
+  const rows = executions.data?.pages.flat() ?? [];
   const logframe = useQuery(logframeQuery(orgId, project.id));
   const pending = usePending(project.id);
   const [adding, setAdding] = useState(false);
@@ -102,9 +103,9 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
           </div>
         )}
         <ErrorText error={executions.error} />
-        {executions.data?.length ? (
+        {rows.length ? (
           <ul className="divide-y divide-slate-100">
-            {executions.data.map((e) => {
+            {rows.map((e) => {
               const activity = nodes.get(e.activity_id);
               return (
                 <li key={e.id}>
@@ -136,6 +137,16 @@ function ExecutionList({ orgId, project }: { orgId: string; project: Project }) 
           </ul>
         ) : (
           !executions.isPending && <p className="text-sm text-slate-500">{t("execution.empty")}</p>
+        )}
+        {executions.hasNextPage && (
+          <Button
+            variant="ghost"
+            className="mt-3"
+            onClick={() => void executions.fetchNextPage()}
+            disabled={executions.isFetchingNextPage}
+          >
+            {t("execution.more")}
+          </Button>
         )}
       </Card>
     </>

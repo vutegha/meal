@@ -891,6 +891,11 @@ export interface EvidenceInput {
 export const executionsApi = {
   list: (orgId: string, projectId: string) =>
     request<Execution[]>(`${project(orgId, projectId)}/executions`),
+  // Une page de la liste, les plus récentes d'abord.
+  page: (orgId: string, projectId: string, offset: number, limit: number) => {
+    const query = `limit=${limit}&offset=${offset}`;
+    return request<Execution[]>(`${project(orgId, projectId)}/executions?${query}`);
+  },
   get: (orgId: string, projectId: string, executionId: string) =>
     request<ExecutionDetail>(`${project(orgId, projectId)}/executions/${executionId}`),
   create: (orgId: string, projectId: string, body: ExecutionInput) =>
@@ -1196,6 +1201,15 @@ export interface FeedbackEntry {
   sms_awaiting_reply: boolean;
 }
 
+// Ligne de la liste : la description et le contact ne sont transmis qu'à l'ouverture d'une fiche.
+export type FeedbackSummary = Omit<FeedbackEntry, "description" | "contact">;
+
+export interface FeedbackFilter {
+  // Retours à traiter (reçus ou en cours).
+  open?: boolean;
+  status?: FeedbackStatus;
+}
+
 export type MessageChannel = "sms" | "whatsapp";
 export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
 
@@ -1280,8 +1294,20 @@ export type LessonIn = Pick<
 >;
 
 export const accountabilityApi = {
-  feedback: (orgId: string, projectId: string) =>
-    request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
+  feedback: (
+    orgId: string,
+    projectId: string,
+    filter: FeedbackFilter,
+    offset: number,
+    limit: number,
+  ) => {
+    const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (filter.open) query.set("open", "true");
+    if (filter.status) query.set("status", filter.status);
+    return request<FeedbackSummary[]>(`${project(orgId, projectId)}/feedback?${query.toString()}`);
+  },
+  feedbackEntry: (orgId: string, projectId: string, feedbackId: string) =>
+    request<FeedbackEntry>(`${project(orgId, projectId)}/feedback/${feedbackId}`),
   feedbackStats: (orgId: string, projectId: string) =>
     request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
   classifyFeedback: (

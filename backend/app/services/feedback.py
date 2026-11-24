@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from app.models import FeedbackCategory, FeedbackEntry, FeedbackStatus, Membership, Role
-from app.schemas.accountability import FeedbackOut, FeedbackStats
+from app.schemas.accountability import FeedbackOut, FeedbackStats, FeedbackSummary
 
 # Catégories traitées de façon confidentielle par défaut.
 SENSITIVE_CATEGORIES = {
@@ -62,6 +62,11 @@ def out(member: Membership, entry: FeedbackEntry, today: date | None = None) -> 
             else None,
         }
     )
+
+
+def summary(full: FeedbackOut) -> FeedbackSummary:
+    """Ligne de liste : la fiche sans sa description ni son contact."""
+    return FeedbackSummary.model_validate(full.model_dump(exclude={"description", "contact"}))
 
 
 def stats(entries: list[FeedbackEntry], hidden: int, today: date | None = None) -> FeedbackStats:

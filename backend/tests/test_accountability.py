@@ -85,6 +85,18 @@ async def test_feedback_register_and_response_delays(client: AsyncClient) -> Non
 
     listed = (await client.get(f"{base}/feedback?status=closed", headers=h)).json()
     assert [e["reference"] for e in listed] == ["RET-0001"]
+    # La liste ne transmet ni la description ni le contact, et se lit par page.
+    assert "description" not in listed[0] and "contact" not in listed[0]
+    everything = (await client.get(f"{base}/feedback", headers=h)).json()
+    pages = [
+        (await client.get(f"{base}/feedback?limit=1&offset={offset}", headers=h)).json()
+        for offset in range(len(everything) + 1)
+    ]
+    assert [e["id"] for page in pages for e in page] == [e["id"] for e in everything]
+    still_open = (await client.get(f"{base}/feedback?open=true", headers=h)).json()
+    assert [e["status"] for e in still_open] == [
+        e["status"] for e in everything if e["status"] in ("received", "in_progress")
+    ]
 
 
 async def test_sensitive_feedback_is_confidential(client: AsyncClient) -> None:
@@ -120,9 +132,8 @@ async def test_sensitive_feedback_is_confidential(client: AsyncClient) -> None:
     assert len((await client.get(f"{base}/feedback", headers=field)).json()) == 1
     r = await client.patch(url, headers=h, json={"assigned_to": meal_member["user"]["id"]})
     assert r.status_code == 200, r.text
-    assert (await client.get(f"{base}/feedback", headers=meal)).json()[0][
-        "contact"
-    ] == "confidentiel"
+    assert len((await client.get(f"{base}/feedback", headers=meal)).json()) == 1
+    assert (await client.get(url, headers=meal)).json()["contact"] == "confidentiel"
     r = await client.patch(url, headers=meal, json={"sensitive": False})
     assert r.status_code == 403
 
@@ -276,16 +287,21 @@ async def test_viewing_sensitive_feedback_is_audited(client: AsyncClient) -> Non
         },
     )
     reference = r.json()["reference"]
+    url = f"{base}/feedback/{r.json()['id']}"
 
     def viewed(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [e for e in entries if e["action"] == "feedback.viewed"]
 
-    # La personne de terrain ne voit ni l'entrée sensible ni de contact : rien à inscrire.
-    assert (await client.get(f"{base}/feedback", headers=field)).status_code == 200
+    # La personne de terrain ne voit pas l'entrée sensible, et la liste ne montre ni
+    # description ni contact : rien à inscrire.
+    assert (await client.get(f"{base}/feedback", headers=field)).json() == []
+    assert (await client.get(url, headers=field)).status_code == 404
+    assert (await client.get(f"{base}/feedback", headers=h)).status_code == 200
     assert viewed((await client.get(audit_url, headers=h)).json()) == []
 
-    # Le responsable la voit : une seule inscription malgré deux affichages rapprochés.
+    # Le responsable ouvre la fiche : une seule inscription malgré deux ouvertures rapprochées.
     for _ in range(2):
-        assert (await client.get(f"{base}/feedback", headers=h)).status_code == 200
+        opened = await client.get(url, headers=h)
+        assert opened.json()["description"] == "Signalement"
     [entry] = viewed((await client.get(audit_url, headers=h)).json())
-    assert entry["data"] == {"sensitive": [reference], "contacts": 1}
+    assert entry["data"] == {"reference": reference, "sensitive": True, "contact": True}

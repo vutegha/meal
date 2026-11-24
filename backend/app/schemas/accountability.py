@@ -94,6 +94,37 @@ class FeedbackOut(BaseModel):
     sms_awaiting_reply: bool = False
 
 
+class FeedbackSummary(BaseModel):
+    # Ligne de la liste : `FeedbackOut` sans la description ni le contact, qui ne sont transmis
+    # qu'à l'ouverture d'une fiche (consultation inscrite au journal).
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    reference: str
+    received_on: date
+    channel: FeedbackChannel
+    category: FeedbackCategory
+    sensitive: bool
+    location: str
+    activity_id: UUID | None
+    anonymous: bool
+    status: FeedbackStatus
+    assigned_to: UUID | None
+    response: str
+    responded_on: date | None
+    closed_on: date | None
+    created_by: UUID | None
+    client_uuid: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    due_on: date
+    overdue: bool
+    response_days: int | None
+    sms_count: int = 0
+    sms_awaiting_reply: bool = False
+
+
 class FeedbackStats(BaseModel):
     total: int
     open: int

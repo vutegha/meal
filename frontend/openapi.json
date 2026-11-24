@@ -3870,6 +3870,192 @@
         "title": "FeedbackSuggestion",
         "type": "object"
       },
+      "FeedbackSummary": {
+        "properties": {
+          "activity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Id"
+          },
+          "anonymous": {
+            "title": "Anonymous",
+            "type": "boolean"
+          },
+          "assigned_to": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/FeedbackChannel"
+          },
+          "client_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Uuid"
+          },
+          "closed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed On"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "responded_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded On"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          },
+          "response_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Days"
+          },
+          "sensitive": {
+            "title": "Sensitive",
+            "type": "boolean"
+          },
+          "sms_awaiting_reply": {
+            "default": false,
+            "title": "Sms Awaiting Reply",
+            "type": "boolean"
+          },
+          "sms_count": {
+            "default": 0,
+            "title": "Sms Count",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FeedbackStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "reference",
+          "received_on",
+          "channel",
+          "category",
+          "sensitive",
+          "location",
+          "activity_id",
+          "anonymous",
+          "status",
+          "assigned_to",
+          "response",
+          "responded_on",
+          "closed_on",
+          "created_by",
+          "client_uuid",
+          "created_at",
+          "updated_at",
+          "due_on",
+          "overdue",
+          "response_days"
+        ],
+        "title": "FeedbackSummary",
+        "type": "object"
+      },
       "FeedbackUpdate": {
         "properties": {
           "activity_id": {
@@ -12873,6 +13059,35 @@
               ],
               "title": "Activity Id"
             }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 200,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -13571,6 +13786,45 @@
               ],
               "title": "Category"
             }
+          },
+          {
+            "in": "query",
+            "name": "open",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Open",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 200,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -13579,7 +13833,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/FeedbackOut"
+                    "$ref": "#/components/schemas/FeedbackSummary"
                   },
                   "title": "Response List Feedback Api V1 Orgs  Org Id  Projects  Project Id  Feedback Get",
                   "type": "array"
@@ -13859,6 +14113,72 @@
           }
         ],
         "summary": "Delete Feedback",
+        "tags": [
+          "redevabilité"
+        ]
+      },
+      "get": {
+        "operationId": "get_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Feedback",
         "tags": [
           "redevabilité"
         ]

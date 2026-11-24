@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -12,8 +12,10 @@ import {
   FEEDBACK_STATUSES,
   type FeedbackCategory,
   type FeedbackEntry,
+  type FeedbackFilter,
   type FeedbackIn,
   type FeedbackStatus,
+  type FeedbackSummary,
   type FeedbackSuggestion,
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -24,7 +26,8 @@ import { discard, newId, queueFeedback, syncOutbox, usePending } from "@/lib/out
 import { permissions } from "@/lib/permissions";
 import { useOnline } from "@/lib/useOnline";
 import {
-  feedbackQuery,
+  feedbackEntryQuery,
+  feedbackPagesQuery,
   feedbackSmsQuery,
   feedbackStatsQuery,
   logframeQuery,
@@ -501,21 +504,15 @@ function FeedbackItem({
   activity,
   assignee,
 }: {
-  entry: FeedbackEntry;
+  entry: FeedbackSummary;
   orgId: string;
   projectId: string;
   activity?: string;
   assignee?: string;
 }) {
   const { t, i18n } = useTranslation();
-  const { role, me } = useCurrentOrg();
-  const [handling, setHandling] = useState(false);
-  const [texting, setTexting] = useState(false);
+  const [open, setOpen] = useState(false);
   const dates = new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" });
-  const manager = permissions.manageProjects(role);
-  const canHandle = entry.sensitive
-    ? manager || entry.assigned_to === me.id
-    : permissions.plan(role) || entry.assigned_to === me.id;
 
   return (
     <li className="py-3">
@@ -544,12 +541,9 @@ function FeedbackItem({
           {t(`feedback.status.${entry.status}`)}
         </span>
       </div>
-      <p className="mt-1 text-sm whitespace-pre-line text-slate-800">{entry.description}</p>
       <p className="mt-1 text-xs text-slate-500">
         {activity && `${activity} · `}
-        {entry.anonymous
-          ? t("feedback.anonymousShort")
-          : entry.contact && `${t("feedback.contact")} : ${entry.contact} · `}
+        {entry.anonymous && t("feedback.anonymousShort")}
         {assignee && `${t("feedback.assignedTo")} : ${assignee} · `}
         {entry.response_days !== null
           ? t("feedback.answeredIn", { count: entry.response_days })
@@ -558,6 +552,48 @@ function FeedbackItem({
       {entry.response && (
         <p className="mt-1 border-l-2 border-brand-600 pl-2 text-sm text-slate-700">
           {entry.response}
+        </p>
+      )}
+      <button
+        className="mt-1 text-xs font-medium text-brand-700 hover:underline"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {t(open ? "feedback.closeEntry" : "feedback.openEntry")}
+      </button>
+      {open && <FeedbackDetail orgId={orgId} projectId={projectId} feedbackId={entry.id} />}
+    </li>
+  );
+}
+
+// Description, contact, traitement et échanges : chargés à l'ouverture de la fiche seulement.
+function FeedbackDetail({
+  orgId,
+  projectId,
+  feedbackId,
+}: {
+  orgId: string;
+  projectId: string;
+  feedbackId: string;
+}) {
+  const { t } = useTranslation();
+  const { role, me } = useCurrentOrg();
+  const detail = useQuery(feedbackEntryQuery(orgId, projectId, feedbackId));
+  const [handling, setHandling] = useState(false);
+  const [texting, setTexting] = useState(false);
+  const entry = detail.data;
+  if (!entry) return <ErrorText error={detail.error} />;
+  const manager = permissions.manageProjects(role);
+  const canHandle = entry.sensitive
+    ? manager || entry.assigned_to === me.id
+    : permissions.plan(role) || entry.assigned_to === me.id;
+
+  return (
+    <div className="mt-2 rounded-md border border-slate-200 p-3">
+      <p className="text-sm whitespace-pre-line text-slate-800">{entry.description}</p>
+      {!entry.anonymous && entry.contact && (
+        <p className="mt-1 text-xs text-slate-500">
+          {t("feedback.contact")} : {entry.contact}
         </p>
       )}
       {canHandle && (
@@ -593,7 +629,7 @@ function FeedbackItem({
           onDone={() => setHandling(false)}
         />
       )}
-    </li>
+    </div>
   );
 }
 
@@ -601,7 +637,6 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
   const { t, i18n } = useTranslation();
   const { role } = useCurrentOrg();
   const canCollect = permissions.recordValues(role);
-  const entries = useQuery(feedbackQuery(orgId, projectId));
   const stats = useQuery(feedbackStatsQuery(orgId, projectId));
   const logframe = useQuery(logframeQuery(orgId, projectId));
   const members = useQuery(membersQuery(orgId));
@@ -621,15 +656,14 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
     }
   };
   const [status, setStatus] = useState<FeedbackStatus | "open" | "">("open");
+  // Le filtre est appliqué par le serveur, qui renvoie une page à la fois.
+  const filter: FeedbackFilter = status === "open" ? { open: true } : status ? { status } : {};
+  const entries = useInfiniteQuery(feedbackPagesQuery(orgId, projectId, filter));
   const nodes = new Map(flattenTree(logframe.data ?? []).map((n) => [n.id, n]));
   const people = new Map(
     (members.data ?? []).map((m) => [m.user.id, m.user.full_name || m.user.email]),
   );
-  const shown = (entries.data ?? []).filter((e) =>
-    status === "open"
-      ? e.status === "received" || e.status === "in_progress"
-      : !status || e.status === status,
-  );
+  const shown = entries.data?.pages.flat() ?? [];
   const s = stats.data;
 
   return (
@@ -761,6 +795,16 @@ export function FeedbackTab({ orgId, projectId }: { orgId: string; projectId: st
           </ul>
         ) : (
           !entries.isPending && <p className="text-sm text-slate-500">{t("feedback.empty")}</p>
+        )}
+        {entries.hasNextPage && (
+          <Button
+            variant="ghost"
+            className="mt-3"
+            onClick={() => void entries.fetchNextPage()}
+            disabled={entries.isFetchingNextPage}
+          >
+            {t("feedback.more")}
+          </Button>
         )}
       </Card>
     </>

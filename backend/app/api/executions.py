@@ -12,7 +12,16 @@ from decimal import Decimal
 from typing import Annotated, BinaryIO
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -96,7 +105,19 @@ async def _spent(session: SessionDep, execution_ids: list[UUID]) -> dict[UUID, D
     return {execution_id: total for execution_id, total in rows if execution_id}
 
 
-def execution_out(execution: ActivityExecution, spent: Decimal | None) -> ExecutionOut:
+async def _evidence_counts(session: SessionDep, execution_ids: list[UUID]) -> dict[UUID, int]:
+    rows = await session.execute(
+        select(Evidence.execution_id, func.count())
+        .where(Evidence.execution_id.in_(execution_ids))
+        .group_by(Evidence.execution_id)
+    )
+    return {execution_id: count for execution_id, count in rows}
+
+
+def execution_out(
+    execution: ActivityExecution, spent: Decimal | None, evidence_count: int | None = None
+) -> ExecutionOut:
+    """`evidence_count` : nombre de pièces déjà compté (liste) ; sinon les pièces chargées."""
     participants = Participants.model_validate(execution.participants)
     return ExecutionOut.model_validate(
         {
@@ -107,7 +128,7 @@ def execution_out(execution: ActivityExecution, spent: Decimal | None) -> Execut
             },
             "participants": participants,
             "participants_total": participants.total,
-            "evidence_count": len(execution.evidence),
+            "evidence_count": len(execution.evidence) if evidence_count is None else evidence_count,
             "spent": spent or Decimal(0),
         }
     )
@@ -169,19 +190,32 @@ async def list_executions(
     _: AnyMember,
     session: SessionDep,
     activity_id: UUID | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[ExecutionOut]:
+    # Les plus récentes d'abord. Avec `limit`, une page à la fois : l'écran de liste n'a pas à
+    # télécharger tout l'historique du projet.
     project = await svc.get_project(session, org_id, project_id)
     query = (
         select(ActivityExecution)
         .where(ActivityExecution.project_id == project.id)
-        .options(selectinload(ActivityExecution.evidence))
-        .order_by(ActivityExecution.start_date.desc(), ActivityExecution.created_at.desc())
+        .order_by(
+            ActivityExecution.start_date.desc(),
+            ActivityExecution.created_at.desc(),
+            ActivityExecution.id,
+        )
+        .offset(offset)
     )
     if activity_id:
         query = query.where(ActivityExecution.activity_id == activity_id)
+    if limit:
+        query = query.limit(limit)
     executions = list(await session.scalars(query))
-    spent = await _spent(session, [e.id for e in executions])
-    return [execution_out(e, spent.get(e.id)) for e in executions]
+    ids = [e.id for e in executions]
+    spent = await _spent(session, ids)
+    # Les pièces sont comptées par la base, pas chargées pour être comptées.
+    evidence = await _evidence_counts(session, ids)
+    return [execution_out(e, spent.get(e.id), evidence.get(e.id, 0)) for e in executions]
 
 
 @router.post("/executions", response_model=ExecutionDetail, status_code=status.HTTP_201_CREATED)

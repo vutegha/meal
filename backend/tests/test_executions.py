@@ -88,6 +88,24 @@ async def test_execution_is_idempotent_and_validated(client: AsyncClient) -> Non
     assert [e["id"] for e in listed] == [execution["id"]]
 
 
+async def test_executions_list_by_page(client: AsyncClient) -> None:
+    ctx, base, nodes, _ = await setup(client)
+    h = ctx["headers"]
+    for day in ("2026-03-01", "2026-03-03", "2026-03-02"):
+        body = execution_body(nodes["activity"]["id"], start_date=day, end_date=None)
+        assert (await client.post(f"{base}/executions", headers=h, json=body)).status_code == 201
+
+    everything = (await client.get(f"{base}/executions", headers=h)).json()
+    assert [e["start_date"] for e in everything] == ["2026-03-03", "2026-03-02", "2026-03-01"]
+    assert [e["evidence_count"] for e in everything] == [0, 0, 0]
+
+    first = (await client.get(f"{base}/executions?limit=2", headers=h)).json()
+    rest = (await client.get(f"{base}/executions?limit=2&offset=2", headers=h)).json()
+    assert [e["id"] for e in first + rest] == [e["id"] for e in everything]
+    assert (await client.get(f"{base}/executions?limit=0", headers=h)).status_code == 422
+    assert (await client.get(f"{base}/executions?limit=201", headers=h)).status_code == 422
+
+
 async def test_evidence_photo_and_document(client: AsyncClient) -> None:
     ctx, base, nodes, _ = await setup(client)
     h = ctx["headers"]

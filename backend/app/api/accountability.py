@@ -29,6 +29,7 @@ from app.schemas.accountability import (
     FeedbackOut,
     FeedbackStats,
     FeedbackSuggestion,
+    FeedbackSummary,
     FeedbackUpdate,
     LessonIn,
     LessonOut,
@@ -79,7 +80,17 @@ async def _check_member(session: SessionDep, org_id: UUID, user_id: UUID | None)
         )
 
 
-@router.get(f"{PROJECT}/feedback", response_model=list[FeedbackOut])
+def _with_sms(
+    member: Membership, entry: FeedbackEntry, threads: dict[UUID, tuple[int, bool]]
+) -> FeedbackOut:
+    item = fb.out(member, entry)
+    if fb.can_read_contact(member, entry) and entry.id in threads:
+        count, awaiting = threads[entry.id]
+        item = item.model_copy(update={"sms_count": count, "sms_awaiting_reply": awaiting})
+    return item
+
+
+@router.get(f"{PROJECT}/feedback", response_model=list[FeedbackSummary])
 async def list_feedback(
     org_id: UUID,
     project_id: UUID,
@@ -87,45 +98,38 @@ async def list_feedback(
     session: SessionDep,
     status_filter: Annotated[FeedbackStatus | None, Query(alias="status")] = None,
     category: FeedbackCategory | None = None,
-) -> list[FeedbackOut]:
+    open_only: Annotated[bool, Query(alias="open")] = False,
+    limit: Annotated[int | None, Query(ge=1, le=200)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[FeedbackSummary]:
+    # La liste ne transmet ni description ni contact : ils se lisent à l'ouverture d'une fiche.
     project = await svc.get_project(session, org_id, project_id)
     query = select(FeedbackEntry).where(FeedbackEntry.project_id == project.id)
     if status_filter:
         query = query.where(FeedbackEntry.status == status_filter)
+    if open_only:
+        query = query.where(FeedbackEntry.status.not_in(tuple(fb.ANSWERED)))
     if category:
         query = query.where(FeedbackEntry.category == category)
-    rows = await session.scalars(
-        query.order_by(FeedbackEntry.received_on.desc(), FeedbackEntry.reference.desc())
-    )
-    threads = await sms.summaries(session, project.id)
-    result = []
-    sensitive: list[str] = []
-    contacts = 0
-    for entry in rows:
-        if not fb.can_see(member, entry):
-            continue
-        item = fb.out(member, entry)
-        if fb.can_read_contact(member, entry) and entry.id in threads:
-            count, awaiting = threads[entry.id]
-            item = item.model_copy(update={"sms_count": count, "sms_awaiting_reply": awaiting})
-        result.append(item)
-        if entry.sensitive:
-            sensitive.append(entry.reference)
-        if item.contact:
-            contacts += 1
-    # Qui a vu les plaintes sensibles et les contacts : journalisé (références, pas de contenu).
-    if sensitive or contacts:
-        await audit.record_access(
-            session,
-            organization_id=org_id,
-            actor_id=member.user_id,
-            action="feedback.viewed",
-            entity_type="project",
-            entity_id=project.id,
-            data={"sensitive": sensitive, "contacts": contacts},
+    if member.role not in fb.MANAGERS:
+        # Même règle que `fb.can_see`, appliquée par la base pour que les pages soient pleines.
+        query = query.where(
+            or_(
+                FeedbackEntry.sensitive.is_(False),
+                FeedbackEntry.created_by == member.user_id,
+                FeedbackEntry.assigned_to == member.user_id,
+            )
         )
-        await session.commit()
-    return result
+    query = query.order_by(FeedbackEntry.received_on.desc(), FeedbackEntry.reference.desc()).offset(
+        offset
+    )
+    if limit:
+        query = query.limit(limit)
+    rows = list(await session.scalars(query))
+    threads = await sms.summaries(session, project.id)
+    return [
+        fb.summary(_with_sms(member, entry, threads)) for entry in rows if fb.can_see(member, entry)
+    ]
 
 
 @router.get(f"{PROJECT}/feedback/stats", response_model=FeedbackStats)
@@ -138,6 +142,32 @@ async def feedback_stats(
     )
     # Les chiffres couvrent tout le registre ; seul le détail des entrées sensibles est masqué.
     return fb.stats(rows, hidden=sum(1 for e in rows if not fb.can_see(member, e)))
+
+
+@router.get(f"{PROJECT}/feedback/{{feedback_id}}", response_model=FeedbackOut)
+async def get_feedback(
+    org_id: UUID, project_id: UUID, feedback_id: UUID, member: AnyMember, session: SessionDep
+) -> FeedbackOut:
+    project = await svc.get_project(session, org_id, project_id)
+    entry = await _get_feedback(session, project, member, feedback_id)
+    item = _with_sms(member, entry, await sms.summaries(session, project.id))
+    # Qui a ouvert une plainte sensible ou lu un contact : journalisé (référence, pas de contenu).
+    if entry.sensitive or item.contact:
+        await audit.record_access(
+            session,
+            organization_id=org_id,
+            actor_id=member.user_id,
+            action="feedback.viewed",
+            entity_type="feedback",
+            entity_id=entry.id,
+            data={
+                "reference": entry.reference,
+                "sensitive": entry.sensitive,
+                "contact": bool(item.contact),
+            },
+        )
+        await session.commit()
+    return item
 
 
 @router.post(f"{PROJECT}/feedback", response_model=FeedbackOut, status_code=201)

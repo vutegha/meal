@@ -1250,7 +1250,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** Get Feedback */
+    get: operations["get_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__get"];
     put?: never;
     post?: never;
     /** Delete Feedback */
@@ -3604,6 +3605,78 @@ export interface components {
        * @enum {string}
        */
       urgency: "low" | "normal" | "high";
+    };
+    /** FeedbackSummary */
+    FeedbackSummary: {
+      /** Activity Id */
+      activity_id: string | null;
+      /** Anonymous */
+      anonymous: boolean;
+      /** Assigned To */
+      assigned_to: string | null;
+      category: components["schemas"]["FeedbackCategory"];
+      channel: components["schemas"]["FeedbackChannel"];
+      /** Client Uuid */
+      client_uuid: string | null;
+      /** Closed On */
+      closed_on: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Created By */
+      created_by: string | null;
+      /**
+       * Due On
+       * Format: date
+       */
+      due_on: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Location */
+      location: string;
+      /** Overdue */
+      overdue: boolean;
+      /**
+       * Project Id
+       * Format: uuid
+       */
+      project_id: string;
+      /**
+       * Received On
+       * Format: date
+       */
+      received_on: string;
+      /** Reference */
+      reference: string;
+      /** Responded On */
+      responded_on: string | null;
+      /** Response */
+      response: string;
+      /** Response Days */
+      response_days: number | null;
+      /** Sensitive */
+      sensitive: boolean;
+      /**
+       * Sms Awaiting Reply
+       * @default false
+       */
+      sms_awaiting_reply: boolean;
+      /**
+       * Sms Count
+       * @default 0
+       */
+      sms_count: number;
+      status: components["schemas"]["FeedbackStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
     };
     /** FeedbackUpdate */
     FeedbackUpdate: {
@@ -7778,6 +7851,8 @@ export interface operations {
     parameters: {
       query?: {
         activity_id?: string | null;
+        limit?: number | null;
+        offset?: number;
       };
       header?: never;
       path: {
@@ -8118,6 +8193,9 @@ export interface operations {
       query?: {
         status?: components["schemas"]["FeedbackStatus"] | null;
         category?: components["schemas"]["FeedbackCategory"] | null;
+        open?: boolean;
+        limit?: number | null;
+        offset?: number;
       };
       header?: never;
       path: {
@@ -8134,7 +8212,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FeedbackOut"][];
+          "application/json": components["schemas"]["FeedbackSummary"][];
         };
       };
       /** @description Validation Error */
@@ -8239,6 +8317,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FeedbackStats"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_feedback_api_v1_orgs__org_id__projects__project_id__feedback__feedback_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        org_id: string;
+        project_id: string;
+        feedback_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FeedbackOut"];
         };
       };
       /** @description Validation Error */
