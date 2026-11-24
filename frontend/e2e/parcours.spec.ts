@@ -156,6 +156,12 @@ test("du document de projet au rapport narratif validé", async ({ page }) => {
   await page.context().setOffline(false);
   await page.evaluate("window.dispatchEvent(new Event('online'))");
   await expect(page.getByText("1 retour en attente d'envoi.")).toBeHidden();
+  // La liste ne montre pas le texte des retours : il se lit en ouvrant la fiche.
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "RET-0002" })
+    .getByRole("button", { name: "Ouvrir la fiche" })
+    .click();
   await expect(page.getByText("Les séances commencent trop tard.")).toBeVisible();
 
   // Formulaire de collecte : conception, publication, réponse sans réseau puis synthèse
