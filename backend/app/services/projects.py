@@ -206,13 +206,12 @@ def achievement_from(
     if totals is None or totals.count == 0:
         return None, None
     if indicator.aggregation == Aggregation.SUM:
-        achieved = totals.total
-        return achieved, rate(achieved, target) if target else None
-    achieved = totals.latest
-    if achieved is None or target is None:
-        return achieved, None
+        return totals.total, rate(totals.total, target) if target else None
+    latest = totals.latest
+    if latest is None or target is None:
+        return latest, None
     base = indicator.baseline or Decimal(0)
-    return achieved, rate(achieved - base, target - base)
+    return latest, rate(latest - base, target - base)
 
 
 def achievement(
