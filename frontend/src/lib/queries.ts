@@ -7,6 +7,7 @@ import {
   dashboardApi,
   type DashboardFilters,
   executionsApi,
+  type FeedbackFilter,
   periodicApi,
   projectsApi,
   reportsApi,
@@ -151,10 +152,23 @@ export const periodicQuery = (orgId: string, projectId: string, reportId: string
     queryFn: () => periodicApi.get(orgId, projectId, reportId),
   });
 
-export const feedbackQuery = (orgId: string, projectId: string) =>
+export const FEEDBACK_PAGE = 50;
+
+export const feedbackPagesQuery = (orgId: string, projectId: string, filter: FeedbackFilter) =>
+  infiniteQueryOptions({
+    queryKey: [...projectKey(orgId, projectId), "feedback", "pages", filter],
+    queryFn: ({ pageParam }) =>
+      accountabilityApi.feedback(orgId, projectId, filter, pageParam, FEEDBACK_PAGE),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) =>
+      last.length === FEEDBACK_PAGE ? pages.length * FEEDBACK_PAGE : undefined,
+  });
+
+// Fiche complète (description, contact) : lue à l'ouverture, ce que le serveur inscrit au journal.
+export const feedbackEntryQuery = (orgId: string, projectId: string, feedbackId: string) =>
   queryOptions({
-    queryKey: [...projectKey(orgId, projectId), "feedback"],
-    queryFn: () => accountabilityApi.feedback(orgId, projectId),
+    queryKey: [...projectKey(orgId, projectId), "feedback", feedbackId],
+    queryFn: () => accountabilityApi.feedbackEntry(orgId, projectId, feedbackId),
   });
 
 export const feedbackStatsQuery = (orgId: string, projectId: string) =>

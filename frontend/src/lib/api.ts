@@ -1201,6 +1201,15 @@ export interface FeedbackEntry {
   sms_awaiting_reply: boolean;
 }
 
+// Ligne de la liste : la description et le contact ne sont transmis qu'à l'ouverture d'une fiche.
+export type FeedbackSummary = Omit<FeedbackEntry, "description" | "contact">;
+
+export interface FeedbackFilter {
+  // Retours à traiter (reçus ou en cours).
+  open?: boolean;
+  status?: FeedbackStatus;
+}
+
 export type MessageChannel = "sms" | "whatsapp";
 export const MESSAGE_CHANNELS: MessageChannel[] = ["sms", "whatsapp"];
 
@@ -1285,8 +1294,20 @@ export type LessonIn = Pick<
 >;
 
 export const accountabilityApi = {
-  feedback: (orgId: string, projectId: string) =>
-    request<FeedbackEntry[]>(`${project(orgId, projectId)}/feedback`),
+  feedback: (
+    orgId: string,
+    projectId: string,
+    filter: FeedbackFilter,
+    offset: number,
+    limit: number,
+  ) => {
+    const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (filter.open) query.set("open", "true");
+    if (filter.status) query.set("status", filter.status);
+    return request<FeedbackSummary[]>(`${project(orgId, projectId)}/feedback?${query.toString()}`);
+  },
+  feedbackEntry: (orgId: string, projectId: string, feedbackId: string) =>
+    request<FeedbackEntry>(`${project(orgId, projectId)}/feedback/${feedbackId}`),
   feedbackStats: (orgId: string, projectId: string) =>
     request<FeedbackStats>(`${project(orgId, projectId)}/feedback/stats`),
   classifyFeedback: (

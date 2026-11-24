@@ -54,6 +54,16 @@ def test_normalize_phone() -> None:
     assert sms.normalize_phone("123") is None
 
 
+async def feedback_details(
+    client: AsyncClient, base: str, headers: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Fiches complètes : la liste ne donne ni la description ni le contact."""
+    listed = (await client.get(f"{base}/feedback", headers=headers)).json()
+    return [
+        (await client.get(f"{base}/feedback/{e['id']}", headers=headers)).json() for e in listed
+    ]
+
+
 async def test_send_and_receive_sms_on_feedback(client: AsyncClient, webhook: str) -> None:
     ctx, base, entry = await setup(client)
     h = ctx["headers"]
@@ -98,7 +108,8 @@ async def test_inbound_sms_with_project_code_creates_feedback(
 
     entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()
     assert len(entries) == 2
-    created = next(e for e in entries if e["channel"] == "sms")
+    listed = next(e for e in entries if e["channel"] == "sms")
+    created = (await client.get(f"{base}/feedback/{listed['id']}", headers=ctx["headers"])).json()
     assert created["reference"] == "RET-0002" and created["category"] == "other"
     assert created["description"] == "Personne n'est venu au point d'eau"
     # Message reçu, puis accusé de réception avec la notice d'information.
@@ -250,7 +261,7 @@ async def test_whatsapp_conversation_and_inbound(client: AsyncClient, webhook: s
     # Nouveau retour reçu par WhatsApp grâce au code du projet.
     r = await client.post(whatsapp, json={"from": "+243820000000", "text": "KIW Pas d'eau"})
     assert r.status_code == 204
-    entries = (await client.get(f"{base}/feedback", headers=h)).json()
+    entries = await feedback_details(client, base, h)
     assert any(e["description"] == "Pas d'eau" and e["channel"] == "sms" for e in entries)
 
     r = await client.post(
@@ -308,7 +319,7 @@ async def test_meta_whatsapp_webhook(
         whatsapp, content=raw, headers={**headers, "x-hub-signature-256": signature}
     )
     assert r.status_code == 204
-    entries = (await client.get(f"{base}/feedback", headers=ctx["headers"])).json()
+    entries = await feedback_details(client, base, ctx["headers"])
     created = next(e for e in entries if e["description"] == "La latrine est cassée")
     assert created["contact"] == "+243830000000"
 

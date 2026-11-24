@@ -689,6 +689,9 @@ export const fr = {
     answeredIn_one: "Répondu en {{count}} jour",
     answeredIn_other: "Répondu en {{count}} jours",
     filterOpen: "À traiter",
+    openEntry: "Ouvrir la fiche",
+    closeEntry: "Fermer la fiche",
+    more: "Afficher plus",
     filterAll: "Tous",
     hidden_one: "{{count}} cas sensible est suivi de façon confidentielle et n'apparaît pas ici.",
     hidden_other:
