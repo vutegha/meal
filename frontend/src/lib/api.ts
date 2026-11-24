@@ -1,7 +1,12 @@
 import { type Tokens, tokenStore } from "./tokens";
 
 export type Role =
-  "admin" | "project_manager" | "meal_officer" | "field_agent" | "finance" | "viewer";
+  | "admin"
+  | "project_manager"
+  | "meal_officer"
+  | "field_agent"
+  | "finance"
+  | "viewer";
 
 export const ROLES: Role[] = [
   "admin",
@@ -800,7 +805,13 @@ export interface Participants {
 
 export type ExecutionStatus = "in_progress" | "completed";
 export type EvidenceKind =
-  "report" | "minutes" | "attendance" | "photo" | "audio" | "video" | "other";
+  | "report"
+  | "minutes"
+  | "attendance"
+  | "photo"
+  | "audio"
+  | "video"
+  | "other";
 export const EVIDENCE_KINDS: EvidenceKind[] = [
   "photo",
   "audio",
@@ -891,6 +902,9 @@ export interface EvidenceInput {
 export const executionsApi = {
   list: (orgId: string, projectId: string) =>
     request<Execution[]>(`${project(orgId, projectId)}/executions`),
+  // Une page de la liste, les plus récentes d'abord.
+  page: (orgId: string, projectId: string, offset: number, limit: number) =>
+    request<Execution[]>(`${project(orgId, projectId)}/executions?limit=${limit}&offset=${offset}`),
   get: (orgId: string, projectId: string, executionId: string) =>
     request<ExecutionDetail>(`${project(orgId, projectId)}/executions/${executionId}`),
   create: (orgId: string, projectId: string, body: ExecutionInput) =>
@@ -1130,7 +1144,13 @@ export const periodicApi = {
 // --- Plaintes et retours, leçons apprises (étape 7) -----------------------------------
 
 export type FeedbackChannel =
-  "hotline" | "suggestion_box" | "community_meeting" | "field_visit" | "sms" | "email" | "other";
+  | "hotline"
+  | "suggestion_box"
+  | "community_meeting"
+  | "field_visit"
+  | "sms"
+  | "email"
+  | "other";
 export const FEEDBACK_CHANNELS: FeedbackChannel[] = [
   "community_meeting",
   "field_visit",

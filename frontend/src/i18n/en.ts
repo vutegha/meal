@@ -464,6 +464,7 @@ export const en: Messages = {
     title_list: "Activity execution",
     new: "New execution",
     empty: "No execution recorded yet.",
+    more: "Show more",
     activity: "Activity",
     title: "Title (optional)",
     titlePlaceholder: "E.g. Kiwanja VSLA training",

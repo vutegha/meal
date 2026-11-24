@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 
 import {
   accountabilityApi,
@@ -101,6 +101,18 @@ export const executionsQuery = (orgId: string, projectId: string) =>
   queryOptions({
     queryKey: [...projectKey(orgId, projectId), "executions"],
     queryFn: () => executionsApi.list(orgId, projectId),
+  });
+
+// Liste paginée : l'écran ne télécharge qu'une page à la fois (réseau lent sur le terrain).
+export const EXECUTIONS_PAGE = 50;
+
+export const executionPagesQuery = (orgId: string, projectId: string) =>
+  infiniteQueryOptions({
+    queryKey: [...projectKey(orgId, projectId), "executions", "pages"],
+    queryFn: ({ pageParam }) => executionsApi.page(orgId, projectId, pageParam, EXECUTIONS_PAGE),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) =>
+      last.length === EXECUTIONS_PAGE ? pages.length * EXECUTIONS_PAGE : undefined,
   });
 
 export const executionQuery = (orgId: string, projectId: string, executionId: string) =>

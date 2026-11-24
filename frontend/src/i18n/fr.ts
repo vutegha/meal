@@ -471,6 +471,7 @@ export const fr = {
     title_list: "Exécution des activités",
     new: "Nouvelle exécution",
     empty: "Aucune exécution saisie pour l'instant.",
+    more: "Afficher plus",
     activity: "Activité",
     title: "Intitulé (facultatif)",
     titlePlaceholder: "Ex. : formation AVEC de Kiwanja",

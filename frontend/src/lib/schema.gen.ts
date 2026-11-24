@@ -7778,6 +7778,8 @@ export interface operations {
     parameters: {
       query?: {
         activity_id?: string | null;
+        limit?: number | null;
+        offset?: number;
       };
       header?: never;
       path: {
